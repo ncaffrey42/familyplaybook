@@ -1,0 +1,1 @@
+// This file is intentionally left blank to avoid conflicts. The active service worker is located in /src/sw.js

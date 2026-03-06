@@ -1,0 +1,122 @@
+# Technical Specification: Family Playbook Application
+
+**Document Version:** 1.0
+**Date:** 2025-10-26
+
+This document provides a comprehensive technical overview of the Family Playbook application, including its architecture, components, data model, and core functionalities.
+
+---
+
+## 1.0 System Architecture
+
+### 1.1 Frontend Stack
+*   **Framework:** React 18.2.0 (using .jsx)
+*   **Build Tool:** Vite
+*   **Styling:** TailwindCSS 3.3.2 with a custom theme defined in `src/index.css`.
+*   **UI Components:** shadcn/ui (a collection of custom-built, re-usable components using Radix UI primitives).
+*   **Animations:** Framer Motion 10.16.4 for UI animations and transitions.
+*   **Icons:** Lucide React 0.292.0.
+*   **Routing:** React Router 6.16.0 for all client-side navigation.
+*   **State Management:** React Context API, split into two primary providers:
+    *   `SupabaseAuthContext`: Manages user authentication state, session, and profile data.
+    *   `DataContext`: Manages all application-specific data (bundles, guides, library content, etc.), acting as a client-side cache and providing data manipulation functions.
+*   **Error Handling:** A custom `ErrorBoundary` component and a `lib/errorLogger.js` utility that captures and sends client-side errors to the Supabase `error_logs` table. It also includes AI-powered analysis via a Supabase Edge Function.
+*   **Progressive Web App (PWA):** Enabled via `manifest.json` and a service worker (`src/sw.js`) for "Add to Home Screen" functionality and push notifications.
+
+### 1.2 Backend as a Service (BaaS) - Supabase
+*   **Authentication:** Supabase Auth for user sign-up, sign-in (email/password), and session management.
+*   **Database:** Supabase PostgreSQL for all persistent data storage. Row Level Security (RLS) is heavily used to ensure users can only access their own data.
+*   **Storage:** Supabase Storage for user-uploaded files, such as avatars and images for bundles and guide steps. Buckets are configured with security policies.
+*   **Edge Functions:** Serverless functions for specific backend logic:
+    *   `analyze-error`: Receives error details and uses the OpenAI API to provide a probable cause and solution.
+    *   `check-openai-key`: Verifies if a user has a valid OpenAI key set.
+    *   `set-openai-key`: Securely saves a user's OpenAI API key as a Supabase Secret.
+    *   Stripe integration functions (`create-checkout-session`, `create-portal-session`, `stripe-webhook`): Manage subscription payments and billing.
+
+---
+
+## 2.0 Database Schema (Supabase PostgreSQL)
+
+A summary of key tables and their purpose.
+
+### 2.1 Core Tables
+*   `public.profiles`: Stores user-specific data linked to `auth.users`. Includes `full_name`, `avatar_url`, and Stripe subscription details (`stripe_customer_id`, `subscription_status`).
+*   `public.packs`: Represents "Bundles." Stores `name`, `description`, `color`, `image`, and is linked to a `user_id`. Includes `template_id` to link to an original library item.
+*   `public.guides`: Represents individual guides. Stores `name`, `description`, `icon`, `category`, and the main content in a JSONB column (`steps` or `content`). Linked to a `user_id`.
+*   `public.pack_guides`: A many-to-many join table linking `packs` and `guides`.
+
+### 2.2 Library & Feature Tables
+*   `public.library_packs`: Stores the master templates for bundles available in the library.
+*   `public.library_guides`: Stores the master templates for guides, linked to `library_packs`.
+*   `public.user_favorites`: A join table linking `profiles` (`user_id`) and `guides` (`guide_id`) to manage a user's list of favorite guides.
+*   `public.shared_links`: Stores UUIDs for publicly shareable guides and bundles, linking a `shared_links.id` to a `guide_id` or `bundle_id`.
+*   `public.push_subscriptions`: Stores endpoints and details for web push notification subscriptions for each user.
+*   `public.error_logs`: Captures detailed client-side errors, including `message`, `stack`, `breadcrumbs`, and `ai_analysis` (JSONB).
+
+### 2.3 Key Database Functions (PostgreSQL)
+*   `handle_new_user()`: A trigger function that creates a new row in `public.profiles` whenever a new user signs up in `auth.users`.
+*   `export_user_data()`: An RPC function that gathers all of a user's data (packs, guides, etc.) and returns it as a single JSON object for data export.
+*   `reset_user_account()`: An RPC function that deletes all of a user's created content (packs, guides, favorites, etc.), effectively resetting their account.
+
+---
+
+## 3.0 Frontend Component & Screen Breakdown
+
+### 3.1 Core App Structure & Layout
+*   `src/main.jsx`: Main entry point. Initializes React, Router, and all top-level context providers (`ThemeProvider`, `AuthProvider`, `DataProvider`).
+*   `src/App.jsx`: Top-level component. Manages routing, Helmet for SEO metadata, the Toaster for notifications, and conditionally renders the `BottomNav` and other UI elements.
+*   `src/components/BottomNav.jsx`: The primary navigation bar for mobile, providing access to Home, Bundles, Guides, Favorites, and Account.
+*   `src/components/PageHeader.jsx`: A reusable header component for sub-pages, providing a back button and slots for action controls.
+*   `src/components/ErrorBoundary.jsx`: A React Error Boundary that wraps the main app content, catching rendering errors and displaying a fallback UI.
+*   `src/components/LazyRoute.jsx`: A Suspense wrapper to enable lazy loading of route components, improving initial load performance.
+
+### 3.2 Authentication & Onboarding Screens
+*   `src/components/OnboardingScreen.jsx`: A multi-step introductory carousel for new users.
+*   `src/components/LoginScreen.jsx`: Handles user sign-up and sign-in via email.
+*   `src/components/CheckEmailScreen.jsx`: A confirmation page shown after a user signs up, instructing them to check their email for a verification link.
+
+### 3.3 Main Feature Screens
+*   `src/components/HomeScreen.jsx`: The dashboard. Features a prominent search bar, a tabbed view for "My Bundles" and "Explore" (library bundles), and a section for favorite guides.
+*   `src/components/MyBundlesScreen.jsx`: Displays a grid of the user's created bundles and a tab to browse the library of template bundles.
+*   `src/components/BundleDetail.jsx`: Shows the details of a specific bundle, listing all the guides it contains. Provides options to edit, archive, share, and add more guides.
+*   `src/components/GuidesLibrary.jsx`: The main screen for guides. Uses a tabbed interface to switch between "My Guides" and the "Library." Includes search and category filtering.
+*   `src/components/GuideDetail.jsx`: Displays the content of a single guide, including its steps. Features a checklist interaction for "How To" guides and actions for editing, sharing, favoriting, and archiving.
+*   `src/components/FavoritesScreen.jsx`: Displays a filterable list of all guides the user has marked as a favorite.
+
+### 3.4 Creation & Editing Screens
+*   `src/components/CreateBundleScreen.jsx`: A form for creating a new bundle or editing an existing one. Allows setting a name, description, color, cover image, and managing which guides are included.
+*   `src/components/CreateGuideScreen.jsx`: A form for creating or editing a guide. Includes fields for name, icon, category, and a dynamic list of steps. Integrates the `AIGenerationPanel`.
+*   `src
+/components/AIGenerationPanel.jsx`: A slide-up panel that allows users to generate a full guide (name, description, steps) from a text prompt using the `openai` Edge Function.
+
+### 3.5 Account & Settings Screens
+*   `src/components/MyAccount.jsx`: A tabbed screen for managing user settings.
+    *   **Profile Tab:** Edit full name and upload an avatar.
+    *   **Preferences Tab:** Toggle dark mode and push notifications.
+    *   **Security Tab:** Set OpenAI API key, export user data, and reset the account.
+*   `src/components/SubscriptionScreen.jsx`: Displays subscription plans (Free, Couples, Family) with monthly/annual pricing. Integrates with Stripe via Supabase Edge Functions to handle checkout and billing management.
+*   `src/components/ArchivedItemsScreen.jsx`: Shows a list of archived bundles and guides, with options to restore or permanently delete them.
+*   `src/components/ErrorLogScreen.jsx`: (Dev-only) A screen to view captured client-side errors from the `error_logs` table, complete with AI analysis.
+
+### 3.6 Sharing & PWA Features
+*   `src/components/PublicSharePage.jsx`: A publicly accessible, read-only page to display a shared guide or bundle. Rendered based on the UUID in the URL.
+*   `src/components/ShareScreen.jsx`: A screen that displays the unique sharing URL and a QR code for a specific guide or bundle.
+*   `src/components/AddToHomeScreenPrompt.jsx`: A custom prompt that encourages mobile users to install the PWA. Detects the OS (iOS/Android) to show appropriate instructions.
+*   `src/sw.js`: The service worker file that handles push notification logic.
+
+### 3.7 Reusable & UI Components
+*   `src/components/ui/`: Contains all the `shadcn/ui` base components (Button, Input, Dialog, etc.).
+*   `src/components/GuideCard.jsx`: A card component for displaying a guide in lists.
+*   `src/components/BundleImage.jsx`: A component that displays a bundle's cover image, with a fallback to a colored placeholder with an icon if the image is missing or fails to load.
+*   `src/components/ImageUpload.jsx`: A component for uploading and compressing images to Supabase Storage.
+*   `src/components/AddGuidesToBundleModal.jsx`: A modal for selecting and adding existing guides to a bundle.
+
+---
+
+## 4.0 Key Automations & Functions
+
+*   **Error Analysis:** When an error is logged via `logError`, it's sent to the `analyze-error` edge function. This function calls the OpenAI API to get a plain-language explanation of the error and a suggested fix, which is then stored back in the `error_logs` table.
+*   **Data Export/Reset:** The "Export My Data" and "Reset Account" buttons in the account settings trigger Supabase RPC functions (`export_user_data`, `reset_user_account`) to perform these actions securely on the database server.
+*   **PWA Install Prompt:** The app uses the `beforeinstallprompt` event to capture the browser's install prompt and shows a custom, branded prompt to the user at an opportune time.
+*   **Stripe Integration:** Subscription management is handled via Supabase edge functions that securely communicate with the Stripe API using a secret key. This includes creating checkout sessions and customer portal sessions.
+*   **AI Guide Generation:** The `AIGenerationPanel` uses the `openai` edge function, which securely calls the OpenAI API with the user's prompt and API key (retrieved from Supabase Vault) to generate structured JSON for a new guide.
