@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Link, Copy, Trash2, X } from 'lucide-react';
+import EntitlementGuard from '@/components/EntitlementGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -96,14 +97,16 @@ const ManageFamilyScreen = ({ onNavigate }) => {
             <div className="min-h-screen bg-[#FAF9F6] pb-24">
                 <div className="p-6">
                     <PageHeader title="Family & Friends" onBack={() => onNavigate('account')}>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setInviteModalOpen(true)}
-                            className="rounded-full bg-white dark:bg-gray-800 shadow-sm"
-                        >
-                            <UserPlus size={20} className="text-[#5CA9E9]" />
-                        </Button>
+                        <EntitlementGuard action="EDITOR_INVITE">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setInviteModalOpen(true)}
+                                className="rounded-full bg-white dark:bg-gray-800 shadow-sm"
+                            >
+                                <UserPlus size={20} className="text-[#5CA9E9]" />
+                            </Button>
+                        </EntitlementGuard>
                     </PageHeader>
 
                     <motion.div

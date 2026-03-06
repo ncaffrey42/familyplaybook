@@ -1,0 +1,20 @@
+User-agent: *
+# Block auth and private user routes from indexing
+Disallow: /login
+Disallow: /check-email
+Disallow: /verify-phone
+Disallow: /onboarding
+Disallow: /account
+Disallow: /settings
+Disallow: /manageFamily
+Disallow: /subscription
+Disallow: /bundle/
+Disallow: /guide/
+Disallow: /archived
+Disallow: /hostMode
+Disallow: /error-log
+
+# Allow public share pages and library
+Allow: /guide/share/
+Allow: /library/
+Allow: /

@@ -2,8 +2,12 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  esbuild: {
+    // Drop debug-level console calls from production bundles; keep error/warn for observability
+    pure: mode === 'production' ? ['console.log', 'console.info', 'console.debug'] : [],
+  },
   server: {
     host: '::',
     port: 3000,
@@ -31,4 +35,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));

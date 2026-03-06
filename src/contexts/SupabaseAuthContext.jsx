@@ -108,60 +108,41 @@ export const AuthProvider = ({ children }) => {
   }, [user, clearAuthState]);
 
   /**
-   * Polls the user_billing table until specific criteria are met.
+   * Waits for the user_billing realtime channel to deliver a matching update,
+   * then refreshes the auth profile. Falls back after timeoutMs if no event
+   * arrives (e.g. webhook is slow or the tab was backgrounded).
    */
-  const waitForSubscriptionUpdate = useCallback(async (targetPlan = null, maxAttempts = 20) => {
-      if (!user) return false;
-      
-      console.log("⏳ Starting subscription polling...");
-      return new Promise((resolve) => {
-          let attempts = 0;
-          
-          const poll = async () => {
-              try {
-                  const { data: billing, error } = await supabase
-                      .from('user_billing')
-                      .select('subscription_status, plan_key, billing_interval, cancel_at_period_end')
-                      .eq('user_id', user.id)
-                      .maybeSingle();
+  const waitForSubscriptionUpdate = useCallback((targetPlan = null, timeoutMs = 30000) => {
+    if (!user) return Promise.resolve(false);
 
-                  if (error) throw error;
+    return new Promise((resolve) => {
+      let settled = false;
 
-                  const isActive = billing?.subscription_status === 'active' || billing?.subscription_status === 'trialing';
-                  
-                  // Check matching criteria
-                  let isMatch = false;
+      const settle = async (success) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timerId);
+        await supabase.removeChannel(channel);
+        await refreshProfile(user);
+        resolve(success);
+      };
 
-                  if (targetPlan) {
-                      // If we are waiting for a specific plan upgrade
-                      isMatch = isActive && billing?.plan_key === targetPlan;
-                  } else {
-                      // If waiting for generic update
-                      isMatch = true; 
-                  }
+      const timerId = setTimeout(() => settle(false), timeoutMs);
 
-                  if (isMatch) {
-                      console.log("✅ Polling success! Subscription updated.");
-                      await refreshProfile(user);
-                      resolve(true);
-                      return;
-                  }
-              } catch (e) {
-                  console.log("Polling error (retrying):", e);
-              }
-
-              attempts++;
-              if (attempts >= maxAttempts) {
-                  console.warn("Polling timed out waiting for plan:", targetPlan || "update");
-                  await refreshProfile(user); // Last ditch effort
-                  resolve(false);
-              } else {
-                  setTimeout(poll, 1500);
-              }
-          };
-          
-          poll();
-      });
+      const channel = supabase
+        .channel(`billing-wait-${user.id}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'user_billing', filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            const row = payload.new;
+            const isActive = row?.subscription_status === 'active' || row?.subscription_status === 'trialing';
+            const isMatch = targetPlan ? (isActive && row?.plan_key === targetPlan) : isActive;
+            if (isMatch) settle(true);
+          },
+        )
+        .subscribe();
+    });
   }, [user, refreshProfile]);
 
   useEffect(() => {

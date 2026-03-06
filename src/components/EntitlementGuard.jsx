@@ -1,82 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock } from 'lucide-react';
 import { useEntitlements } from '@/contexts/EntitlementContext';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
+import { useLimitNotification } from '@/contexts/LimitNotificationContext';
 
 /**
- * Wraps content that requires specific entitlements.
- * @param {string} action - The action to check (e.g., 'GUIDE_CREATE')
- * @param {object} payload - Optional payload for the check
- * @param {React.ReactNode} fallback - Component to render if denied
- * @param {boolean} showToast - Whether to show a toast on denial (default false to avoid spam)
+ * EntitlementGuard
+ *
+ * Wraps UI that should only be interactive when the user is within their plan
+ * limits. Checks the entitlement on mount; if denied, renders children in a
+ * visually-locked overlay and opens the upgrade modal on interaction.
+ *
+ * Props:
+ *   action  — action key from EntitlementService.ACTIONS
+ *             ('GUIDE_CREATE' | 'BUNDLE_CREATE' | 'EDITOR_INVITE' | 'FILE_UPLOAD' | …)
+ *   payload — extra data forwarded to canPerform (e.g. { file_size_bytes })
+ *   skip    — bypass the guard entirely (use for edit flows where no new resource is created)
  */
-const EntitlementGuard = ({ 
-  action, 
-  payload = {}, 
-  fallback = null, 
-  children,
-  showToast = false 
-}) => {
+const EntitlementGuard = ({ action, payload = {}, skip = false, children }) => {
   const { checkEntitlement } = useEntitlements();
-  const [isAllowed, setIsAllowed] = useState(null); // null = loading
-  const [checkResult, setCheckResult] = useState(null);
-  const { toast } = useToast();
+  const { showLimitNotification } = useLimitNotification();
+  const [status, setStatus] = useState({ loading: true, allowed: true, result: null });
+  // Stable ref so the check only re-runs when action/skip change, not on every render
+  const payloadRef = useRef(payload);
 
   useEffect(() => {
-    let mounted = true;
+    if (skip) {
+      setStatus({ loading: false, allowed: true, result: null });
+      return;
+    }
 
-    const performCheck = async () => {
-      const result = await checkEntitlement(action, payload);
-      
-      if (mounted) {
-        setIsAllowed(result.allowed);
-        setCheckResult(result);
+    let cancelled = false;
+    checkEntitlement(action, payloadRef.current).then((result) => {
+      if (!cancelled) setStatus({ loading: false, allowed: result.allowed, result });
+    });
+    return () => { cancelled = true; };
+  }, [action, skip, checkEntitlement]);
 
-        if (!result.allowed && showToast) {
-           toast({
-             variant: "destructive",
-             title: "Feature Limit Reached",
-             description: `Limit: ${result.limit}. Current: ${result.current}. Upgrade to ${result.upgrade_suggestion} for more!`,
-           });
-        }
-      }
-    };
+  if (status.loading) return null;
 
-    performCheck();
-    return () => { mounted = false; };
-  }, [action, JSON.stringify(payload), checkEntitlement, showToast, toast]);
+  if (status.allowed) return <>{children}</>;
 
-  if (isAllowed === null) {
-    // Loading state - could be a spinner or just render nothing
-    // For guards, usually render nothing until confirmed
-    return null; 
-  }
+  const handleLockedInteraction = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const { reason_code, current, limit, upgrade_suggestion } = status.result;
+    showLimitNotification(reason_code, current, limit, upgrade_suggestion);
+  };
 
-  if (isAllowed) {
-    return <>{children}</>;
-  }
-
-  // Denied
-  if (fallback) {
-    return <>{fallback}</>;
-  }
-
-  // Default fallback if none provided: Upgrade CTA
   return (
-    <div className="p-6 border border-dashed rounded-lg text-center space-y-3 bg-gray-50">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-        <Sparkles className="h-5 w-5 text-amber-600" />
+    <div
+      className="relative"
+      onClick={handleLockedInteraction}
+      onKeyDown={(e) => e.key === 'Enter' && handleLockedInteraction(e)}
+      role="button"
+      tabIndex={0}
+      aria-label="Upgrade required to use this feature"
+    >
+      <div className="pointer-events-none select-none opacity-50">
+        {children}
       </div>
-      <h3 className="font-semibold">Upgrade to Access</h3>
-      <p className="text-sm text-gray-500 max-w-xs mx-auto">
-        You've reached the limit for this feature on your current plan.
-      </p>
-      {checkResult?.upgrade_suggestion && (
-        <Button size="sm" variant="default" className="mt-2">
-          Upgrade to {checkResult.upgrade_suggestion}
-        </Button>
-      )}
+      <div className="absolute inset-0 flex items-center justify-center cursor-pointer">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900/75 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm">
+          <Lock size={11} />
+          Upgrade to unlock
+        </span>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, GripVertical, X, Image, Video, Loader2, Trash2, Check } from 'lucide-react';
+import EntitlementGuard from '@/components/EntitlementGuard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
@@ -467,17 +468,19 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </div>
           </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full h-14 text-lg font-semibold rounded-2xl bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isSaving ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              guideId ? 'Update Guide' : 'Save Guide'
-            )}
-          </Button>
+          <EntitlementGuard action="GUIDE_CREATE" skip={!!guideId}>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full h-14 text-lg font-semibold rounded-2xl bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                guideId ? 'Update Guide' : 'Save Guide'
+              )}
+            </Button>
+          </EntitlementGuard>
 
           {guideId && (
              <Button

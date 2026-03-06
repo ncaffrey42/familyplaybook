@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, X, Trash2 } from 'lucide-react';
+import EntitlementGuard from '@/components/EntitlementGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -155,9 +156,11 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
                 <Button onClick={() => setShowAddGuidesModal(true)} variant="outline" className="w-full border-primary text-primary hover:bg-primary/10 transition-colors rounded-xl py-3"><Plus size={20} className="mr-2" /> Add Guides</Button>
               </div>
             </div>
-            <Button onClick={handleSave} disabled={isSubmitting} className="w-full bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-              {isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Save Changes" : "Create Bundle")}
-            </Button>
+            <EntitlementGuard action="BUNDLE_CREATE" skip={isEditing}>
+              <Button onClick={handleSave} disabled={isSubmitting} className="w-full bg-gradient-to-r from-brand-blue to-brand-green text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                {isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Save Changes" : "Create Bundle")}
+              </Button>
+            </EntitlementGuard>
           </motion.div>
         </div>
       </div>

@@ -195,21 +195,6 @@ const SubscriptionScreen = () => {
   const isPastDue = subscriptionStatus === 'past_due' || subscriptionStatus === 'unpaid';
   const isPaidUser = isPremium || planKey === 'couple' || planKey === 'family';
 
-  const pollForSubscriptionChange = async (targetPlan, targetInterval) => {
-    let attempts = 0;
-    while (attempts < 15) { 
-        const { data } = await supabase.from('user_billing').select('*').eq('user_id', user.id).maybeSingle();
-        if (data && data.plan_key === targetPlan && data.billing_interval === targetInterval) {
-            await refreshProfile();
-            return true;
-        }
-        await new Promise(r => setTimeout(r, 1000));
-        attempts++;
-    }
-    await refreshProfile(); 
-    return false;
-  };
-
   const handleAction = async (targetPlan, targetInterval) => {
     setIsLoading(true);
     try {
@@ -221,7 +206,7 @@ const SubscriptionScreen = () => {
         }
 
         if (!isPremium || subscriptionStatus === 'canceled') {
-            // New Subscription
+            // New Subscription — redirect to Stripe Checkout
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
                 body: { plan_key: targetPlan, billing_interval: targetInterval },
             });
@@ -229,17 +214,16 @@ const SubscriptionScreen = () => {
             if (data?.url) window.location.href = data.url;
             else throw new Error("Failed to start checkout.");
         } else {
-            // Change Existing Subscription
+            // Change Existing Subscription — update in-place via edge function,
+            // then wait for the realtime billing update rather than polling the DB.
             const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
                 body: { plan_key: targetPlan, billing_interval: targetInterval },
             });
             if (error) throw error;
-            
+
             if (data.success) {
                 toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
-                // Explicit wait ensures UI doesn't bounce back to old state
-                const success = await pollForSubscriptionChange(targetPlan, targetInterval);
-                
+                const success = await waitForSubscriptionUpdate(targetPlan);
                 if (success) {
                     toast({ title: "Plan Changed!", description: `You are now on the ${targetPlan} plan (${targetInterval}).`, variant: "success" });
                 } else {

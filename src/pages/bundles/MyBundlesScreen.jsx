@@ -56,12 +56,6 @@ const BundleList = ({ bundles, isLibrary = false, onTabChange }) => {
     // Diagnostic logging for navigation debugging
     const targetPath = isLibrary ? `/library/bundle/${bundle.id}` : `/bundle/${bundle.id}`;
     
-    console.group('Bundle Navigation Debug');
-    console.log('Bundle Clicked:', bundle);
-    console.log('Is Library Bundle:', isLibrary);
-    console.log('Target Path:', targetPath);
-    console.groupEnd();
-
     if (!bundle.id) {
       console.error('CRITICAL: Bundle ID is missing!', bundle);
       return;
