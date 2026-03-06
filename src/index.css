@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 38 50% 98%; /* warm-neutral-50 */
+    --foreground: 20 14.3% 4.1%; /* warm-neutral-950 */
+
+    --card: 38 50% 98%;
+    --card-foreground: 20 14.3% 4.1%;
+
+    --popover: 38 50% 98%;
+    --popover-foreground: 20 14.3% 4.1%;
+
+    --primary: 205 60% 55%; /* soft-blue */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 38 10% 95%; /* warm-neutral-100 */
+    --secondary-foreground: 20 14.3% 4.1%;
+
+    --muted: 38 10% 95%;
+    --muted-foreground: 20 8% 40%;
+
+    --accent: 145 40% 70%; /* soft-green */
+    --accent-foreground: 20 14.3% 4.1%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 38 10% 90%;
+    --input: 38 10% 90%;
+    --ring: 205 60% 55%;
+
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 38 50% 98%;
+
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 38 50% 98%;
+
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 38 50% 98%;
+
+    --primary: 205 60% 55%;
+    --primary-foreground: 20 14.3% 4.1%;
+
+    --secondary: 20 10% 10%;
+    --secondary-foreground: 38 50% 98%;
+
+    --muted: 20 10% 10%;
+    --muted-foreground: 38 10% 60%;
+
+    --accent: 145 40% 70%;
+    --accent-foreground: 38 50% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 38 50% 98%;
+
+    --border: 20 10% 15%;
+    --input: 20 10% 15%;
+    --ring: 205 60% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    height: 100%; /* Ensure html, body, and root div take full height */
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  }
+}
+
+.shadow-soft {
+  box-shadow: 0 4px 12px -1px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-card {
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.PhoneInput {
+  display: flex;
+  align-items: center;
+}
+
+.PhoneInputCountry {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin-right: 0.5em;
+}
+
+.PhoneInputCountryIcon {
+  width: 1.5em;
+  height: 1em;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-sizing: content-box;
+}
+
+.PhoneInputCountryIcon--border {
+  background-color: #fff;
+  box-shadow: 0 0 1px #ccc;
+}
+
+.PhoneInputCountrySelect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.PhoneInputCountrySelectArrow {
+  display: block;
+  content: '';
+  width: 0.3em;
+  height: 0.3em;
+  margin-left: 0.3em;
+  border-style: solid;
+  border-color: inherit;
+  border-top-width: 0;
+  border-bottom-width: 1px;
+  border-left-width: 0;
+  border-right-width: 1px;
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+
+.PhoneInputInput {
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+}
