@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Lock, Zap } from 'lucide-react';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
-import { AnalyticsService } from '@/lib/AnalyticsService';
+import { AnalyticsService } from '@/services/AnalyticsService';
 
 const MESSAGES = {
   LIMIT_ACTIVE_GUIDES: {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UsageTrackingService } from '@/lib/UsageTrackingService';
-import { entitlementService } from '@/lib/EntitlementService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
+import { entitlementService } from '@/services/EntitlementService';
 import { UsageUpdateTriggers } from '@/lib/UsageUpdateTriggers';
 
 /**

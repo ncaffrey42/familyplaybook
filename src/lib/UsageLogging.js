@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Service for logging usage tracking events and errors.

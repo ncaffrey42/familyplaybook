@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 const BREADCRUMB_LIMIT = 30;
 let breadcrumbs = [];

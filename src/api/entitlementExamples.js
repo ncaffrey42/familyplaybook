@@ -1,5 +1,5 @@
-import { entitlementService } from '@/lib/EntitlementService';
-import { supabase } from '@/lib/customSupabaseClient';
+import { entitlementService } from '@/services/EntitlementService';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Example implementations of API-like functions using EntitlementService.

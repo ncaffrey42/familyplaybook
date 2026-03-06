@@ -1,13 +1,5 @@
-/*
- * HORIZONS "NO SIDE EFFECTS" RULE:
- * Entitlement checks must ONLY block CREATE/IMPORT/UPLOAD/INVITE actions, never VIEW/LIST/OPEN actions.
- * - Viewing a guide/bundle/pack should ALWAYS be allowed regardless of plan.
- * - Accessing the "My Account" page should ALWAYS be allowed.
- * - This context provides data; it should not perform routing side-effects.
- */
-
 import React, { createContext, useContext, useCallback, useState } from 'react';
-import { entitlementService } from '@/lib/EntitlementService';
+import { entitlementService } from '@/services/EntitlementService';
 import { useAuth } from './SupabaseAuthContext';
 
 const EntitlementContext = createContext(null);

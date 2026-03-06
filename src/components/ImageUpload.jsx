@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import imageCompression from 'browser-image-compression';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { entitlementService } from '@/lib/EntitlementService';
-import { UsageTrackingService } from '@/lib/UsageTrackingService';
+import { entitlementService } from '@/services/EntitlementService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 
 const ImageUpload = ({ currentImage, onImageUpload, setIsUploading: setParentIsUploading, storagePath, placeholder }) => {
   const { user } = useAuth();

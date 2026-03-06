@@ -1,5 +1,5 @@
-import { UsageTrackingService } from './UsageTrackingService';
-import { entitlementService } from './EntitlementService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
+import { entitlementService } from '@/services/EntitlementService';
 import { UsageLogging } from './UsageLogging';
 
 /**

@@ -1,4 +1,4 @@
-import { UsageTrackingService } from './UsageTrackingService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 import { UsageEnforcement } from './UsageEnforcement';
 import { UsageLogging } from './UsageLogging';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/services/apiClient';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';

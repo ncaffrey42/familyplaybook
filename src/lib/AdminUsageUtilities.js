@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/customSupabaseClient';
-import { UsageTrackingService } from './UsageTrackingService';
+import { supabase } from '@/lib/supabaseClient';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 
 /**
  * Admin utilities for reconciling and auditing usage data.

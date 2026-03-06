@@ -1,6 +1,6 @@
 import React from 'react';
 import { logError } from '@/lib/errorLogger';
-import NotFoundScreen from '@/components/NotFoundScreen';
+import NotFoundScreen from '@/pages/NotFoundScreen';
 import { useNavigate } from 'react-router-dom';
 
 class ErrorBoundary extends React.Component {

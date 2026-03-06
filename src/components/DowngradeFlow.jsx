@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/services/apiClient';
 
 const DowngradeFlow = ({ isOpen, onClose, targetPlanName, targetPlanId }) => {
   const { downgradeSubscription, subscription } = useSubscription();

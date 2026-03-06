@@ -1,15 +1,15 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import imageCompression from 'browser-image-compression';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Film, Image as ImageIcon, Loader2, X, UploadCloud, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { v4 as uuidv4 } from 'uuid';
 import { compressVideo } from '@/lib/videoCompression';
-import { entitlementService } from '@/lib/EntitlementService';
-import { UsageTrackingService } from '@/lib/UsageTrackingService';
+import { entitlementService } from '@/services/EntitlementService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 
 const MAX_VIDEO_SIZE_MB = 150;
 const MAX_IMAGE_SIZE_MB = 20;

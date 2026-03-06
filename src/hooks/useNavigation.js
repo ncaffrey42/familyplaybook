@@ -1,11 +1,3 @@
-/*
- * HORIZONS "NO SIDE EFFECTS" RULE:
- * Navigation changes must NOT affect entitlement logic or page visibility.
- * - This hook handles routing and history only.
- * - Do NOT add entitlement checks here.
- * - Do NOT block navigation based on plan limits here.
- */
-
 import { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';

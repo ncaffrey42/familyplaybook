@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
-import { AnalyticsService } from '@/lib/AnalyticsService';
+import { supabase } from '@/lib/supabaseClient';
+import { AnalyticsService } from '@/services/AnalyticsService';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useSubscription = () => {

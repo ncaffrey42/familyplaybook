@@ -1,19 +1,15 @@
 {
-  "name": "web-app",
+  "name": "family-playbook",
   "type": "module",
   "version": "0.0.0",
   "private": true,
   "scripts": {
     "dev": "vite --host :: --port 3000",
-    "build": "node tools/generate-llms.js || true && vite build",
+    "build": "vite build",
     "preview": "vite preview --host :: --port 3000",
-    "eslint": "eslint src*.jsx src*.js",
     "lint": "eslint . --quiet"
   },
   "dependencies": {
-    "@babel/generator": "^7.26.3",
-    "@babel/parser": "^7.26.3",
-    "@babel/traverse": "^7.26.4",
     "@emotion/is-prop-valid": "^1.3.1",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
@@ -38,7 +34,6 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "date-fns": "^4.1.0",
-    "dotenv": "^16.4.7",
     "framer-motion": "^10.16.4",
     "libphonenumber-js": "^1.11.4",
     "lucide-react": "^0.292.0",
@@ -55,7 +50,6 @@
     "uuid": "^10.0.0"
   },
   "devDependencies": {
-    "@babel/types": "^7.27.0",
     "@types/node": "^20.8.3",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",

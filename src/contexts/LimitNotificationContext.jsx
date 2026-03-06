@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AnalyticsService } from '@/lib/AnalyticsService';
+import { AnalyticsService } from '@/services/AnalyticsService';
 
 const LimitNotificationContext = createContext(null);
 

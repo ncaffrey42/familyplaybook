@@ -1,1 +1,0 @@
-// This file is obsolete. Content moved to ViewLibraryBundle.jsx

@@ -1,6 +1,6 @@
 import { UsageUpdateTriggers } from './UsageUpdateTriggers';
 import { UsageEnforcement } from './UsageEnforcement';
-import { supabase } from './customSupabaseClient';
+import { supabase } from './supabaseClient';
 
 /**
  * Example 1: Creating a Guide

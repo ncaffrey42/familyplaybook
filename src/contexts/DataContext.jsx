@@ -1,11 +1,11 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { addBreadcrumb, logError } from '@/lib/errorLogger';
-import { entitlementService } from '@/lib/EntitlementService';
-import { UsageTrackingService } from '@/lib/UsageTrackingService';
+import { entitlementService } from '@/services/EntitlementService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 
 const DataContext = createContext();
 
@@ -17,50 +17,45 @@ export const useData = () => {
 
 const CACHE_KEY = 'family_playbook_data_cache';
 
+// Read the current user ID from Supabase's localStorage session before React initializes.
+// This lets the lazy state initializers skip the cache if the user has changed.
+const getSessionUserId = () => {
+  try {
+    const sbKey = Object.keys(localStorage).find(
+      k => k.startsWith('sb-') && k.endsWith('-auth-token')
+    );
+    if (!sbKey) return null;
+    const session = JSON.parse(localStorage.getItem(sbKey));
+    return session?.user?.id || null;
+  } catch { return null; }
+};
+
+const readCache = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const currentUserId = getSessionUserId();
+    // Invalidate cache if it belongs to a different user
+    if (parsed.userId && currentUserId && parsed.userId !== currentUserId) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch { return null; }
+};
+
 export const DataProvider = ({ children }) => {
   const { user, session } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [allBundles, setAllBundles] = useState(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached).allBundles || [] : [];
-    } catch { return []; }
-  });
-  
-  const [allGuides, setAllGuides] = useState(() => {
-     try {
-       const cached = localStorage.getItem(CACHE_KEY);
-       return cached ? JSON.parse(cached).allGuides || [] : [];
-     } catch { return []; }
-  });
-
-  const [bundleLibrary, setBundleLibrary] = useState(() => {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        return cached ? JSON.parse(cached).bundleLibrary || [] : [];
-      } catch { return []; }
-  });
-
-  const [guideLibrary, setGuideLibrary] = useState(() => {
-     try {
-       const cached = localStorage.getItem(CACHE_KEY);
-       return cached ? JSON.parse(cached).guideLibrary || [] : [];
-     } catch { return []; }
-  });
-
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached).favorites || [] : [];
-    } catch { return []; }
-  });
-
-  const [isDataLoaded, setIsDataLoaded] = useState(() => {
-      const cached = localStorage.getItem(CACHE_KEY);
-      return !!cached; 
-  });
+  const [allBundles, setAllBundles] = useState(() => readCache()?.allBundles || []);
+  const [allGuides, setAllGuides] = useState(() => readCache()?.allGuides || []);
+  const [bundleLibrary, setBundleLibrary] = useState(() => readCache()?.bundleLibrary || []);
+  const [guideLibrary, setGuideLibrary] = useState(() => readCache()?.guideLibrary || []);
+  const [favorites, setFavorites] = useState(() => readCache()?.favorites || []);
+  const [isDataLoaded, setIsDataLoaded] = useState(() => !!readCache());
 
   const availableLibraryBundles = useMemo(() => {
     if (!isDataLoaded && bundleLibrary.length === 0) return [];
@@ -71,6 +66,7 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     if (user && isDataLoaded) {
       const cacheData = {
+        userId: user.id,
         allBundles,
         allGuides,
         favorites,

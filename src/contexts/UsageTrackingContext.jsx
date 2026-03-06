@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { UsageTrackingService } from '@/lib/UsageTrackingService';
+import { UsageTrackingService } from '@/services/UsageTrackingService';
 import { UsageUpdateTriggers } from '@/lib/UsageUpdateTriggers';
 import { UsageEnforcement } from '@/lib/UsageEnforcement';
-import { entitlementService } from '@/lib/EntitlementService';
+import { entitlementService } from '@/services/EntitlementService';
 
 const UsageContext = createContext();
 
