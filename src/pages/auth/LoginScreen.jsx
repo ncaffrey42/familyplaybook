@@ -41,10 +41,10 @@ const LoginScreen = () => {
     // Trigger prefetch once when email is of a plausible length
     if (val.length > 3 && !hasPrefetched) {
        console.log("🚀 Preloading dashboard assets...");
-       import('@/components/HomeScreen');
-       import('@/components/MyBundlesScreen');
-       import('@/components/GuidesLibrary');
-       import('@/components/FavoritesScreen');
+       import('@/pages/home/HomeScreen');
+       import('@/pages/bundles/MyBundlesScreen');
+       import('@/pages/guides/GuidesLibrary');
+       import('@/pages/FavoritesScreen');
        setHasPrefetched(true);
     }
   };
