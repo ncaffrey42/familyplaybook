@@ -11,9 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { apiClient } from '@/services/apiClient';
-
-const DowngradeFlow = ({ isOpen, onClose, targetPlanName, targetPlanId }) => {
+const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
   const { downgradeSubscription, subscription } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [warnings, setWarnings] = useState([]);
@@ -45,17 +43,9 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName, targetPlanId }) => {
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      // Find plan ID if not provided (lookup by name)
-      let planId = targetPlanId;
-      if (!planId) {
-          const plans = await apiClient.getPlans();
-          const p = plans.find(pl => pl.name === targetPlanName);
-          if (p) planId = p.id;
-      }
-      
-      if (!planId) throw new Error("Target plan not found");
-
-      await downgradeSubscription(planId);
+      // Derive plan_key from display name (e.g. 'Couple' -> 'couple')
+      const planKey = targetPlanName.toLowerCase();
+      await downgradeSubscription(planKey);
       onClose();
     } catch (error) {
        // handled by hook toast

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { PLANS } from '@/lib/plans';
 
 /**
  * Service to handle user entitlement checks based on subscription plans.
@@ -108,40 +109,32 @@ class EntitlementService {
       return cached.data;
     }
 
-    // Fetch fresh data
-    const { data: subscription, error: subError } = await supabase
-      .from('user_subscriptions')
-      .select(`
-        plan_id,
-        plans ( name ),
-        status
-      `)
+    // Fetch fresh data from user_billing (the correct table)
+    const { data: billing, error: billingError } = await supabase
+      .from('user_billing')
+      .select('plan_key, subscription_status')
       .eq('user_id', userId)
-      .eq('status', 'active')
       .maybeSingle();
 
-    if (subError) {
-      console.error('Error fetching subscription:', subError);
+    if (billingError) {
+      console.error('Error fetching billing:', billingError);
       return null;
     }
 
-    // Default to Free if no sub found (or handle as error depending on business logic)
-    // Here assuming 'Free' plan exists if no active sub, or we just fail.
-    // Let's assume we need a valid plan. If not found, maybe they are new or error.
-    // For safety, let's try to fetch free plan details if no sub.
-    let planName = subscription?.plans?.name || 'Free';
-    let planId = subscription?.plan_id;
+    // Default to free plan if no billing record exists (new user)
+    const planKey = billing?.plan_key || 'free';
+    const planDisplayName = PLANS[planKey]?.displayName || 'Free';
 
-    if (!planId) {
-       // Fallback fetch free plan ID
-       const { data: freePlan } = await supabase.from('plans').select('id, name').eq('name', 'Free').single();
-       if (freePlan) {
-         planId = freePlan.id;
-         planName = freePlan.name;
-       }
-    }
+    // Look up the plan's UUID so we can query plan_entitlements
+    const { data: planRecord } = await supabase
+      .from('plans')
+      .select('id, name')
+      .eq('name', planDisplayName)
+      .single();
 
-    if (!planId) return null; // Critical failure
+    const planId = planRecord?.id;
+
+    if (!planId) return null; // Critical failure — plan not found in DB
 
     // Parallel fetch entitlements and usage
     const [entitlementsRes, usageRes] = await Promise.all([
@@ -164,7 +157,7 @@ class EntitlementService {
     });
 
     const combinedData = {
-      plan: { name: planName, id: planId },
+      plan: { name: planDisplayName, id: planId },
       entitlements: entitlementsMap,
       usage: usageMap
     };
@@ -258,17 +251,17 @@ class EntitlementService {
     
     if (plan === 'family') return null; // Top tier
 
-    // Special logic for editor limits on Free/Couples
+    // Special logic for editor limits on Free/Couple
     if (reasonCode === 'LIMIT_EDITORS') {
-        if (plan === 'free') return 'couples'; // 1 -> 2
-        if (plan === 'couples') return 'family'; // 2 -> 10
+        if (plan === 'free') return 'couple';
+        if (plan === 'couple') return 'family';
     }
 
     // Default progression
-    if (plan === 'free') return 'couples';
-    if (plan === 'couples') return 'family';
+    if (plan === 'free') return 'couple';
+    if (plan === 'couple') return 'family';
 
-    return 'couples'; // Fallback
+    return 'couple'; // Fallback
   }
 
   _logCheck(userId, action, result) {

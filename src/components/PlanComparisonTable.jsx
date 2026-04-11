@@ -135,11 +135,10 @@ const PlanComparisonTable = () => {
       </table>
 
       {downgradeTarget && (
-          <DowngradeFlow 
-            isOpen={!!downgradeTarget} 
-            onClose={() => setDowngradeTarget(null)} 
+          <DowngradeFlow
+            isOpen={!!downgradeTarget}
+            onClose={() => setDowngradeTarget(null)}
             targetPlanName={downgradeTarget.name}
-            targetPlanId={downgradeTarget.id}
           />
       )}
     </div>

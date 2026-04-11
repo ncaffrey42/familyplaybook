@@ -21,12 +21,12 @@ const BottomNav = () => {
   const handlePrefetch = (screenId) => {
     // Corrected prefetch logic
     const componentMap = {
-      home: () => import('@/components/HomeScreen'),
-      guides: () => import('@/components/GuidesLibrary'), // Updated to 'guides'
-      bundles: () => import('@/components/MyBundlesScreen'),
-      favorites: () => import('@/components/FavoritesScreen'),
-      plans: () => import('@/components/PlansPage'),
-      account: () => import('@/components/MyAccount'),
+      home: () => import('@/pages/home/HomeScreen'),
+      guides: () => import('@/pages/guides/GuidesLibrary'),
+      bundles: () => import('@/pages/bundles/MyBundlesScreen'),
+      favorites: () => import('@/pages/FavoritesScreen'),
+      plans: () => import('@/pages/account/PlansPage'),
+      account: () => import('@/pages/account/MyAccount'),
     };
 
     const prefetcher = componentMap[screenId];
