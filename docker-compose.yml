@@ -12,3 +12,8 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
