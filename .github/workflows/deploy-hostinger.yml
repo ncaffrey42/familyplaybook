@@ -1,0 +1,53 @@
+name: Deploy to Hostinger
+
+# Builds the Vite app and pushes the static files to the `deploy` branch.
+# In Hostinger hPanel → Git, point to this repo's `deploy` branch.
+# Enable Auto-Deployment so Hostinger pulls automatically on each push.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  build-and-deploy:
+    name: Build & Push to deploy branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_ENABLE_AI_GENERATION: ${{ secrets.VITE_ENABLE_AI_GENERATION || 'false' }}
+
+      - name: Deploy to deploy branch
+        run: |
+          cd dist
+
+          # Configure git
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit all built files
+          git add -A
+          git commit -m "Deploy $(date -u '+%Y-%m-%d %H:%M:%S UTC') from ${GITHUB_SHA::7}"
+
+          # Force-push to the deploy branch
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:deploy

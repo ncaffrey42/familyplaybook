@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output (rebuilt inside container)
+dist/
+dist-ssr/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# CI/CD & GitHub
+.github/
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Docker (avoid recursive copy)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs
+README.md
+LICENSE
+
+# Supabase (not needed for frontend build)
+supabase/
