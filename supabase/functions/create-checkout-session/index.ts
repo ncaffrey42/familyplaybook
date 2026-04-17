@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
         // Metadata is inherited by the Subscription object and readable in webhooks
         metadata: { user_id: user.id, plan_key, billing_interval },
       },
-      success_url: `${appUrl}/subscription?checkout=success`,
-      cancel_url: `${appUrl}/subscription`,
+      success_url: `${appUrl}/account/subscription?checkout=success`,
+      cancel_url: `${appUrl}/account/subscription`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

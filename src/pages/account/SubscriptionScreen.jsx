@@ -130,9 +130,9 @@ const PlanCard = ({ title, price, interval, features, icon: Icon, gradient, isAc
 
 const SubscriptionScreen = () => {
   const { toast } = useToast();
-  const { 
-      user, isPremium, planKey, subscriptionStatus, priceId, 
-      refreshProfile, waitForSubscriptionUpdate, loading 
+  const {
+      user, isPremium, planKey, subscriptionStatus, billingInterval: currentBillingInterval,
+      refreshProfile, waitForSubscriptionUpdate, loading
   } = useAuth();
   
   const [billingCycle, setBillingCycle] = useState('month');
@@ -169,17 +169,17 @@ const SubscriptionScreen = () => {
                     });
                 }
                 // Clean URL but stay on page
-                navigate('/subscription', { replace: true });
+                navigate('/account/subscription', { replace: true });
             });
     }
   }, [location.search, refreshProfile, waitForSubscriptionUpdate, toast, navigate]);
 
   // Handle default tab selection
   useEffect(() => {
-    if (priceId && (priceId.includes('year') || priceId === 'price_1SHA6dIrMUnnlpDCCognMJKB' || priceId === 'price_1SHA5rIrMUnnlpDCzDNVHyH0')) {
+    if (currentBillingInterval === 'year') {
         setBillingCycle('year');
     }
-  }, [priceId]);
+  }, [currentBillingInterval]);
 
   const plans = {
     couple: {
@@ -275,7 +275,7 @@ const SubscriptionScreen = () => {
   
   const isCurrentInterval = (pKey, interval) => {
       if (!isCurrentPlanCard(pKey)) return false;
-      const currentInterval = (priceId && (priceId.includes('year') || priceId === 'price_1SHA6dIrMUnnlpDCCognMJKB' || priceId === 'price_1SHA5rIrMUnnlpDCzDNVHyH0')) ? 'year' : 'month';
+      const currentInterval = currentBillingInterval || 'month';
       return currentInterval === interval;
   };
 
