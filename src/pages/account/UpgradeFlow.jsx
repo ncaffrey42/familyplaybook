@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { Loader2, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from "@/components/ui/card";
 import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
+import { supabase } from '@/lib/supabaseClient';
 
 // Paid plans in tier order, built directly from plans.js (no API call needed)
 const UPGRADE_PLANS = PLAN_ORDER
@@ -18,6 +20,7 @@ const UpgradeFlow = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { createCheckoutSession, fetchSubscription } = useSubscription();
+  const { isPremium, subscriptionStatus, planKey, billingInterval, waitForSubscriptionUpdate } = useAuth();
   const { toast } = useToast();
 
   const [selectedPlanKey, setSelectedPlanKey] = useState(null);
@@ -57,12 +60,43 @@ const UpgradeFlow = () => {
     if (!selectedPlanKey) return;
     setProcessing(true);
 
+    const targetInterval = billingInterval || 'month';
+    const hasActiveSubscription = isPremium && subscriptionStatus !== 'canceled';
+    const isSamePlan = hasActiveSubscription && planKey === selectedPlanKey;
+
+    if (isSamePlan) {
+      toast({ title: "Already on this plan", description: `You're already subscribed to the ${selectedPlanKey} plan.` });
+      setProcessing(false);
+      return;
+    }
+
     try {
-      const { url } = await createCheckoutSession(selectedPlanKey, 'month');
-      if (url) {
-        window.location.href = url;
+      if (hasActiveSubscription) {
+        const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
+          body: { plan_key: selectedPlanKey, billing_interval: targetInterval },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Failed to change plan.');
+
+        toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
+        const success = await waitForSubscriptionUpdate(selectedPlanKey);
+        await fetchSubscription();
+        toast({
+          title: success ? "Plan Changed!" : "Update Pending",
+          description: success
+            ? `You are now on the ${selectedPlanKey} plan.`
+            : "It may take a moment to reflect in your dashboard.",
+          variant: success ? "success" : "default",
+        });
+        setProcessing(false);
+      } else {
+        const { url } = await createCheckoutSession(selectedPlanKey, targetInterval);
+        if (url) window.location.href = url;
+        else setProcessing(false);
       }
     } catch (error) {
+      console.error('Upgrade error:', error);
+      toast({ title: 'Error', description: error.message || 'Something went wrong.', variant: 'destructive' });
       setProcessing(false);
     }
   };
