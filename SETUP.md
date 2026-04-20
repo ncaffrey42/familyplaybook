@@ -89,11 +89,83 @@ Supabase dashboard > Authentication > URL Configuration > Redirect URLs
 npm run build
 ```
 
-Output is in `dist/`. Serve as a static site behind nginx (see `Dockerfile` and `nginx.conf` when available).
+Output is in `dist/`. Serve as a static site behind nginx (see `Dockerfile` and `nginx.conf`).
 
 ---
 
-## 7. Known issues / verification checklist
+## 7. Docker
+
+Two Docker Compose files cover different workflows.
+
+### 7a. Development — hot-reload (`docker-compose.dev.yml`)
+
+Runs the Vite dev server inside a container with the project mounted as a live volume. Changes to `src/` are reflected in the browser immediately via HMR — no rebuild required.
+
+**First time:**
+```bash
+cp .env.example .env.local   # fill in your Supabase and Stripe values
+docker compose -f docker-compose.dev.yml up
+```
+
+**Subsequent runs:**
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+App is available at [http://localhost:3000](http://localhost:3000).
+
+> `node_modules` live in a named Docker volume (`node_modules`) so platform-native binaries (esbuild, rollup) are never clobbered by the host checkout. If you add or remove a package, restart the container — `npm install` runs automatically on every `up`.
+
+To remove the volume and do a clean reinstall:
+```bash
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up
+```
+
+---
+
+### 7b. Production (`docker-compose.yml`)
+
+Builds a static bundle with Vite, copies it into an nginx container, and serves it on port 80. **All `VITE_*` variables are baked into the bundle at build time** — set them before building.
+
+**Set up environment:**
+```bash
+cp .env.example .env.local
+# Edit .env.local — set VITE_APP_URL to your production domain
+```
+
+**Build and start:**
+```bash
+docker compose up --build -d
+```
+
+**Check health:**
+```bash
+docker compose ps          # should show "healthy"
+curl http://localhost/     # nginx serves index.html
+```
+
+**Update to a new version:**
+```bash
+git pull
+docker compose up --build -d
+```
+
+**Environment variables and the production build**
+
+| Variable | Notes |
+|---|---|
+| `VITE_SUPABASE_URL` | Required — your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Required — Supabase anon/public key |
+| `VITE_APP_URL` | Set to your production domain (e.g. `https://familyplaybook.app`) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Required if billing is enabled |
+| `VITE_ENABLE_AI_GENERATION` | `true` / `false`; defaults to `false` if unset |
+
+Docker Compose reads `.env.local` then `.env` (both optional). Alternatively, export variables in your shell or CI environment before running `docker compose up --build`.
+
+---
+
+## 8. Known issues / verification checklist
 
 Run through these after setup to confirm everything works:
 
@@ -108,7 +180,7 @@ Run through these after setup to confirm everything works:
 
 ---
 
-## 8. Project structure overview
+## 9. Project structure overview
 
 ```
 src/
