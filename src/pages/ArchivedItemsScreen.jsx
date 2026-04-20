@@ -26,7 +26,7 @@ const ArchivedItemsScreen = () => {
   const { toast } = useToast();
   const handleNavigate = useNavigation();
   const [isProcessing, setIsProcessing] = useState(false);
-  const { allBundles, allGuides, fetchData, handleRestoreGuide, handleRestoreBundle } = useData();
+  const { allBundles, allGuides, fetchData, handleRestoreGuide, handleRestoreBundle, handleBulkRestoreGuides } = useData();
 
   const bundles = allBundles.filter(p => p.is_archived);
   const guides = allGuides.filter(g => g.is_archived);
@@ -189,7 +189,20 @@ const ArchivedItemsScreen = () => {
             <TabsContent value="guides" className="mt-6">
               {guides && guides.length > 0 ? (
                 <>
-                  <div className="flex justify-end mb-4">
+                  <div className="flex justify-end gap-2 mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isProcessing}
+                      onClick={async () => {
+                        setIsProcessing(true);
+                        await handleBulkRestoreGuides(guides);
+                        setIsProcessing(false);
+                      }}
+                    >
+                      <Undo size={16} className="mr-2" />
+                      Restore All
+                    </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="sm" disabled={isProcessing}>

@@ -1,0 +1,37 @@
+# Hot-reload development environment.
+#
+# Usage:
+#   cp .env.example .env.local   # first time only
+#   docker compose -f docker-compose.dev.yml up
+#
+# The Vite dev server starts on http://localhost:3000 with HMR enabled.
+# Edit anything under src/ and the browser updates instantly.
+#
+# node_modules are kept in a named Docker volume so platform-native
+# binaries (esbuild, rollup) are never clobbered by the host checkout.
+# If you add or remove a package, restart the container — `npm install`
+# runs automatically on every `up`.
+
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    # Install deps then start Vite. Re-running `up` after a package.json
+    # change re-installs automatically.
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      # Full project mount so config files and public assets are live too
+      - .:/app
+      # Isolated node_modules inside the container — prevents host/container
+      # platform mismatch for native addons and keeps the host directory clean
+      - node_modules:/app/node_modules
+    env_file:
+      - path: .env.local
+        required: false
+      - path: .env
+        required: false
+
+volumes:
+  node_modules:

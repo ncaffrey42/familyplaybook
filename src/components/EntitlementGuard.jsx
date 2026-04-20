@@ -7,8 +7,9 @@ import { useLimitNotification } from '@/contexts/LimitNotificationContext';
  * EntitlementGuard
  *
  * Wraps UI that should only be interactive when the user is within their plan
- * limits. Checks the entitlement on mount; if denied, renders children in a
- * visually-locked overlay and opens the upgrade modal on interaction.
+ * limits. Checks the entitlement on mount and whenever the user returns to the
+ * tab (visibilitychange → visible), so cross-tab guide/bundle creation is
+ * reflected without a page reload.
  *
  * Props:
  *   action  — action key from EntitlementService.ACTIONS
@@ -17,12 +18,13 @@ import { useLimitNotification } from '@/contexts/LimitNotificationContext';
  *   skip    — bypass the guard entirely (use for edit flows where no new resource is created)
  */
 const EntitlementGuard = ({ action, payload = {}, skip = false, children }) => {
-  const { checkEntitlement } = useEntitlements();
+  const { checkEntitlement, refreshEntitlements } = useEntitlements();
   const { showLimitNotification } = useLimitNotification();
   const [status, setStatus] = useState({ loading: true, allowed: true, result: null });
   // Stable ref so the check only re-runs when action/skip change, not on every render
   const payloadRef = useRef(payload);
 
+  // Mount check — also re-runs when action or skip changes
   useEffect(() => {
     if (skip) {
       setStatus({ loading: false, allowed: true, result: null });
@@ -35,6 +37,24 @@ const EntitlementGuard = ({ action, payload = {}, skip = false, children }) => {
     });
     return () => { cancelled = true; };
   }, [action, skip, checkEntitlement]);
+
+  // Stale-guard fix: when the user returns to this tab, invalidate the
+  // service-layer cache and re-run the check so cross-tab changes
+  // (e.g. a guide created in another tab) are reflected immediately.
+  useEffect(() => {
+    if (skip) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      refreshEntitlements();
+      checkEntitlement(action, payloadRef.current).then((result) => {
+        setStatus({ loading: false, allowed: result.allowed, result });
+      });
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [action, skip, checkEntitlement, refreshEntitlements]);
 
   if (status.loading) return null;
 

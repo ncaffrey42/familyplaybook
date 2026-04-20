@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, X, Trash2 } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
+import { useEntitlements } from '@/contexts/EntitlementContext';
+import { useLimitNotification } from '@/contexts/LimitNotificationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +36,8 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { allGuides, allBundles, handleSaveBundle, handleArchiveBundle } = useData();
+  const { checkEntitlement } = useEntitlements();
+  const { showLimitNotification } = useLimitNotification();
 
   // Find bundle from context if in edit mode (has ID), or use prop
   const bundle = propBundle || (id ? allBundles.find(b => b.id === id) : null);
@@ -64,6 +68,17 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
       toast({ title: "Name is required", description: "Please enter a name for your bundle.", variant: "destructive" });
       return;
     }
+
+    // Secondary enforcement for new bundles: catches direct-URL navigation that
+    // bypasses the EntitlementGuard wrapper on the save button.
+    if (!isEditing) {
+      const check = await checkEntitlement('BUNDLE_CREATE');
+      if (!check.allowed) {
+        showLimitNotification(check.reason_code, check.current, check.limit, check.upgrade_suggestion);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const bundleData = { id: bundle?.id, name, description, color, image };

@@ -357,6 +357,54 @@ export const DataProvider = ({ children }) => {
     }
   }, [navigate, toast]);
 
+  const handleBulkRestoreGuides = useCallback(async (guidesToRestore) => {
+    if (!guidesToRestore?.length || !user) return;
+
+    // One entitlement check with the full increment so we don't allow partial
+    // restores that would silently push the user over their active-guide limit.
+    try {
+      const entitlement = await entitlementService.canPerform(
+        user.id,
+        'GUIDE_UNARCHIVE',
+        { count: guidesToRestore.length }
+      );
+      if (!entitlement.allowed) {
+        const slotsLeft = Math.max(0, (entitlement.limit ?? 0) - (entitlement.current ?? 0));
+        toast({
+          title: "Cannot Restore All Guides",
+          description: slotsLeft > 0
+            ? `You only have ${slotsLeft} active slot(s) available. Upgrade to restore all ${guidesToRestore.length}.`
+            : "You have reached your active guide limit.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (e) {
+      console.error("Entitlement check failed", e);
+      toast({ title: "System Error", description: "Could not verify limits.", variant: "destructive" });
+      return;
+    }
+
+    const ids = guidesToRestore.map(g => g.id);
+    setAllGuides(prev => prev.map(g => ids.includes(g.id) ? { ...g, is_archived: false } : g));
+
+    const { error } = await supabase
+      .from('guides')
+      .update({ is_archived: false, archived_at: null })
+      .in('id', ids);
+
+    if (error) {
+      logError(error);
+      setAllGuides(prev => prev.map(g => ids.includes(g.id) ? { ...g, is_archived: true } : g));
+      toast({ title: "Error restoring guides", variant: "destructive" });
+    } else {
+      UsageTrackingService.updateUsageMetric(user.id, 'active_guides', ids.length).catch(console.error);
+      UsageTrackingService.updateUsageMetric(user.id, 'archived_guides', -ids.length).catch(console.error);
+      toast({ title: `♻️ ${ids.length} Guide${ids.length !== 1 ? 's' : ''} Restored`, variant: "success" });
+      await fetchData(user);
+    }
+  }, [user, toast, fetchData]);
+
   const handleRestoreBundle = useCallback(async (bundle) => {
     if (!bundle?.id) return;
     setAllBundles(prev => prev.map(b => b.id === bundle.id ? { ...b, is_archived: false } : b));
@@ -528,7 +576,7 @@ export const DataProvider = ({ children }) => {
   const value = {
     allBundles, allGuides, bundleLibrary, availableLibraryBundles, guideLibrary, favorites, isDataLoaded,
     fetchData: (currentUser) => fetchData(currentUser || user),
-    toggleFavorite, handleSaveGuide, handleArchiveGuide, handleRestoreGuide, handleRestoreBundle, handleSaveBundle, handleArchiveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
+    toggleFavorite, handleSaveGuide, handleArchiveGuide, handleRestoreGuide, handleBulkRestoreGuides, handleRestoreBundle, handleSaveBundle, handleArchiveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
