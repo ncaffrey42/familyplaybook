@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, GripVertical, X, Image, Video, Loader2, Trash2, Check } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
+import { useEntitlements } from '@/contexts/EntitlementContext';
+import { useLimitNotification } from '@/contexts/LimitNotificationContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
@@ -27,6 +29,8 @@ const CreateGuideScreen = ({ pack: propPack }) => {
   const location = useLocation();
   const { guideId } = useParams();
   const { getGuideById, isDataLoaded, handleSaveGuide, handleArchiveGuide, allBundles } = useData();
+  const { checkEntitlement } = useEntitlements();
+  const { showLimitNotification } = useLimitNotification();
 
   // Determine pack from props or location state
   const initialPack = propPack || location.state?.pack || location.state?.bundle;
@@ -141,6 +145,16 @@ const CreateGuideScreen = ({ pack: propPack }) => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Secondary enforcement for new guides: catches direct-URL navigation that
+    // bypasses the EntitlementGuard wrapper on the save button.
+    if (!guideId) {
+      const check = await checkEntitlement('GUIDE_CREATE');
+      if (!check.allowed) {
+        showLimitNotification(check.reason_code, check.current, check.limit, check.upgrade_suggestion);
+        return;
+      }
     }
 
     setIsSaving(true);

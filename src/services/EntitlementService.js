@@ -57,8 +57,8 @@ export class EntitlementService {
           result = this._allow(); // Always allowed to archive
           break;
         case 'GUIDE_UNARCHIVE':
-          // Check if unarchiving pushes over active limit
-          result = this._checkNumericLimit(entitlements, usage, 'active_guides', 1);
+          // payload.count lets bulk restore check the full increment at once
+          result = this._checkNumericLimit(entitlements, usage, 'active_guides', payload.count ?? 1);
           break;
         case 'BUNDLE_CREATE':
           result = this._checkNumericLimit(entitlements, usage, 'bundles', 1);
