@@ -4,12 +4,19 @@ import { PLANS } from '@/lib/plans';
 /**
  * Service to handle user entitlement checks based on subscription plans.
  */
-class EntitlementService {
-  constructor() {
+export class EntitlementService {
+  /**
+   * @param {object} [options]
+   * @param {(userId: string) => Promise<object|null>} [options.dataFetcher] -
+   *   Optional override for data fetching. When provided, Supabase is never
+   *   called — useful for offline unit testing via dependency injection.
+   */
+  constructor({ dataFetcher } = {}) {
     // Cache structure: Map<userId, { data: UserEntitlements, timestamp: number }>
     this.cache = new Map();
     this.TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-    
+    this._dataFetcher = dataFetcher || null;
+
     // Action definitions mapped to database feature keys
     this.ACTIONS = {
       GUIDE_CREATE: 'active_guides',
@@ -99,7 +106,7 @@ class EntitlementService {
   // --- Internal Helpers ---
 
   /**
-   * Fetches or retrieves cached user entitlement data.
+   * Returns cached data if fresh, otherwise fetches via injected dataFetcher or Supabase.
    */
   async _getUserData(userId) {
     const now = Date.now();
@@ -109,7 +116,20 @@ class EntitlementService {
       return cached.data;
     }
 
-    // Fetch fresh data from user_billing (the correct table)
+    const data = this._dataFetcher
+      ? await this._dataFetcher(userId)
+      : await this._fetchFromSupabase(userId);
+
+    if (data) {
+      this.cache.set(userId, { data, timestamp: now });
+    }
+    return data;
+  }
+
+  /**
+   * Fetches plan, entitlements, and usage from Supabase.
+   */
+  async _fetchFromSupabase(userId) {
     const { data: billing, error: billingError } = await supabase
       .from('user_billing')
       .select('plan_key, subscription_status')
@@ -156,14 +176,11 @@ class EntitlementService {
       usageMap[u.feature_key] = u.current_usage;
     });
 
-    const combinedData = {
+    return {
       plan: { name: planDisplayName, id: planId },
       entitlements: entitlementsMap,
       usage: usageMap
     };
-
-    this.cache.set(userId, { data: combinedData, timestamp: now });
-    return combinedData;
   }
 
   /**
@@ -175,7 +192,7 @@ class EntitlementService {
     // plan_entitlements key: 'active_guides_max'
     const limitKey = `${key}_max`;
     const entitlement = entitlements[limitKey];
-    
+
     // If no entitlement defined, assume restricted (or allowed? usually restricted 0)
     // If entitlement says unlimited, allow.
     if (entitlement && entitlement.isUnlimited) {
@@ -248,7 +265,7 @@ class EntitlementService {
    */
   _getUpgradeSuggestion(currentPlanName, reasonCode) {
     const plan = currentPlanName.toLowerCase();
-    
+
     if (plan === 'family') return null; // Top tier
 
     // Special logic for editor limits on Free/Couple
@@ -277,12 +294,12 @@ class EntitlementService {
 
     if (result.allowed) {
         // Reduced noise for successes, maybe just debug
-        // console.debug('Entitlement Pass:', logData); 
+        // console.debug('Entitlement Pass:', logData);
     } else {
         console.warn('Entitlement Denied:', logData);
     }
   }
-  
+
   /**
    * Force invalidate cache for a user (call this after plan upgrade)
    */
