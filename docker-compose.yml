@@ -10,7 +10,7 @@ services:
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
         VITE_ENABLE_AI_GENERATION: ${VITE_ENABLE_AI_GENERATION:-false}
     ports:
-      - "80:80"
+      - "8924:80"
     restart: unless-stopped
     env_file:
       - path: .env
