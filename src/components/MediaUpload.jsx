@@ -8,6 +8,7 @@ import { Film, Image as ImageIcon, Loader2, X, UploadCloud, Zap } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { v4 as uuidv4 } from 'uuid';
 import { compressVideo } from '@/lib/videoCompression';
+import { isVideoUrl } from '@/lib/utils';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 
@@ -28,7 +29,7 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
   useEffect(() => {
     setMediaUrl(currentMedia);
     if (currentMedia) {
-        const isVideo = ['.mp4', '.webm', '.mov', '.quicktime', '.m4v'].some(ext => currentMedia.toLowerCase().includes(ext));
+        const isVideo = isVideoUrl(currentMedia);
         setMediaType(isVideo ? 'video' : 'image');
     } else {
         setMediaType(null);

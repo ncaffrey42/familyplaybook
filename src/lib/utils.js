@@ -13,3 +13,11 @@ export function formatDate(dateString) {
     year: 'numeric',
   });
 }
+
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.quicktime', '.m4v'];
+
+export function isVideoUrl(url) {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return VIDEO_EXTENSIONS.some(ext => lower.includes(ext));
+}
