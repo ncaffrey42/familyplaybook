@@ -25,6 +25,9 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
   const [progress, setProgress] = useState(0);
   const [currentFileDetails, setCurrentFileDetails] = useState(null);
   const fileInputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   useEffect(() => {
     setMediaUrl(currentMedia);
@@ -101,18 +104,17 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
         setIsCompressing(true);
         toast({ title: "Optimizing Video", description: "Compressing video..." });
         try {
-          fileToUpload = await compressVideo(file, (pct) => setProgress(pct));
+          fileToUpload = await compressVideo(file, (pct) => { if (isMountedRef.current) setProgress(pct); });
         } catch (err) {
           console.warn("Video compression failed, falling back.", err);
           fileToUpload = file;
         } finally {
-          setIsCompressing(false);
-          setProgress(0);
+          if (isMountedRef.current) { setIsCompressing(false); setProgress(0); }
         }
       }
 
       progressInterval = setInterval(() => {
-        setProgress((prev) => (prev >= 95 ? prev : prev + (Math.random() * 15)));
+        if (isMountedRef.current) setProgress((prev) => (prev >= 95 ? prev : prev + (Math.random() * 15)));
       }, 400);
 
       const fileExt = isImage ? 'jpg' : (fileToUpload.name.split('.').pop() || 'mp4');
@@ -133,29 +135,31 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
       // Usage Update
       UsageTrackingService.updateUsageMetric(user.id, 'storage_bytes', fileToUpload.size).catch(console.error);
 
-      setProgress(100);
       if (progressInterval) clearInterval(progressInterval);
 
       const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-      
-      setMediaUrl(publicUrl);
-      if (onUpload) {
-        onUpload(publicUrl, isImage ? 'image' : 'video');
-      }
 
+      if (!isMountedRef.current) return;
+      setProgress(100);
+      setMediaUrl(publicUrl);
+      if (onUpload) onUpload(publicUrl, isImage ? 'image' : 'video');
       toast({ title: "✅ Success!", description: "File uploaded successfully.", variant: "success" });
 
     } catch (error) {
       console.error('Upload error:', error);
-      toast({ title: "Upload Failed", description: error.message || "Network error.", variant: "destructive" });
-      setMediaType(null);
-      setMediaUrl(null);
+      if (isMountedRef.current) {
+        toast({ title: "Upload Failed", description: error.message || "Network error.", variant: "destructive" });
+        setMediaType(null);
+        setMediaUrl(null);
+      }
     } finally {
       if (progressInterval) clearInterval(progressInterval);
-      setIsUploading(false);
-      setIsCompressing(false);
-      setCurrentFileDetails(null);
-      setProgress(0);
+      if (isMountedRef.current) {
+        setIsUploading(false);
+        setIsCompressing(false);
+        setCurrentFileDetails(null);
+        setProgress(0);
+      }
     }
   }, [user, onUpload, toast, guideId]);
 
