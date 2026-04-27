@@ -50,4 +50,22 @@ export default [
 		},
 	},
 	{ files: ['tools/**/*.js', 'tailwind.config.js'], languageOptions: { globals: globals.node } },
+	{
+		files: ['src/__tests__/**', '**/*.test.js', '**/*.test.jsx', '**/*.spec.js', '**/*.spec.jsx'],
+		languageOptions: {
+			globals: {
+				...globals.browser,
+				...globals.node,
+				vi: 'readonly',
+				describe: 'readonly',
+				it: 'readonly',
+				test: 'readonly',
+				expect: 'readonly',
+				beforeEach: 'readonly',
+				afterEach: 'readonly',
+				beforeAll: 'readonly',
+				afterAll: 'readonly',
+			},
+		},
+	},
 ];
