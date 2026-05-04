@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Lock, FileText, ShieldOff, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BundleImage from '@/components/BundleImage';
+import { isVideoUrl } from '@/lib/utils';
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
@@ -27,7 +28,7 @@ const ErrorDisplay = ({ icon: Icon, title, message }) => (
 
 const StepMedia = ({ url }) => {
   if (!url) return null;
-  const isVideo = ['.mp4', '.webm', '.mov'].some(ext => url.toLowerCase().includes(ext));
+  const isVideo = isVideoUrl(url);
   return (
     <div className="mt-4 rounded-lg overflow-hidden shadow-sm">
       {isVideo ? (

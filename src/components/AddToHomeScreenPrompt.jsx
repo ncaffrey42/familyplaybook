@@ -1,21 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share, PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const AddToHomeScreenPrompt = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isIos, setIsIos] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
+  // Ref instead of state: writing the prompt object must not re-run the effect,
+  // which previously caused the install banner to re-appear after dismissal.
+  const deferredPromptRef = useRef(null);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      showPrompt(e);
-    };
-
     const showPrompt = (promptEvent = null) => {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -29,23 +25,29 @@ const AddToHomeScreenPrompt = () => {
         if (isIosDevice && isSafari) {
           setIsIos(true);
           setIsVisible(true);
-        } else if (promptEvent || deferredPrompt) {
+        } else if (promptEvent || deferredPromptRef.current) {
           setIsVisible(true);
         }
       }
     };
-    
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      deferredPromptRef.current = e;
+      showPrompt(e);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     const timer = setTimeout(() => {
-        showPrompt();
+      showPrompt();
     }, 2000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       clearTimeout(timer);
     };
-  }, [deferredPrompt]);
+  }, []);
   
   const incrementPromptCount = () => {
       const promptCount = parseInt(localStorage.getItem('a2hsPromptCount') || '0', 10);
@@ -67,15 +69,15 @@ const AddToHomeScreenPrompt = () => {
 
     if (isIos) {
       setShowIosInstructions(true);
-    } else if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    } else if (deferredPromptRef.current) {
+      deferredPromptRef.current.prompt();
+      const { outcome } = await deferredPromptRef.current.userChoice;
       if (outcome === 'accepted') {
         console.log('User accepted the A2HS prompt');
       } else {
         console.log('User dismissed the A2HS prompt');
       }
-      setDeferredPrompt(null);
+      deferredPromptRef.current = null;
     }
   };
 

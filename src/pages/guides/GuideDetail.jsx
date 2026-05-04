@@ -32,10 +32,11 @@ import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import { Badge } from "@/components/ui/badge";
+import { isVideoUrl } from '@/lib/utils';
 
 const StepMedia = ({ url }) => {
   if (!url) return null;
-  const isVideo = ['.mp4', '.webm', '.mov'].some(ext => url.toLowerCase().includes(ext));
+  const isVideo = isVideoUrl(url);
   return (
     <div className="mt-4 rounded-lg overflow-hidden shadow-sm">
       {isVideo ? (

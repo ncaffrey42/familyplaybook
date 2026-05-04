@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ChevronDown, Bug, ServerCrash, Copy, Lightbulb, Wrench } from 'lucide-react';
+import { Trash2, ChevronDown, Bug, ServerCrash, Copy, Lightbulb, Wrench, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Helmet } from 'react-helmet';
 import { getLogs, clearLogs } from '@/lib/errorLogger';
@@ -17,7 +17,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import PageHeader from '@/components/PageHeader';
-import { Loader2 } from 'lucide-react';
 import { useNavigation } from '@/hooks/useNavigation';
 
 const LogItem = ({ log, defaultOpen = false }) => {

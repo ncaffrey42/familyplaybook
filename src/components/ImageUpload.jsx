@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,6 +15,9 @@ const ImageUpload = ({ currentImage, onImageUpload, setIsUploading: setParentIsU
   const [imageUrl, setImageUrl] = useState(currentImage);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   useEffect(() => {
     setImageUrl(currentImage);
@@ -49,7 +52,7 @@ const ImageUpload = ({ currentImage, onImageUpload, setIsUploading: setParentIsU
     if (setParentIsUploading) setParentIsUploading(true);
     setUploadProgress(0);
 
-    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg', onProgress: (p) => setUploadProgress(p) };
+    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg', onProgress: (p) => { if (isMountedRef.current) setUploadProgress(p); } };
 
     try {
       const compressedFile = await imageCompression(file, options);
@@ -63,19 +66,21 @@ const ImageUpload = ({ currentImage, onImageUpload, setIsUploading: setParentIsU
       UsageTrackingService.updateUsageMetric(user.id, 'storage_bytes', compressedFile.size).catch(console.error);
 
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
-      
+
+      if (!isMountedRef.current) return;
       setImageUrl(publicUrl);
       if (onImageUpload) onImageUpload(publicUrl);
-
       toast({ title: "✅ Upload Successful!", description: "Image optimized and saved." });
 
     } catch (error) {
       console.error('Upload error:', error);
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      if (isMountedRef.current) toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
-      setIsUploading(false);
-      if (setParentIsUploading) setParentIsUploading(false);
-      setUploadProgress(0);
+      if (isMountedRef.current) {
+        setIsUploading(false);
+        if (setParentIsUploading) setParentIsUploading(false);
+        setUploadProgress(0);
+      }
     }
   }, [user, onImageUpload, toast, storagePath, setParentIsUploading]);
 
