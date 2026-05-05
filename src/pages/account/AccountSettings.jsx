@@ -111,6 +111,7 @@ const AccountSettings = () => {
              document.body.appendChild(a);
              a.click();
              document.body.removeChild(a);
+             URL.revokeObjectURL(url);
              toast({ title: "Data export started", description: "Your file is downloading." });
         } catch (error) {
             toast({ title: "Export failed", description: error.message, variant: "destructive" });
