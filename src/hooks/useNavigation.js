@@ -56,7 +56,6 @@ export const useNavigation = () => {
       onboarding: '/onboarding',
       login: '/login',
       'check-email': '/check-email',
-      'verify-phone': '/verify-phone',
     };
 
     const path = routeMap[screen] || `/${screen}`;

@@ -20,7 +20,6 @@ import CheckEmailScreen from './pages/auth/CheckEmailScreen';
 // Auth — lazy
 const AuthCallback = lazy(() => import('./pages/auth/AuthCallback'));
 const UpdatePasswordScreen = lazy(() => import('./pages/auth/UpdatePasswordScreen'));
-const PhoneVerificationScreen = lazy(() => import('./pages/auth/PhoneVerificationScreen'));
 const OnboardingScreen = lazy(() => import('./pages/auth/OnboardingScreen'));
 
 // Home
@@ -99,11 +98,11 @@ const AppContent = () => {
     '/check-email',
     '/auth/callback',
     '/update-password',
-    '/verify-phone',
     '/host-mode',
     '/onboarding',
     '/invite/accept',
     '/debug/regression-test',
+
   ];
 
   const shouldHideNav =
@@ -121,7 +120,6 @@ const AppContent = () => {
           <Route path="/share/:shareId" element={<PublicSharePage />} />
           <Route path="/invite/accept" element={<LazyRoute><AcceptInviteScreen /></LazyRoute>} />
           <Route path="/update-password" element={<UpdatePasswordScreen />} />
-          <Route path="/verify-phone" element={<PhoneVerificationScreen />} />
           <Route path="/onboarding" element={<OnboardingScreen />} />
 
           {/* Home */}
