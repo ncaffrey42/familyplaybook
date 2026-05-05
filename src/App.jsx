@@ -58,6 +58,9 @@ const UpgradeFlow = lazy(() => import('./pages/account/UpgradeFlow'));
 // Share
 const PublicSharePage = lazy(() => import('./pages/share/PublicSharePage'));
 
+// Invite
+const AcceptInviteScreen = lazy(() => import('./pages/invite/AcceptInviteScreen'));
+
 // Other pages
 const SearchScreen = lazy(() => import('./pages/SearchScreen'));
 const FavoritesScreen = lazy(() => import('./pages/FavoritesScreen'));
@@ -99,6 +102,7 @@ const AppContent = () => {
     '/verify-phone',
     '/host-mode',
     '/onboarding',
+    '/invite/accept',
     '/debug/regression-test',
   ];
 
@@ -115,6 +119,7 @@ const AppContent = () => {
           <Route path="/check-email" element={<CheckEmailScreen />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/share/:shareId" element={<PublicSharePage />} />
+          <Route path="/invite/accept" element={<LazyRoute><AcceptInviteScreen /></LazyRoute>} />
           <Route path="/update-password" element={<UpdatePasswordScreen />} />
           <Route path="/verify-phone" element={<PhoneVerificationScreen />} />
           <Route path="/onboarding" element={<OnboardingScreen />} />
