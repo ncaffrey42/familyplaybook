@@ -6,7 +6,7 @@ import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLocation, useParams } from 'react-router-dom';
@@ -31,6 +31,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
   const { getGuideById, isDataLoaded, handleSaveGuide, handleArchiveGuide, allBundles } = useData();
   const { checkEntitlement } = useEntitlements();
   const { showLimitNotification } = useLimitNotification();
+  const { toast } = useToast();
 
   // Determine pack from props or location state
   const initialPack = propPack || location.state?.pack || location.state?.bundle;
