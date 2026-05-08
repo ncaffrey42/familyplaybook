@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from "@/components/ui/card";
 import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
+import { isInternalPath } from '@/lib/utils';
+
+// sessionStorage key used to round-trip `returnTo` across the Stripe redirect.
+const RETURN_TO_STORAGE_KEY = 'fp:upgrade_return_to';
 
 // Paid plans in tier order, built directly from plans.js (no API call needed)
 const UPGRADE_PLANS = PLAN_ORDER
@@ -18,6 +22,7 @@ const UPGRADE_PLANS = PLAN_ORDER
 
 const UpgradeFlow = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { createCheckoutSession, fetchSubscription } = useSubscription();
   const { isPremium, subscriptionStatus, planKey, billingInterval, waitForSubscriptionUpdate } = useAuth();
@@ -28,6 +33,13 @@ const UpgradeFlow = () => {
   const [verifying, setVerifying] = useState(false);
 
   const sessionId = searchParams.get('session_id');
+
+  // Validated return path. We accept it from the query string and only honor
+  // values that pass isInternalPath — anything else is dropped silently.
+  const returnTo = useMemo(() => {
+    const raw = searchParams.get('returnTo');
+    return isInternalPath(raw) ? raw : null;
+  }, [searchParams]);
 
   // Pre-select based on navigation state suggestion
   useEffect(() => {
@@ -44,7 +56,19 @@ const UpgradeFlow = () => {
         try {
           await new Promise(r => setTimeout(r, 2000)); // Wait for webhook
           await fetchSubscription();
-          toast({ title: "Upgrade Successful", description: "Your plan has been updated!", variant: "success" });
+
+          // Re-validate the stashed returnTo every time — sessionStorage is
+          // user-writable, so we can't trust it without checking again.
+          const stashed = sessionStorage.getItem(RETURN_TO_STORAGE_KEY);
+          sessionStorage.removeItem(RETURN_TO_STORAGE_KEY);
+          const dest = isInternalPath(stashed) ? stashed : null;
+
+          if (dest) {
+            toast({ title: "You're upgraded — edits unlocked.", variant: "success" });
+            navigate(dest, { replace: true });
+          } else {
+            toast({ title: "Upgrade Successful", description: "Your plan has been updated!", variant: "success" });
+          }
         } catch (e) {
           console.error(e);
           toast({ title: "Verification Error", description: "Please check your subscription status.", variant: "destructive" });
@@ -54,7 +78,7 @@ const UpgradeFlow = () => {
       };
       verify();
     }
-  }, [sessionId, fetchSubscription, toast]);
+  }, [sessionId, fetchSubscription, toast, navigate]);
 
   const handleCheckout = async () => {
     if (!selectedPlanKey) return;
@@ -81,6 +105,13 @@ const UpgradeFlow = () => {
         toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
         const success = await waitForSubscriptionUpdate(selectedPlanKey);
         await fetchSubscription();
+
+        if (success && returnTo) {
+          toast({ title: "You're upgraded — edits unlocked.", variant: "success" });
+          navigate(returnTo, { replace: true });
+          return;
+        }
+
         toast({
           title: success ? "Plan Changed!" : "Update Pending",
           description: success
@@ -90,6 +121,12 @@ const UpgradeFlow = () => {
         });
         setProcessing(false);
       } else {
+        // Stash returnTo so we can pick it up on Stripe redirect-back.
+        if (returnTo) {
+          sessionStorage.setItem(RETURN_TO_STORAGE_KEY, returnTo);
+        } else {
+          sessionStorage.removeItem(RETURN_TO_STORAGE_KEY);
+        }
         const { url } = await createCheckoutSession(selectedPlanKey, targetInterval);
         if (url) window.location.href = url;
         else setProcessing(false);

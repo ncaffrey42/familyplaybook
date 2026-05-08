@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Share2, CheckCircle2, Circle, Heart, Pencil, Copy, Archive, Loader2, MoreVertical, Download, Package, Plus } from 'lucide-react';
+import { Share2, CheckCircle2, Circle, Heart, Pencil, Copy, Loader2, MoreVertical, Download, Package, Plus, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +20,7 @@ import GuideIcon from '@/components/GuideIcon';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
+import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { Badge } from "@/components/ui/badge";
 import { isVideoUrl } from '@/lib/utils';
 
@@ -58,8 +48,7 @@ const GuideDetail = ({ guide: propGuide }) => {
     guideLibrary, 
     favorites, 
     toggleFavorite, 
-    fetchData, 
-    handleArchiveGuide,
+    fetchData,
     handleAddGuideFromLibrary,
     handleAddAndEditFromLibrary,
     allBundles
@@ -70,6 +59,8 @@ const GuideDetail = ({ guide: propGuide }) => {
   const [checkedSteps, setCheckedSteps] = useState([]);
   const [isSharing, setIsSharing] = useState(false);
   const [isBundleModalOpen, setIsBundleModalOpen] = useState(false);
+  const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
+  const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
 
   // Resolution Logic
   const isLibraryView = location.pathname.includes('/library/');
@@ -115,8 +106,19 @@ const GuideDetail = ({ guide: propGuide }) => {
     );
   };
 
+  const isReadOnly = !!guide?.is_read_only && !isLibraryView;
+  const gateReadOnly = (returnToOverride = null) => {
+    if (isReadOnly) {
+      setReadOnlyReturnTo(returnToOverride);
+      setIsReadOnlyModalOpen(true);
+      return true;
+    }
+    return false;
+  };
+
   const handleShare = async () => {
     if (!user || !user.id || !guide || isLibraryView) return;
+    if (gateReadOnly()) return;
     setIsSharing(true);
     try {
         const { error: updateError } = await supabase.from('guides').update({ is_shareable: true }).eq('id', guide.id);
@@ -150,9 +152,9 @@ const GuideDetail = ({ guide: propGuide }) => {
   };
   
   const handleEdit = () => {
-    if (guide && guide.id && !isLibraryView) {
-      navigate(`/guide/${guide.id}/edit`);
-    }
+    if (!guide || !guide.id || isLibraryView) return;
+    if (gateReadOnly(`/guide/${guide.id}/edit`)) return;
+    navigate(`/guide/${guide.id}/edit`);
   };
 
   const handleDuplicate = async () => {
@@ -196,12 +198,6 @@ const GuideDetail = ({ guide: propGuide }) => {
     }
   };
 
-  const handleArchive = async () => {
-    if (guide && !isLibraryView) {
-      await handleArchiveGuide(guide);
-    }
-  };
-  
   const handleUpdateBundles = async (selectedBundles) => {
     if (!user || !guide || isLibraryView) return;
     
@@ -284,6 +280,12 @@ const GuideDetail = ({ guide: propGuide }) => {
                 onSave={handleUpdateBundles}
             />
         )}
+        <ReadOnlyUpgradeModal
+          isOpen={isReadOnlyModalOpen}
+          onClose={() => setIsReadOnlyModalOpen(false)}
+          resourceType="guide"
+          returnTo={readOnlyReturnTo}
+        />
 
         <header className="bg-gradient-to-br from-[#5CA9E9]/20 to-[#7BC47F]/20 dark:from-[#5CA9E9]/10 dark:to-[#7BC47F]/10 p-6 pb-8">
           <PageHeader title="" onBack={() => navigate(-1)}>
@@ -337,25 +339,6 @@ const GuideDetail = ({ guide: propGuide }) => {
                             {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 size={16} className="mr-2"/>} Share
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleDuplicate}><Copy size={16} className="mr-2"/> Duplicate</DropdownMenuItem>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-500 w-full">
-                                    <Archive size={16} className="mr-2"/> Archive
-                                </div>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Archive this guide?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Archiving "{guide.name}" will remove it from your active guides.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleArchive}>Archive</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -370,9 +353,9 @@ const GuideDetail = ({ guide: propGuide }) => {
               {guide.category && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{guide.category}</p>}
               
               {!isLibraryView && (
-                  <div 
+                  <div
                     className="flex items-center gap-2 mt-2 cursor-pointer group"
-                    onClick={() => setIsBundleModalOpen(true)}
+                    onClick={() => { if (!gateReadOnly()) setIsBundleModalOpen(true); }}
                   >
                     {assignedBundles.length > 0 ? (
                         <Badge variant="outline" className="bg-white/50 hover:bg-white/80 transition-colors border-gray-400/30 text-gray-700 dark:text-gray-300 gap-1 pl-1.5">
@@ -392,7 +375,26 @@ const GuideDetail = ({ guide: propGuide }) => {
             </div>
           </div>
         </header>
-  
+
+        {isReadOnly && (
+          <div className="mx-6 mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
+            <Lock size={18} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This guide is read-only</p>
+              <p className="text-sm text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                You're over your plan's guide limit. Upgrade to edit, share, or remove this guide.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsReadOnlyModalOpen(true)}
+              className="ml-2 flex-shrink-0"
+            >
+              Upgrade
+            </Button>
+          </div>
+        )}
+
         <main className="p-6 space-y-6">
           {(guide.description || content?.description) && (
              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">

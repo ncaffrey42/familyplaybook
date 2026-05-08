@@ -26,29 +26,7 @@ export async function createGuideExample(userId, guideData) {
   return data;
 }
 
-// 2. ARCHIVE GUIDE
-export async function archiveGuideExample(userId, guideId) {
-  const check = await entitlementService.canPerform(userId, 'GUIDE_ARCHIVE');
-  // Always allowed, but good practice to check
-  
-  if (check.allowed) {
-    await supabase.from('guides').update({ is_archived: true, archived_at: new Date() }).eq('id', guideId);
-  }
-}
-
-// 3. UNARCHIVE GUIDE
-export async function unarchiveGuideExample(userId, guideId) {
-  const check = await entitlementService.canPerform(userId, 'GUIDE_UNARCHIVE');
-  
-  if (!check.allowed) {
-    return { error: 'Limit reached', reason: check.reason_code };
-  }
-
-  await supabase.from('guides').update({ is_archived: false }).eq('id', guideId);
-  return { success: true };
-}
-
-// 4. CREATE BUNDLE
+// 2. CREATE BUNDLE
 export async function createBundleExample(userId, bundleData) {
   const check = await entitlementService.canPerform(userId, 'BUNDLE_CREATE');
 

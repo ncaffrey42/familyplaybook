@@ -48,7 +48,6 @@ export const useNavigation = () => {
       manageFamily: '/account/family',
       hostMode: '/host-mode',
       subscription: '/account/subscription',
-      archived: '/archived-items',
       plans: '/plans',
       viewLibraryBundle: `/library/bundle/${data.bundleId}`,
       viewLibraryGuide: `/library/guide/${data.guideId}`,

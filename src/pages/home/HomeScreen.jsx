@@ -31,16 +31,11 @@ const HomeScreen = () => {
     localStorage.setItem('homeScreenActiveTab', activeTab);
   }, [activeTab]);
 
-  const myBundles = useMemo(() => allBundles.filter(p => !p.is_archived), [allBundles]);
-  const myGuides = useMemo(() => allGuides.filter(g => !g.is_archived), [allGuides]);
-  
-  // Defensively filter favorites to ensure no archived items appear on homepage
+  const myBundles = allBundles;
+  const myGuides = allGuides;
+
   // Get top 4 favorites (assuming favorites are already sorted by creation date from context)
-  const recentFavorites = useMemo(() => {
-    return (favorites || [])
-      .filter(f => !f.is_archived)
-      .slice(0, 4);
-  }, [favorites]);
+  const recentFavorites = useMemo(() => (favorites || []).slice(0, 4), [favorites]);
 
   const libraryBundlesWithGuides = useMemo(() => {
     return availableLibraryBundles.filter(bundle => bundle.guides && bundle.guides.length > 0);
@@ -268,7 +263,7 @@ const HomeScreen = () => {
                     <h2 className="text-xl font-bold text-foreground">Your Favorites</h2>
                  </div>
                  {/* Only show View All if there are more than 4 favorites */}
-                 {(favorites || []).filter(f => !f.is_archived).length > 4 && (
+                 {(favorites || []).length > 4 && (
                     <Button variant="ghost" size="sm" onClick={() => handleNavigate('favorites')} className="text-primary hover:text-primary/80 h-8 px-2">View All</Button>
                  )}
               </div>

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { addBreadcrumb, logError } from '@/lib/errorLogger';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
+import { applyReadOnlyFlags } from '@/lib/readOnlyEnforcement';
 
 const DataContext = createContext();
 
@@ -87,7 +88,7 @@ export const DataProvider = ({ children }) => {
     try {
       const results = await Promise.allSettled([
         supabase.from('packs').select('*, pack_guides(guide_id)').eq('user_id', targetUser.id),
-        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, is_shareable, is_archived, archived_at, description, template_id, pack_guides(pack_id)').eq('user_id', targetUser.id).order('created_at', { ascending: false }),
+        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, updated_at, is_shareable, description, template_id, pack_guides(pack_id)').eq('user_id', targetUser.id).order('created_at', { ascending: false }),
         supabase.from('user_favorites').select('guide_id').eq('user_id', targetUser.id),
         supabase.from('library_packs').select('*, library_guides(*)'),
         supabase.from('library_guides').select('*, library_packs(id, name)')
@@ -121,7 +122,6 @@ export const DataProvider = ({ children }) => {
         ...p,
         guide_count: p.pack_guides?.length || 0
       }));
-      setAllBundles(formattedBundles);
 
       const bundleMap = new Map(bundlesData.map(p => [p.id, p.name]));
       const formattedGuides = guidesData.map(g => ({
@@ -129,10 +129,19 @@ export const DataProvider = ({ children }) => {
         bundles: g.pack_guides?.map(pg => pg.pack_id) || [],
         bundleNames: g.pack_guides?.map(pg => bundleMap.get(pg.pack_id)).filter(Boolean) || []
       }));
-      setAllGuides(formattedGuides);
-      
+
+      // Tier-limit read-only derivation. The N most recently updated items
+      // stay editable; the rest are flagged read-only and the same logic
+      // is enforced server-side via RLS.
+      const planLimits = await entitlementService.getPlanLimits(targetUser.id).catch(() => null);
+      const flaggedBundles = applyReadOnlyFlags(formattedBundles, planLimits?.bundles);
+      const flaggedGuides = applyReadOnlyFlags(formattedGuides, planLimits?.active_guides);
+
+      setAllBundles(flaggedBundles);
+      setAllGuides(flaggedGuides);
+
       const favoriteGuideIds = new Set(favoritesData.map(f => f.guide_id));
-      setFavorites(formattedGuides.filter(g => !g.is_archived && favoriteGuideIds.has(g.id)));
+      setFavorites(flaggedGuides.filter(g => favoriteGuideIds.has(g.id)));
 
       const formattedLibBundles = libraryBundlesData.map(p => ({ 
         ...p, 
@@ -235,67 +244,6 @@ export const DataProvider = ({ children }) => {
   }, [user, toast, fetchData]);
 
 
-  const handleArchiveGuide = useCallback(async (guide) => {
-    if (!guide?.id) return;
-    
-    setAllGuides(prev => prev.map(g => g.id === guide.id ? { ...g, is_archived: true } : g));
-    setFavorites(prev => prev.filter(g => g.id !== guide.id));
-
-    const { error } = await supabase.from('guides').update({ is_archived: true, archived_at: new Date().toISOString() }).eq('id', guide.id);
-    
-    if (error) {
-      logError(error); 
-      setAllGuides(prev => prev.map(g => g.id === guide.id ? { ...g, is_archived: false } : g));
-      await fetchData(user);
-      toast({ title: "Error archiving guide", variant: "destructive" });
-    } else {
-      // Update Usage Stats
-      UsageTrackingService.updateUsageMetric(user.id, 'active_guides', -1).catch(console.error);
-      UsageTrackingService.updateUsageMetric(user.id, 'archived_guides', 1).catch(console.error);
-
-      toast({ title: "📁 Guide Archived" });
-      navigate('/guides');
-    }
-  }, [navigate, toast, user, fetchData]);
-
-  const handleRestoreGuide = useCallback(async (guide) => {
-    if (!guide?.id) return;
-
-    // Entitlement Check for Unarchive
-    try {
-      const entitlement = await entitlementService.canPerform(user.id, 'GUIDE_UNARCHIVE');
-      if (!entitlement.allowed) {
-        toast({ 
-          title: "Cannot Unarchive", 
-          description: entitlement.reason_code === 'LIMIT_ACTIVE_GUIDES' ? "You have reached your active guide limit." : "Action not allowed.",
-          variant: "destructive" 
-        });
-        return;
-      }
-    } catch (e) {
-      console.error("Entitlement check failed", e);
-      toast({ title: "System Error", description: "Could not verify limits.", variant: "destructive" });
-      return;
-    }
-
-    setAllGuides(prev => prev.map(g => g.id === guide.id ? { ...g, is_archived: false } : g));
-
-    const { error } = await supabase.from('guides').update({ is_archived: false, archived_at: null }).eq('id', guide.id);
-    
-    if (error) {
-      logError(error);
-      setAllGuides(prev => prev.map(g => g.id === guide.id ? { ...g, is_archived: true } : g));
-      toast({ title: "Error restoring guide", variant: "destructive" });
-    } else {
-      // Update Usage Stats
-      UsageTrackingService.updateUsageMetric(user.id, 'active_guides', 1).catch(console.error);
-      UsageTrackingService.updateUsageMetric(user.id, 'archived_guides', -1).catch(console.error);
-      
-      toast({ title: "♻️ Guide Restored", variant: "success" });
-      await fetchData(user);
-    }
-  }, [user, toast, fetchData]);
-
   const handleSaveBundle = useCallback(async (bundleToSave, guideIds) => {
     if (!user) return;
 
@@ -342,84 +290,6 @@ export const DataProvider = ({ children }) => {
         toast({ title: "Error saving bundle", variant: "destructive" });
     }
   }, [user, navigate, toast, fetchData]);
-
-  const handleArchiveBundle = useCallback(async (bundle) => {
-    if (!bundle?.id) return;
-    setAllBundles(prev => prev.filter(p => p.id !== bundle.id));
-    const { error } = await supabase.from('packs').update({ is_archived: true, archived_at: new Date().toISOString() }).eq('id', bundle.id);
-    if (error) {
-      logError(error); setAllBundles(prev => [...prev, bundle]);
-      toast({ title: "Error archiving bundle", variant: "destructive" });
-    } else {
-      // Note: UsageService counts all bundles regardless of archive status currently, so no decrement.
-      toast({ title: "📦 Bundle Archived" });
-      navigate('/bundles');
-    }
-  }, [navigate, toast]);
-
-  const handleBulkRestoreGuides = useCallback(async (guidesToRestore) => {
-    if (!guidesToRestore?.length || !user) return;
-
-    // One entitlement check with the full increment so we don't allow partial
-    // restores that would silently push the user over their active-guide limit.
-    try {
-      const entitlement = await entitlementService.canPerform(
-        user.id,
-        'GUIDE_UNARCHIVE',
-        { count: guidesToRestore.length }
-      );
-      if (!entitlement.allowed) {
-        const slotsLeft = Math.max(0, (entitlement.limit ?? 0) - (entitlement.current ?? 0));
-        toast({
-          title: "Cannot Restore All Guides",
-          description: slotsLeft > 0
-            ? `You only have ${slotsLeft} active slot(s) available. Upgrade to restore all ${guidesToRestore.length}.`
-            : "You have reached your active guide limit.",
-          variant: "destructive",
-        });
-        return;
-      }
-    } catch (e) {
-      console.error("Entitlement check failed", e);
-      toast({ title: "System Error", description: "Could not verify limits.", variant: "destructive" });
-      return;
-    }
-
-    const ids = guidesToRestore.map(g => g.id);
-    setAllGuides(prev => prev.map(g => ids.includes(g.id) ? { ...g, is_archived: false } : g));
-
-    const { error } = await supabase
-      .from('guides')
-      .update({ is_archived: false, archived_at: null })
-      .in('id', ids);
-
-    if (error) {
-      logError(error);
-      setAllGuides(prev => prev.map(g => ids.includes(g.id) ? { ...g, is_archived: true } : g));
-      toast({ title: "Error restoring guides", variant: "destructive" });
-    } else {
-      UsageTrackingService.updateUsageMetric(user.id, 'active_guides', ids.length).catch(console.error);
-      UsageTrackingService.updateUsageMetric(user.id, 'archived_guides', -ids.length).catch(console.error);
-      toast({ title: `♻️ ${ids.length} Guide${ids.length !== 1 ? 's' : ''} Restored`, variant: "success" });
-      await fetchData(user);
-    }
-  }, [user, toast, fetchData]);
-
-  const handleRestoreBundle = useCallback(async (bundle) => {
-    if (!bundle?.id) return;
-    setAllBundles(prev => prev.map(b => b.id === bundle.id ? { ...b, is_archived: false } : b));
-
-    const { error } = await supabase.from('packs').update({ is_archived: false, archived_at: null }).eq('id', bundle.id);
-    
-    if (error) {
-        logError(error);
-        setAllBundles(prev => prev.map(b => b.id === bundle.id ? { ...b, is_archived: true } : b));
-        toast({ title: "Error restoring bundle", variant: "destructive" });
-    } else {
-        toast({ title: "📦 Bundle Restored", variant: "success" });
-        await fetchData(user);
-    }
-  }, [user, toast, fetchData]);
 
   const addGuideFromLibraryCore = useCallback(async (guide) => {
     if (!user) throw new Error("User not authenticated");
@@ -576,7 +446,7 @@ export const DataProvider = ({ children }) => {
   const value = {
     allBundles, allGuides, bundleLibrary, availableLibraryBundles, guideLibrary, favorites, isDataLoaded,
     fetchData: (currentUser) => fetchData(currentUser || user),
-    toggleFavorite, handleSaveGuide, handleArchiveGuide, handleRestoreGuide, handleBulkRestoreGuides, handleRestoreBundle, handleSaveBundle, handleArchiveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
+    toggleFavorite, handleSaveGuide, handleSaveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
@@ -14,18 +14,8 @@ import PageHeader from '@/components/PageHeader';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import ImageUpload from '@/components/ImageUpload';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
+import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { cn } from '@/lib/utils';
 import { BundleImage } from '@/components/BundleImage';
 import GuideIcon from '@/components/GuideIcon';
@@ -35,7 +25,7 @@ const colorOptions = ['#FFDDC1', '#FFABAB', '#FFC3A0', '#FF677D', '#D4A5A5', '#8
 const CreateBundleScreen = ({ bundle: propBundle }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { allGuides, allBundles, handleSaveBundle, handleArchiveBundle } = useData();
+  const { allGuides, allBundles, handleSaveBundle } = useData();
   const { checkEntitlement } = useEntitlements();
   const { showLimitNotification } = useLimitNotification();
 
@@ -50,6 +40,19 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddGuidesModal, setShowAddGuidesModal] = useState(false);
   const [selectedGuideIds, setSelectedGuideIds] = useState([]);
+  const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
+
+  // Block edits to read-only bundles at the route level.
+  useEffect(() => {
+    if (bundle?.is_read_only) {
+      setIsReadOnlyModalOpen(true);
+    }
+  }, [bundle]);
+
+  const handleReadOnlyModalClose = () => {
+    setIsReadOnlyModalOpen(false);
+    navigate(-1);
+  };
 
   useEffect(() => {
     if (bundle) {
@@ -120,19 +123,14 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
         <title>{isEditing ? `Edit: ${name}` : "Create Bundle"} - Family Playbook</title>
         <meta name="description" content={isEditing ? `Edit details for "${name}".` : "Create a new bundle to organize your guides."} />
       </Helmet>
+      <ReadOnlyUpgradeModal
+        isOpen={isReadOnlyModalOpen}
+        onClose={handleReadOnlyModalClose}
+        resourceType="bundle"
+      />
       <div className="min-h-screen bg-background pb-28">
         <div className="p-6">
-          <PageHeader title={isEditing ? "Edit Bundle" : "Create New Bundle"} onBack={() => isEditing ? navigate(`/bundle/${bundle.id}`) : navigate('/bundles')}>
-            {isEditing && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 size={24} /></Button></AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action will archive your bundle "{name}".</AlertDialogDescription></AlertDialogHeader>
-                  <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleArchiveBundle(bundle)} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction></AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </PageHeader>
+          <PageHeader title={isEditing ? "Edit Bundle" : "Create New Bundle"} onBack={() => isEditing ? navigate(`/bundle/${bundle.id}`) : navigate('/bundles')} />
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-6">
             <div>

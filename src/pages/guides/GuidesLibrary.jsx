@@ -9,6 +9,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import GuideCard from '@/components/GuideCard';
 import { Button } from '@/components/ui/button';
 import { searchGuides } from '@/lib/searchUtils';
+import UsageBadge from '@/components/UsageBadge';
 
 const GuideList = ({ guides, toggleFavorite, favorites, isLibrary = false, onTabChange, searchTerm }) => {
   const navigate = useNavigate();
@@ -104,7 +105,7 @@ const GuidesLibrary = ({ favorites, toggleFavorite }) => {
       const userGuideTemplateIds = new Set(allGuides.map(g => g.template_id).filter(Boolean));
       sourceGuides = guideLibrary.filter(lg => !userGuideTemplateIds.has(lg.id));
     } else {
-      sourceGuides = allGuides.filter(guide => !guide.is_archived);
+      sourceGuides = allGuides;
     }
     
     const searched = searchGuides(sourceGuides, searchTerm);
@@ -132,6 +133,9 @@ const GuidesLibrary = ({ favorites, toggleFavorite }) => {
         <main className="p-6">
           <header className="flex items-center justify-between gap-4 mb-6">
             <h1 className="text-3xl font-bold text-foreground">Guides</h1>
+            {activeMainTab === 'my-guides' && (
+              <UsageBadge resourceType="guide" current={allGuides.length} />
+            )}
           </header>
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full mb-6">

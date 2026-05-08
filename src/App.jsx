@@ -40,8 +40,6 @@ const BundlesLibrary = lazy(() => import('./pages/library/BundlesLibrary'));
 const MyPacksScreen = lazy(() => import('./pages/packs/MyPacksScreen'));
 const CreatePackScreen = lazy(() => import('./pages/packs/CreatePackScreen'));
 const PackDetail = lazy(() => import('./pages/packs/PackDetail'));
-const ArchivedPacksScreen = lazy(() => import('./pages/packs/ArchivedPacksScreen'));
-
 // Library
 const PacksLibrary = lazy(() => import('./pages/library/PacksLibrary'));
 
@@ -63,7 +61,6 @@ const AcceptInviteScreen = lazy(() => import('./pages/invite/AcceptInviteScreen'
 // Other pages
 const SearchScreen = lazy(() => import('./pages/SearchScreen'));
 const FavoritesScreen = lazy(() => import('./pages/FavoritesScreen'));
-const ArchivedItemsScreen = lazy(() => import('./pages/ArchivedItemsScreen'));
 const HostMode = lazy(() => import('./pages/HostMode'));
 const NotFoundScreen = lazy(() => import('./pages/NotFoundScreen'));
 
@@ -129,7 +126,6 @@ const AppContent = () => {
           {/* Packs routes (legacy naming) */}
           <Route path="/packs" element={<LazyRoute><MyPacksScreen /></LazyRoute>} />
           <Route path="/packs/create" element={<LazyRoute><CreatePackScreen /></LazyRoute>} />
-          <Route path="/packs/archived" element={<LazyRoute><ArchivedPacksScreen /></LazyRoute>} />
           <Route path="/pack/:id" element={<LazyRoute><PackDetail /></LazyRoute>} />
 
           {/* Guides */}
@@ -169,7 +165,6 @@ const AppContent = () => {
           {/* Other */}
           <Route path="/host-mode" element={<LazyRoute><HostMode /></LazyRoute>} />
           <Route path="/favorites" element={<LazyRoute><FavoritesScreen /></LazyRoute>} />
-          <Route path="/archived-items" element={<LazyRoute><ArchivedItemsScreen /></LazyRoute>} />
 
           {/* Admin */}
           <Route path="/admin/errors" element={<LazyRoute><ErrorLogScreen /></LazyRoute>} />
