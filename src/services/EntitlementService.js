@@ -306,6 +306,35 @@ export class EntitlementService {
   invalidateCache(userId) {
     this.cache.delete(userId);
   }
+
+  /**
+   * Returns the user's numeric plan limits for the resources affected by
+   * tier-limit read-only enforcement. `null` for any limit means unlimited
+   * (Family plan).
+   *
+   * Reuses the same cached data as canPerform(), so this is cheap to call
+   * alongside other entitlement checks.
+   *
+   * @param {string} userId
+   * @returns {Promise<{active_guides: number|null, bundles: number|null, storage_bytes: number|null, editors: number|null}|null>}
+   */
+  async getPlanLimits(userId) {
+    if (!userId) return null;
+    const data = await this._getUserData(userId);
+    if (!data) return null;
+    const ent = data.entitlements || {};
+    const numeric = (key) => {
+      const e = ent[`${key}_max`];
+      if (!e) return null; // missing entitlement → treat as unlimited (fail open)
+      return e.isUnlimited ? null : e.value;
+    };
+    return {
+      active_guides: numeric('active_guides'),
+      bundles: numeric('bundles'),
+      storage_bytes: numeric('storage_bytes'),
+      editors: numeric('editors'),
+    };
+  }
 }
 
 export const entitlementService = new EntitlementService();

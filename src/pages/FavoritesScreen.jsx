@@ -10,9 +10,7 @@ const FavoritesScreen = () => {
   const { favorites, toggleFavorite } = useData();
   const navigate = useNavigate();
 
-  // FIX: favorites is already an array of guide objects from DataContext.
-  // We just need to ensure we don't show archived ones (though Context usually handles this).
-  const favoriteGuides = (favorites || []).filter(guide => !guide.is_archived);
+  const favoriteGuides = favorites || [];
 
   const handleGuideClick = (guideId) => {
     navigate(`/guide/${guideId}`);

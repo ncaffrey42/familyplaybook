@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, GripVertical, X, Image, Video, Loader2, Trash2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
@@ -9,12 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigation } from '@/hooks/useNavigation';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import MediaUpload from '@/components/MediaUpload';
 import GuideIconPicker from '@/components/GuideIconPicker';
 import GuideIcon from '@/components/GuideIcon';
-import ArchiveGuideModal from '@/components/ArchiveGuideModal';
+import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -27,8 +27,12 @@ import {
 const CreateGuideScreen = ({ pack: propPack }) => {
   const onNavigate = useNavigation();
   const location = useLocation();
-  const { guideId } = useParams();
-  const { getGuideById, isDataLoaded, handleSaveGuide, handleArchiveGuide, allBundles } = useData();
+  const navigate = useNavigate();
+  const params = useParams();
+  // Route is `/guide/:id/edit`; older callers may still pass `guideId`.
+  const guideId = params.id || params.guideId;
+  const { getGuideById, isDataLoaded, handleSaveGuide, allBundles } = useData();
+  const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
   const { checkEntitlement } = useEntitlements();
   const { showLimitNotification } = useLimitNotification();
   const { toast } = useToast();
@@ -44,10 +48,6 @@ const CreateGuideScreen = ({ pack: propPack }) => {
   const [isShareable, setIsShareable] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedBundleId, setSelectedBundleId] = useState(initialPack?.id || 'none');
-  
-  // Archiving state
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
 
   // Track which step is currently having media uploaded
   const [activeMediaStepId, setActiveMediaStepId] = useState(null);
@@ -83,6 +83,22 @@ const CreateGuideScreen = ({ pack: propPack }) => {
       }
     }
   }, [guideId, getGuideById, isDataLoaded]);
+
+  // Block edits to read-only guides at the route level. If the user lands
+  // here via direct URL (or any path) for a read-only guide, show the
+  // upgrade modal; closing it bounces back.
+  useEffect(() => {
+    if (!guideId || !isDataLoaded || !getGuideById) return;
+    const guide = getGuideById(guideId);
+    if (guide?.is_read_only) {
+      setIsReadOnlyModalOpen(true);
+    }
+  }, [guideId, isDataLoaded, getGuideById]);
+
+  const handleReadOnlyModalClose = () => {
+    setIsReadOnlyModalOpen(false);
+    navigate(-1);
+  };
 
   // Update selectedBundleId if initialPack changes (e.g. navigation)
   useEffect(() => {
@@ -194,19 +210,6 @@ const CreateGuideScreen = ({ pack: propPack }) => {
     }
   };
   
-  const handleArchive = async () => {
-    if (!guideId) return;
-    setIsArchiving(true);
-    try {
-        await handleArchiveGuide({ id: guideId });
-    } catch (error) {
-        console.error("Archive failed", error);
-        toast({ title: "Error", description: "Failed to archive guide.", variant: "destructive" });
-        setIsArchiving(false);
-        setIsArchiveModalOpen(false);
-    }
-  };
-
   const handleBack = () => {
     if (initialPack) {
       onNavigate('bundleDetail', { bundleId: initialPack.id });
@@ -231,6 +234,11 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24">
+      <ReadOnlyUpgradeModal
+        isOpen={isReadOnlyModalOpen}
+        onClose={handleReadOnlyModalClose}
+        resourceType="guide"
+      />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -245,16 +253,6 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             <h1 className="text-2xl font-bold text-gray-800">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
           </div>
           
-          {guideId && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsArchiveModalOpen(true)}
-              className="rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
-            >
-              <X size={24} />
-            </Button>
-          )}
         </div>
 
         <motion.div
@@ -497,25 +495,8 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </Button>
           </EntitlementGuard>
 
-          {guideId && (
-             <Button
-                variant="destructive"
-                onClick={() => setIsArchiveModalOpen(true)}
-                className="w-full h-14 mt-4 text-lg font-semibold rounded-2xl shadow-sm hover:shadow-md transition-all bg-red-500 hover:bg-red-600 text-white"
-             >
-                <Trash2 className="mr-2 h-5 w-5" />
-                Archive Guide
-             </Button>
-          )}
         </motion.div>
       </div>
-      
-      <ArchiveGuideModal 
-        isOpen={isArchiveModalOpen}
-        onClose={setIsArchiveModalOpen}
-        onConfirm={handleArchive}
-        isArchiving={isArchiving}
-      />
     </div>
   );
 };

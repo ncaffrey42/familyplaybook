@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Library } from 'lucide-react';
+import { Heart, Library, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GuideIcon from '@/components/GuideIcon';
 
@@ -13,13 +13,27 @@ const GuideCard = ({ guide, isFavorited, onToggleFavorite, onClick, isLibrary = 
   };
 
   const packInfo = guide.packName || (guide.packNames && guide.packNames.length > 0 ? guide.packNames.join(', ') : 'Uncategorized');
+  const isReadOnly = !!guide.is_read_only && !isLibrary;
 
   return (
     <motion.div
       whileHover={{ y: -4, boxShadow: "0 10px 20px rgba(0,0,0,0.08)" }}
-      className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm cursor-pointer flex flex-col gap-4 transition-all duration-300 relative border border-gray-200/50 dark:border-gray-700/50"
+      className={cn(
+        "bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm cursor-pointer flex flex-col gap-4 transition-all duration-300 relative border border-gray-200/50 dark:border-gray-700/50",
+        isReadOnly && "opacity-75"
+      )}
       onClick={onClick}
     >
+      {isReadOnly && (
+        <div
+          className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-gray-900/70 dark:bg-gray-100/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white dark:text-gray-900"
+          aria-label="Read-only — upgrade to edit"
+          title="Read-only — upgrade to edit"
+        >
+          <Lock size={10} strokeWidth={3} />
+          <span>Read-only</span>
+        </div>
+      )}
       <div className="flex justify-between items-start">
         <GuideIcon iconName={guide.icon} category={guide.category} />
         {!isLibrary ? (

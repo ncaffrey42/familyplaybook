@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, X } from 'lucide-react';
+import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddGuidesToPackModal from '@/components/AddGuidesToPackModal';
 import { Helmet } from 'react-helmet';
@@ -27,10 +27,8 @@ import { logError } from '@/lib/errorLogger';
 
 /**
  * Renders the detail view for a specific bundle.
- * Displays bundle information, a list of its guides, and actions
- * like editing, archiving, or adding new guides.
  */
-const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack, onArchivePack }) => {
+const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const { isDragging, fabProps } = useDraggableFab();
@@ -115,11 +113,6 @@ const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack, onArchivePack 
     onAddGuidesToPack(pack.id, ids);
   };
 
-  // Handler for archiving the entire bundle.
-  const handleArchiveClick = () => {
-    onArchivePack(pack);
-  };
-
   // Toggles the Floating Action Button (FAB) menu open/closed.
   const handleToggleFab = () => {
     if (!isDragging) { // Prevent opening menu while dragging the FAB.
@@ -155,24 +148,7 @@ const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack, onArchivePack 
         />
         <div className="p-6">
           <PageHeader title="" onBack={() => handleNavigate('packs')}>
-            {/* Header actions: Archive, Edit, Share */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100">
-                  <Archive size={20} />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Archive this bundle?</AlertDialogTitle>
-                  <AlertDialogDescription>This will move "{pack.name}" to the archive. You can restore it later.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleArchiveClick}>Archive</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {/* Header actions: Edit, Share */}
             <Button
               variant="ghost"
               size="icon"

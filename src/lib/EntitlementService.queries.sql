@@ -16,10 +16,11 @@ WHERE us.user_id = 'USER_UUID_HERE'
   AND us.status = 'active';
 
 -- 2. Count Active Guides (Runtime check if usage table is out of sync)
-SELECT count(*) 
-FROM public.guides 
-WHERE user_id = 'USER_UUID_HERE' 
-  AND (is_archived = false OR is_archived IS NULL);
+-- Archive feature was retired (see 20240104_retire_archive.sql); every
+-- guide row counts now.
+SELECT count(*)
+FROM public.guides
+WHERE user_id = 'USER_UUID_HERE';
 
 -- 3. Count Bundles
 SELECT count(*) 
@@ -60,8 +61,7 @@ DO UPDATE SET
 -- Example: Reset active_guides count based on actual table count
 UPDATE public.user_usage
 SET current_usage = (
-    SELECT count(*) FROM public.guides 
-    WHERE user_id = 'USER_UUID_HERE' 
-      AND (is_archived = false OR is_archived IS NULL)
+    SELECT count(*) FROM public.guides
+    WHERE user_id = 'USER_UUID_HERE'
 )
 WHERE user_id = 'USER_UUID_HERE' AND feature_key = 'active_guides';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download } from 'lucide-react';
+import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import { Helmet } from 'react-helmet';
@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { logError } from '@/lib/errorLogger';
 import GuideIcon from '@/components/GuideIcon';
+import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 
 const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const { id } = useParams();
@@ -33,9 +34,8 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     allBundles, 
     allGuides, 
     bundleLibrary,
-    handleAddGuidesToBundle, 
-    handleArchiveBundle, 
-    handleRemoveGuideFromBundle, 
+    handleAddGuidesToBundle,
+    handleRemoveGuideFromBundle,
     handleAddBundleFromLibrary,
     isDataLoaded, 
     fetchData 
@@ -45,6 +45,8 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
+  const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
 
   // Determine view mode based on URL path
   const isLibraryView = location.pathname.includes('/library/');
@@ -118,8 +120,19 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     );
   }
 
+  const isReadOnly = !!bundle?.is_read_only && !isLibraryView;
+  const gateReadOnly = (returnToOverride = null) => {
+    if (isReadOnly) {
+      setReadOnlyReturnTo(returnToOverride);
+      setIsReadOnlyModalOpen(true);
+      return true;
+    }
+    return false;
+  };
+
   const handleShare = async () => {
     if (!user || !guides) return;
+    if (gateReadOnly()) return;
     try {
       const guideIds = guides.map(g => g.id);
       if (guideIds.length > 0) {
@@ -148,7 +161,10 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     }
   };
 
-  const handleToggleFab = () => setIsFabOpen(prev => !prev);
+  const handleToggleFab = () => {
+    if (gateReadOnly()) return;
+    setIsFabOpen(prev => !prev);
+  };
   
   const handleGuideClick = (guide) => {
     // For library guides, we might want to view them in a read-only mode or just show details
@@ -174,17 +190,23 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
       </Helmet>
       <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-40">
         {!isLibraryView && (
-          <AddGuidesToBundleModal 
-            isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
-            allGuides={allGuides} 
-            guidesInBundle={guides} 
+          <AddGuidesToBundleModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            allGuides={allGuides}
+            guidesInBundle={guides}
             onAddGuides={(guideIds) => {
               const ids = guideIds.map(g => (typeof g === 'object' && g !== null && g.id) ? g.id : g);
               handleAddGuidesToBundle(bundle.id, ids);
-            }} 
+            }}
           />
         )}
+        <ReadOnlyUpgradeModal
+          isOpen={isReadOnlyModalOpen}
+          onClose={() => setIsReadOnlyModalOpen(false)}
+          resourceType="bundle"
+          returnTo={readOnlyReturnTo}
+        />
         
         <header className="p-6">
           <PageHeader title="" onBack={() => navigate('/bundles')}>
@@ -202,22 +224,14 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
             ) : (
               // User Actions
               <>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Archive size={20} /></Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Archive this bundle?</AlertDialogTitle>
-                      <AlertDialogDescription>This will move "{bundle.name}" to the archive. You can restore it later.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleArchiveBundle(bundle)}>Archive</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                <Button variant="ghost" size="icon" onClick={() => navigate(`/bundle/${bundle.id}/edit`)} className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Edit size={20} /></Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => { if (!gateReadOnly(`/bundle/${bundle.id}/edit`)) navigate(`/bundle/${bundle.id}/edit`); }}
+                  className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"
+                >
+                  <Edit size={20} />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Share2 size={20} /></Button>
               </>
             )}
@@ -244,6 +258,25 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
           </motion.div>
         </header>
 
+        {isReadOnly && (
+          <div className="mx-6 mb-6 -mt-2 flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
+            <Lock size={18} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This bundle is read-only</p>
+              <p className="text-sm text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                You're over your plan's bundle limit. Upgrade to edit, share, or remove this bundle.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsReadOnlyModalOpen(true)}
+              className="ml-2 flex-shrink-0"
+            >
+              Upgrade
+            </Button>
+          </div>
+        )}
+
         <main className="px-6">
           {guides.length > 0 ? (
             <div className="space-y-3">
@@ -257,21 +290,33 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                     </div>
                   </div>
                   {!isLibraryView && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}><Archive size={18} /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove from bundle?</AlertDialogTitle>
-                          <AlertDialogDescription>This will remove "{guide.name}" from "{bundle.name}", but it will remain in your library.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleRemoveGuideFromBundle(bundle.id, guide.id, bundle.name, guide.name)}>Remove</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    isReadOnly ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => { e.stopPropagation(); setIsReadOnlyModalOpen(true); }}
+                        aria-label="Remove from bundle (read-only — upgrade required)"
+                      >
+                        <Archive size={18} />
+                      </Button>
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}><Archive size={18} /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove from bundle?</AlertDialogTitle>
+                            <AlertDialogDescription>This will remove "{guide.name}" from "{bundle.name}", but it will remain in your library.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleRemoveGuideFromBundle(bundle.id, guide.id, bundle.name, guide.name)}>Remove</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )
                   )}
                 </motion.div>
               ))}
@@ -283,7 +328,12 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
               {!isLibraryView && (
                 <>
                   <p className="text-gray-500 dark:text-gray-400 mb-6">Add a guide to get started!</p>
-                  <Button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] text-white">Add Guides</Button>
+                  <Button
+                    onClick={() => { if (!gateReadOnly()) setIsModalOpen(true); }}
+                    className="bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] text-white"
+                  >
+                    Add Guides
+                  </Button>
                 </>
               )}
             </motion.div>

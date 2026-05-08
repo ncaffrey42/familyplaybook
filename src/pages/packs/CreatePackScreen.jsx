@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, X, Package, Trash2 } from 'lucide-react';
+import { Plus, X, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,17 +11,6 @@ import PageHeader from '@/components/PageHeader';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useData } from '@/contexts/DataContext';
 import ImageUpload from '@/components/ImageUpload';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import AddGuidesToPackModal from '@/components/AddGuidesToPackModal';
 import { cn } from '@/lib/utils';
 import { PackImage } from '@/components/PackImage';
@@ -95,21 +84,6 @@ const CreatePackScreen = ({ pack, onSavePack, onDataChange }) => {
     }
   };
 
-  // Handler for archiving a bundle (soft delete)
-  const handleDeletePack = async () => {
-    if (!pack?.id) return;
-    setIsSubmitting(true);
-    try {
-      await onSavePack({ ...pack, is_archived: true });
-      if (onDataChange) onDataChange();
-      handleNavigate('packs');
-    } catch (error) {
-      console.error("Failed to archive bundle:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleAddGuides = (guidesToAdd) => {
     const newGuideIds = guidesToAdd.map(g => g.id);
     setSelectedGuideIds(prev => [...new Set([...prev, ...newGuideIds])]);
@@ -141,25 +115,6 @@ const CreatePackScreen = ({ pack, onSavePack, onDataChange }) => {
             title={isEditing ? "Edit Bundle" : "Create New Bundle"}
             onBack={() => isEditing ? handleNavigate('packDetail', { pack: pack }) : handleNavigate('packs')}
           >
-            {isEditing && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900">
-                    <Trash2 size={24} />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>This action will archive your bundle "{name}". It will no longer appear in your active bundles but can be restored from the archived section.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeletePack} className="bg-red-500 hover:bg-red-600 text-white">Archive Bundle</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
           </PageHeader>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-6">

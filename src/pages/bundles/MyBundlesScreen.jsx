@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Library, Frown, BookOpen } from 'lucide-react'; // Added BookOpen for Guides link
+import { Plus, Library, Frown, BookOpen, Lock } from 'lucide-react'; // Added BookOpen for Guides link
 import { Helmet } from 'react-helmet';
 import { useData } from '@/contexts/DataContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,21 +9,35 @@ import SearchInput from '@/components/ui/SearchInput';
 import BundleImage from '@/components/BundleImage';
 import { Button } from '@/components/ui/button';
 import { searchBundles } from '@/lib/searchUtils';
+import UsageBadge from '@/components/UsageBadge';
 
-const BundleCard = ({ bundle, onClick }) => (
-  <div
-    onClick={onClick}
-    className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-card hover:shadow-soft transition-all duration-300 cursor-pointer flex flex-col justify-between group"
-  >
-    <div className="w-full h-32 rounded-2xl mb-4 overflow-hidden transform group-hover:scale-[1.02] transition-transform duration-300">
-      <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} />
+const BundleCard = ({ bundle, onClick, isLibrary = false }) => {
+  const isReadOnly = !!bundle.is_read_only && !isLibrary;
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-card hover:shadow-soft transition-all duration-300 cursor-pointer flex flex-col justify-between group relative ${isReadOnly ? 'opacity-75' : ''}`}
+    >
+      {isReadOnly && (
+        <div
+          className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-gray-900/70 dark:bg-gray-100/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white dark:text-gray-900"
+          aria-label="Read-only — upgrade to edit"
+          title="Read-only — upgrade to edit"
+        >
+          <Lock size={10} strokeWidth={3} />
+          <span>Read-only</span>
+        </div>
+      )}
+      <div className="w-full h-32 rounded-2xl mb-4 overflow-hidden transform group-hover:scale-[1.02] transition-transform duration-300">
+        <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} />
+      </div>
+      <div className="text-center">
+        <h3 className="font-bold text-lg text-foreground truncate">{bundle.name}</h3>
+        <p className="text-sm text-muted-foreground">{bundle.guide_count ?? bundle.guides?.length ?? 0} guides</p>
+      </div>
     </div>
-    <div className="text-center">
-      <h3 className="font-bold text-lg text-foreground truncate">{bundle.name}</h3>
-      <p className="text-sm text-muted-foreground">{bundle.guide_count ?? bundle.guides?.length ?? 0} guides</p>
-    </div>
-  </div>
-);
+  );
+};
 
 const BundleList = ({ bundles, isLibrary = false, onTabChange }) => {
   const navigate = useNavigate();
@@ -76,6 +90,7 @@ const BundleList = ({ bundles, isLibrary = false, onTabChange }) => {
           <BundleCard
             bundle={bundle}
             onClick={() => handleCardClick(bundle)}
+            isLibrary={isLibrary}
           />
         </motion.div>
       ))}
@@ -98,10 +113,7 @@ const MyBundlesScreen = () => {
   }, [location.state]);
 
 
-  const filteredMyBundles = useMemo(() => {
-    const activeBundles = allBundles.filter(bundle => !bundle.is_archived);
-    return searchBundles(activeBundles, searchTerm);
-  }, [allBundles, searchTerm]);
+  const filteredMyBundles = useMemo(() => searchBundles(allBundles, searchTerm), [allBundles, searchTerm]);
 
   const filteredLibraryBundles = useMemo(() => {
     return searchBundles(availableLibraryBundles, searchTerm);
@@ -123,10 +135,14 @@ const MyBundlesScreen = () => {
       <div className="min-h-screen bg-background pb-28">
         <main className="p-6">
           <header className="flex items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-bold text-foreground">Bundles</h1>
-            {/* Added navigation link to Guides section */}
-            <Button 
-              variant="outline" 
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="text-3xl font-bold text-foreground">Bundles</h1>
+              {activeTab === 'my-bundles' && (
+                <UsageBadge resourceType="bundle" current={allBundles.length} />
+              )}
+            </div>
+            <Button
+              variant="outline"
               onClick={() => navigate('/guides')}
               className="rounded-full flex items-center gap-1.5 text-foreground bg-white dark:bg-gray-800 shadow-sm"
             >

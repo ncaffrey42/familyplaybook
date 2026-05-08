@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Zap, Database, Users, Box, Book, Archive, AlertCircle } from 'lucide-react';
+import { RefreshCw, Zap, Database, Users, Box, Book, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DowngradeFlow from './DowngradeFlow';
 import { format } from 'date-fns';
@@ -115,14 +115,8 @@ const MyAccountPlanSection = () => {
           limit={getLimit('bundles_max')}
           icon={Box}
         />
-        <UsageMeter 
-          label="Archived Guides" 
-          current={usage['archived_guides'] || 0} 
-          limit={getLimit('archived_guides_max')}
-          icon={Archive}
-        />
-        <UsageMeter 
-          label="Team Members" 
+        <UsageMeter
+          label="Team Members"
           current={usage['editors'] || 0} 
           limit={getLimit('editors_max')}
           icon={Users}
