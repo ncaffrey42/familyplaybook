@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, Lock, EyeOff, QrCode } from 'lucide-react';
+import { Wifi, Lock, EyeOff, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,54 @@ import { useToast } from '@/components/ui/use-toast';
 import QRCode from 'qrcode.react';
 import { Helmet } from 'react-helmet';
 import PageHeader from '@/components/PageHeader';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useNavigate } from 'react-router-dom';
+import { PLANS } from '@/lib/plans';
 
 const HostMode = ({ onNavigate }) => {
     const { toast } = useToast();
+    const { planKey } = useAuth();
+    const navigate = useNavigate();
     const [pin, setPin] = useState('');
     const [showPin, setShowPin] = useState(false);
     const [isHostModeActive, setIsHostModeActive] = useState(false);
+
+    const hasHostMode = PLANS[planKey]?.features?.host_mode ?? false;
+
+    if (!hasHostMode) {
+        return (
+            <>
+                <Helmet>
+                    <title>Host Mode - Family Playbook</title>
+                </Helmet>
+                <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-24">
+                    <div className="p-6">
+                        <PageHeader title="Host Mode" onBack={() => navigate(-1)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex flex-col items-center text-center mt-12 px-4"
+                        >
+                            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mb-6 shadow-lg">
+                                <Crown size={40} className="text-white" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">Family Plan Feature</h2>
+                            <p className="text-gray-600 dark:text-gray-400 max-w-sm mb-8">
+                                Host Mode lets guests and babysitters access your playbook securely with a PIN. Upgrade to the Family plan to unlock it.
+                            </p>
+                            <Button
+                                className="w-full max-w-xs h-12 text-base bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0"
+                                onClick={() => navigate('/account/plans')}
+                            >
+                                <Crown size={18} className="mr-2" />
+                                Upgrade to Family
+                            </Button>
+                        </motion.div>
+                    </div>
+                </div>
+            </>
+        );
+    }
 
     const handleToggleHostMode = () => {
         if (!isHostModeActive && pin.length < 4) {
@@ -53,7 +95,7 @@ const HostMode = ({ onNavigate }) => {
             </Helmet>
             <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-24">
                 <div className="p-6">
-                    <PageHeader title="Host Mode" onBack={() => onNavigate('account')} />
+                    <PageHeader title="Host Mode" onBack={() => navigate(-1)} />
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

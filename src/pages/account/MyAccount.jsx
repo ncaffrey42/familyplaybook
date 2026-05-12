@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Camera, Save } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import AccountLayout from '@/components/AccountLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import ImageUpload from '@/components/ImageUpload';
 
 const MyAccount = () => {
     const { user, profile, refreshProfile } = useAuth();
@@ -16,7 +17,6 @@ const MyAccount = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [fullName, setFullName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
-    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         if (profile) {
@@ -70,38 +70,34 @@ const MyAccount = () => {
                     <CardContent>
                         <form onSubmit={handleUpdateProfile} className="space-y-6">
                             <div className="flex flex-col sm:flex-row gap-6 items-start">
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="flex flex-col items-center gap-3">
                                     <Avatar className="h-24 w-24 border-2 border-gray-100 dark:border-gray-800">
                                         <AvatarImage src={avatarUrl} />
                                         <AvatarFallback className="text-2xl">{fullName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}</AvatarFallback>
                                     </Avatar>
-                                    {/* Real avatar upload requires storage setup. For now, simple text URL or disabled button */}
-                                    <Button variant="outline" size="sm" type="button" disabled className="w-full">
-                                        <Camera className="w-4 h-4 mr-2" /> Change
-                                    </Button>
-                                    <span className="text-xs text-muted-foreground">(Upload coming soon)</span>
+                                    <div className="w-36">
+                                        <ImageUpload
+                                            currentImage={null}
+                                            onImageUpload={setAvatarUrl}
+                                            storagePath="avatars"
+                                            placeholder={
+                                                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                                    Change Photo
+                                                </div>
+                                            }
+                                        />
+                                    </div>
                                 </div>
-                                
+
                                 <div className="flex-1 space-y-4 w-full">
                                     <div className="grid gap-2">
                                         <Label htmlFor="fullName">Full Name</Label>
-                                        <Input 
-                                            id="fullName" 
-                                            value={fullName} 
-                                            onChange={(e) => setFullName(e.target.value)} 
+                                        <Input
+                                            id="fullName"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
                                             placeholder="John Doe"
                                             className="max-w-md"
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="avatarUrl">Avatar URL (Optional)</Label>
-                                        <Input 
-                                            id="avatarUrl" 
-                                            value={avatarUrl} 
-                                            onChange={(e) => setAvatarUrl(e.target.value)} 
-                                            placeholder="https://example.com/me.png"
-                                            className="max-w-md text-sm text-gray-500 font-mono"
                                         />
                                     </div>
                                 </div>

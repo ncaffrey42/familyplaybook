@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import GuideIcon from '@/components/GuideIcon';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
+import { PLANS } from '@/lib/plans';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,7 @@ const GuideDetail = ({ guide: propGuide }) => {
   } = useData();
   
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, planKey } = useAuth();
   const [checkedSteps, setCheckedSteps] = useState([]);
   const [isSharing, setIsSharing] = useState(false);
   const [isBundleModalOpen, setIsBundleModalOpen] = useState(false);
@@ -130,6 +131,18 @@ const GuideDetail = ({ guide: propGuide }) => {
         if (existingLink) {
             shareId = existingLink.id;
         } else {
+            const sharedLinksLimit = PLANS[planKey]?.features?.shared_links ?? null;
+            if (sharedLinksLimit !== null) {
+                const { count } = await supabase
+                    .from('shared_links')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+                if (count >= sharedLinksLimit) {
+                    toast({ title: "Shared link limit reached", description: "Upgrade your plan to create more shared links.", variant: "destructive" });
+                    setIsSharing(false);
+                    return;
+                }
+            }
             const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, guide_id: guide.id, bundle_id: bundleId || null }).select().single();
             if (shareError) throw shareError;
             shareId = shareData.id;

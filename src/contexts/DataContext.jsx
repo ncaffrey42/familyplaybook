@@ -293,11 +293,19 @@ export const DataProvider = ({ children }) => {
 
   const addGuideFromLibraryCore = useCallback(async (guide) => {
     if (!user) throw new Error("User not authenticated");
-    
-    // Entitlement Check
+
+    // Entitlement Check — quantity
     const entitlement = await entitlementService.canPerform(user.id, 'GUIDE_CREATE');
     if (!entitlement.allowed) {
       throw new Error(`Entitlement Error: ${entitlement.reason_code}`);
+    }
+
+    // Entitlement Check — template tier
+    if (guide.tier && guide.tier !== 'starter') {
+      const tierCheck = await entitlementService.canPerform(user.id, 'TEMPLATE_USE', { template_tier: guide.tier });
+      if (!tierCheck.allowed) {
+        throw new Error(`Entitlement Error: ${tierCheck.reason_code}`);
+      }
     }
 
     const guideData = {
@@ -388,11 +396,20 @@ export const DataProvider = ({ children }) => {
   const handleAddBundleFromLibrary = useCallback(async (bundle) => {
     if (!user) return;
 
-    // Entitlement Check
+    // Entitlement Check — quantity
     const entitlement = await entitlementService.canPerform(user.id, 'BUNDLE_CREATE');
     if (!entitlement.allowed) {
       toast({ title: "Limit Reached", description: "You cannot create more bundles.", variant: "destructive" });
       return;
+    }
+
+    // Entitlement Check — template tier
+    if (bundle.tier && bundle.tier !== 'starter') {
+      const tierCheck = await entitlementService.canPerform(user.id, 'TEMPLATE_USE', { template_tier: bundle.tier });
+      if (!tierCheck.allowed) {
+        toast({ title: "Upgrade Required", description: "This template is only available on paid plans.", variant: "destructive" });
+        return;
+      }
     }
 
     try {

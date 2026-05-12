@@ -20,6 +20,7 @@ import {
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { PLANS } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { logError } from '@/lib/errorLogger';
@@ -40,7 +41,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     isDataLoaded, 
     fetchData 
   } = useData();
-  const { user } = useAuth();
+  const { user, planKey } = useAuth();
   const { toast } = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -139,10 +140,24 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
         const { error: updateGuidesError } = await supabase.from('guides').update({ is_shareable: true }).in('id', guideIds);
         if (updateGuidesError) throw updateGuidesError;
       }
-      
+
       const { data: existingLinks } = await supabase.from('shared_links').select('guide_id').in('guide_id', guideIds);
       const existingLinkIds = new Set(existingLinks.map(l => l.guide_id));
       const linksToCreate = guideIds.filter(id => !existingLinkIds.has(id)).map(guideId => ({ user_id: user.id, guide_id: guideId, bundle_id: bundle.id }));
+      // +1 for the bundle-level link we always create below
+      const newLinksCount = linksToCreate.length + 1;
+
+      const sharedLinksLimit = PLANS[planKey]?.features?.shared_links ?? null;
+      if (sharedLinksLimit !== null) {
+          const { count: existingCount } = await supabase
+              .from('shared_links')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+          if ((existingCount + newLinksCount) > sharedLinksLimit) {
+              toast({ title: "Shared link limit reached", description: "Upgrade your plan to share bundles.", variant: "destructive" });
+              return;
+          }
+      }
 
       if (linksToCreate.length > 0) {
           const { error: createLinksError } = await supabase.from('shared_links').insert(linksToCreate);
