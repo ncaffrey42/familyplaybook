@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
