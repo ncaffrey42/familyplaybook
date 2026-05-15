@@ -195,3 +195,48 @@ src/
 ```
 
 See `technical_specification.txt` and `readme.txt` for full product and schema documentation.
+
+---
+
+## 10. Database migrations
+
+Migrations live in [`supabase/migrations/`](supabase/migrations/) as plain `.sql` files, ordered by their `YYYYMMDD` filename prefix. They are **not** applied automatically — the Supabase project schema and the SQL files can drift, and that drift is the most common cause of "I'm logged in but the app shows no data" symptoms (see troubleshooting below).
+
+Whenever you pull new commits, check whether `supabase/migrations/` contains any files that haven't been applied to the live Supabase project, and apply them.
+
+### Applying migrations — Supabase Dashboard (recommended)
+
+This is the workflow used in production. It needs no CLI install and works on any Node version.
+
+1. Open the SQL editor: https://supabase.com/dashboard/project/ifdncylgiqhhcwovpdyf/sql/new
+2. For each unapplied migration file in `supabase/migrations/`, in filename order:
+   - Open the `.sql` file in your editor, copy its full contents.
+   - Paste into the dashboard SQL editor and click **Run**.
+   - Confirm "Success. No rows returned." (or the expected row output).
+3. Hard-refresh the app (Cmd+Shift+R) and confirm queries that previously 400'd now return 200.
+
+The migrations in this repo are written to be idempotent (`CREATE … IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`, etc.), so re-running a migration that has already been applied is safe.
+
+### Applying migrations — Supabase CLI (alternative)
+
+Faster for bulk-applying many migrations, but requires Node 20+ and one-time setup.
+
+```bash
+brew install supabase/tap/supabase
+supabase login
+supabase link --project-ref ifdncylgiqhhcwovpdyf
+supabase db push
+```
+
+### Troubleshooting: "Library and My Guides are empty after login"
+
+Symptom: you can log in successfully, but the Library tab, My Guides, and My Bundles all appear empty. No obvious error in the UI.
+
+Cause: the client is selecting a column from `guides` or `packs` that doesn't yet exist in the database, because a recent migration in `supabase/migrations/` hasn't been applied to the project. The Supabase REST API returns `400 Bad Request`, the `Promise.allSettled` in [`DataContext.jsx`](src/contexts/DataContext.jsx) swallows the error, and the UI silently renders `[]`.
+
+How to confirm in 30 seconds:
+1. Open DevTools → **Network** tab, filter `guides`, reload the page.
+2. If you see `400 Bad Request` on a request like `…/rest/v1/guides?select=…updated_at,…&user_id=eq.…`, that's this issue.
+3. Click the failing request → **Response** tab — Postgres usually names the offending column (e.g. `column "updated_at" does not exist`).
+
+Fix: apply the pending migrations using either workflow above. After applying, hard-refresh; the same request should now return 200 with data.
