@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Trash2, Loader2 } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
@@ -16,6 +16,17 @@ import { useData } from '@/contexts/DataContext';
 import ImageUpload from '@/components/ImageUpload';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { BundleImage } from '@/components/BundleImage';
 import GuideIcon from '@/components/GuideIcon';
@@ -25,7 +36,7 @@ const colorOptions = ['#FFDDC1', '#FFABAB', '#FFC3A0', '#FF677D', '#D4A5A5', '#8
 const CreateBundleScreen = ({ bundle: propBundle }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { allGuides, allBundles, handleSaveBundle } = useData();
+  const { allGuides, allBundles, handleSaveBundle, handleDeleteBundle } = useData();
   const { checkEntitlement } = useEntitlements();
   const { showLimitNotification } = useLimitNotification();
 
@@ -41,6 +52,14 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
   const [showAddGuidesModal, setShowAddGuidesModal] = useState(false);
   const [selectedGuideIds, setSelectedGuideIds] = useState([]);
   const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onConfirmDelete = async () => {
+    if (!bundle) return;
+    setIsDeleting(true);
+    const ok = await handleDeleteBundle(bundle);
+    if (!ok) setIsDeleting(false);
+  };
 
   // Block edits to read-only bundles at the route level.
   useEffect(() => {
@@ -174,6 +193,38 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
                 {isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Save Changes" : "Create Bundle")}
               </Button>
             </EntitlementGuard>
+
+            {isEditing && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    disabled={isSubmitting || isDeleting}
+                    className="w-full mt-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold py-3 rounded-xl"
+                  >
+                    <Trash2 size={18} className="mr-2" /> Delete bundle
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete &quot;{bundle.name}&quot;?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This bundle will be permanently deleted. The guides inside will stay in your library and remain in any other bundles they belong to.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); onConfirmDelete(); }}
+                      disabled={isDeleting}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      {isDeleting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting…</>) : 'Delete bundle'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </motion.div>
         </div>
       </div>

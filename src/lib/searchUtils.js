@@ -24,25 +24,21 @@ export const searchGuides = (guides, query) => {
     if (guide.description?.toLowerCase().includes(lowerQuery)) return true;
     if (guide.category?.toLowerCase().includes(lowerQuery)) return true;
 
-    // 2. Check steps (if available)
+    // 2. Check step content (titles were removed app-wide — instructions only)
     if (guide.steps && Array.isArray(guide.steps)) {
       const hasMatchInSteps = guide.steps.some(step => {
         return (
-          step.title?.toLowerCase().includes(lowerQuery) ||
           step.description?.toLowerCase().includes(lowerQuery) ||
           step.content?.toLowerCase().includes(lowerQuery)
         );
       });
       if (hasMatchInSteps) return true;
     }
-    
-    // 3. Check legacy or alternative content structure (sometimes content is the steps array)
+
+    // 3. Legacy: when `content` is itself the steps array
     if (guide.content && Array.isArray(guide.content)) {
        const hasMatchInContent = guide.content.some(step => {
-        return (
-          step.title?.toLowerCase().includes(lowerQuery) ||
-          step.description?.toLowerCase().includes(lowerQuery)
-        );
+        return step.description?.toLowerCase().includes(lowerQuery);
       });
       if (hasMatchInContent) return true;
     }

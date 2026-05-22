@@ -1,8 +1,9 @@
 import React from 'react';
-import { Home, Library, Heart, User, CreditCard, FolderOpen } from 'lucide-react';
+import { Home, Library, Heart, CreditCard, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
+import UserAvatar from '@/components/UserAvatar';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -15,7 +16,8 @@ const BottomNav = () => {
     { id: 'bundles', path: '/bundles', icon: FolderOpen, label: 'Bundles' },
     { id: 'favorites', path: '/favorites', icon: Heart, label: 'Favorites' },
     { id: 'plans', path: '/plans', icon: CreditCard, label: 'Plans' },
-    { id: 'account', path: '/account', icon: User, label: 'Account' },
+    // `icon` is null for the account tab — it renders the user's avatar instead.
+    { id: 'account', path: '/account', icon: null, label: 'Account' },
   ];
 
   const handlePrefetch = (screenId) => {
@@ -68,12 +70,27 @@ const BottomNav = () => {
               className="relative flex flex-col items-center justify-center w-16 group"
             >
               <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10' : 'bg-transparent'}`}>
-                <Icon
-                  className={`transition-colors duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                  fill={isActive && item.id === 'favorites' ? 'currentColor' : 'none'}
-                  size={22}
-                />
+                {item.id === 'account' ? (
+                  // box-shadow ring instead of `ring-*` utilities so the
+                  // active indicator doesn't expand the avatar's layout box
+                  // — keeps it the same 22×22 footprint as the lucide icons
+                  // in the other tabs, so vertical alignment with the
+                  // labels stays consistent across the row.
+                  <UserAvatar
+                    className={`h-[22px] w-[22px] transition-shadow duration-300 ${
+                      isActive
+                        ? 'shadow-[0_0_0_2px_hsl(var(--primary))]'
+                        : 'opacity-80 group-hover:opacity-100'
+                    }`}
+                  />
+                ) : (
+                  <Icon
+                    className={`transition-colors duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    fill={isActive && item.id === 'favorites' ? 'currentColor' : 'none'}
+                    size={22}
+                  />
+                )}
               </div>
               <span
                 className={`text-[10px] mt-1 font-medium text-center transition-colors duration-300 ${

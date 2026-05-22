@@ -280,7 +280,7 @@ const LoginScreen = () => {
                         <span className="w-full border-t border-gray-200 dark:border-gray-700" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-[#FAF9F6] dark:bg-gray-900 px-2 text-muted-foreground font-medium">
+                        <span className="bg-background px-2 text-muted-foreground font-medium">
                           Or continue with email
                         </span>
                       </div>

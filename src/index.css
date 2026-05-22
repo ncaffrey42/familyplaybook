@@ -9,10 +9,13 @@
     --background: 38 50% 98%; /* warm-neutral-50 */
     --foreground: 20 14.3% 4.1%; /* warm-neutral-950 */
 
-    --card: 38 50% 98%;
+    /* Card / popover lifted to pure white so they read as elevated paper
+       on the warm cream background. Previously equal to --background,
+       which flattened any UI that used `bg-card`. */
+    --card: 0 0% 100%;
     --card-foreground: 20 14.3% 4.1%;
 
-    --popover: 38 50% 98%;
+    --popover: 0 0% 100%;
     --popover-foreground: 20 14.3% 4.1%;
 
     --primary: 205 60% 55%; /* soft-blue */
@@ -38,32 +41,44 @@
   }
 
   .dark {
-    --background: 20 14.3% 4.1%;
+    /* Page background: deeper than card so cards float with a sense of
+       elevation. Going just below pure black keeps the OLED-friendly feel
+       without flattening the UI. */
+    --background: 20 14% 6%;
     --foreground: 38 50% 98%;
 
-    --card: 20 14.3% 4.1%;
+    /* Card / popover sit one step above background. Same hue family as
+       background so it reads as elevated paper, not a different colour. */
+    --card: 20 12% 11%;
     --card-foreground: 38 50% 98%;
 
-    --popover: 20 14.3% 4.1%;
+    --popover: 20 12% 11%;
     --popover-foreground: 38 50% 98%;
 
     --primary: 205 60% 55%;
     --primary-foreground: 20 14.3% 4.1%;
 
-    --secondary: 20 10% 10%;
+    /* Secondary surfaces (tab list backgrounds etc.) — between background
+       and card so active tabs read as clearly "lifted". */
+    --secondary: 20 10% 9%;
     --secondary-foreground: 38 50% 98%;
 
-    --muted: 20 10% 10%;
-    --muted-foreground: 38 10% 60%;
+    /* Muted: matches secondary so badges/chips feel consistent with the
+       tab/strip surfaces. Muted-foreground bumped from 60% to 70% lightness
+       for better legibility against the darker page background. */
+    --muted: 20 10% 9%;
+    --muted-foreground: 38 10% 70%;
 
     --accent: 145 40% 70%;
-    --accent-foreground: 38 50% 98%;
+    --accent-foreground: 20 14.3% 4.1%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 38 50% 98%;
 
-    --border: 20 10% 15%;
-    --input: 20 10% 15%;
+    /* Border bumped from 15% to 17% so card edges remain visible against
+       the new lighter card surface. */
+    --border: 20 10% 17%;
+    --input: 20 10% 17%;
     --ring: 205 60% 55%;
   }
 }

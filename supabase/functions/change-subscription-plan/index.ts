@@ -18,13 +18,34 @@ Deno.serve(async (req) => {
 
     const { data: billing } = await supabaseAdmin
       .from('user_billing')
-      .select('stripe_customer_id, stripe_subscription_id')
+      .select('stripe_customer_id, stripe_subscription_id, plan_key')
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // No Stripe subscription on file. This happens for users granted a
+    // plan manually (dev fixtures, comped accounts, promos) or for legacy
+    // rows where billing was never wired up. Stripe was never involved,
+    // so we just mutate user_billing directly — no charge to make, no
+    // proration to calculate.
     if (!billing?.stripe_subscription_id) {
-      return new Response(JSON.stringify({ error: 'No active subscription found' }), {
-        status: 404,
+      const { error: updateError } = await supabaseAdmin
+        .from('user_billing')
+        .upsert({
+          user_id: user.id,
+          plan_key,
+          billing_interval,
+          // Keep existing customer ID if there is one; otherwise leave null.
+          stripe_customer_id: billing?.stripe_customer_id ?? null,
+        }, { onConflict: 'user_id' });
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message, success: false }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, mode: 'direct' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -35,7 +56,7 @@ Deno.serve(async (req) => {
 
     // Prorate immediately on upgrade; use billing period end on downgrade
     const currentPlanLevel = { free: 0, couple: 1, family: 2 };
-    const currentPlan = subscription.metadata?.plan_key ?? 'free';
+    const currentPlan = subscription.metadata?.plan_key ?? billing.plan_key ?? 'free';
     const isUpgrade = (currentPlanLevel[plan_key] ?? 0) > (currentPlanLevel[currentPlan] ?? 0);
 
     await stripe.subscriptions.update(billing.stripe_subscription_id, {
@@ -45,7 +66,7 @@ Deno.serve(async (req) => {
       metadata: { user_id: user.id, plan_key, billing_interval },
     });
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, mode: 'stripe' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

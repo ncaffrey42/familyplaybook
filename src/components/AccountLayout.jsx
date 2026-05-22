@@ -44,7 +44,7 @@ const AccountLayout = ({ children }) => {
     }
 
     return (
-        <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-32 font-sans transition-colors duration-300">
+        <div className="min-h-screen bg-background pb-32 font-sans transition-colors duration-300">
             <Helmet>
                 <title>My Account - Family Playbook</title>
                 <meta name="description" content="Manage your account settings, plans, and profile." />

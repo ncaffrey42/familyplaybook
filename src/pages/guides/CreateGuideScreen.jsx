@@ -220,7 +220,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   if (guideId && !isDataLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-[#5CA9E9]" />
       </div>
     );
@@ -233,7 +233,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       <ReadOnlyUpgradeModal
         isOpen={isReadOnlyModalOpen}
         onClose={handleReadOnlyModalClose}
@@ -250,7 +250,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             >
               <ArrowLeft size={24} />
             </Button>
-            <h1 className="text-2xl font-bold text-gray-800">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
           </div>
           
         </div>
@@ -261,14 +261,14 @@ const CreateGuideScreen = ({ pack: propPack }) => {
           className="space-y-6"
         >
           {/* Header Section: Icon + Title + Category */}
-          <div className="bg-white rounded-2xl p-4 shadow-card space-y-4">
+          <div className="bg-card rounded-2xl p-4 shadow-card space-y-4">
              <div className="flex gap-4">
                 <div className="flex-shrink-0">
                   <GuideIconPicker 
                     icon={icon} 
                     setIcon={setIcon} 
                     trigger={
-                      <button className="w-16 h-16 rounded-2xl bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center transition-all group">
+                      <button className="w-16 h-16 rounded-2xl bg-muted hover:bg-accent/30 border-2 border-dashed border-border flex items-center justify-center transition-all group">
                          <GuideIcon iconName={icon} category={category} size={32} className="w-12 h-12" />
                       </button>
                     }
@@ -281,7 +281,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                     value={guideName}
                     onChange={(e) => setGuideName(e.target.value)}
                     placeholder="e.g., Bedtime Routine"
-                    className="w-full h-10 bg-transparent text-lg font-bold text-gray-800 placeholder-gray-300 focus:outline-none border-b-2 border-transparent focus:border-[#5CA9E9] transition-colors"
+                    className="w-full h-10 bg-transparent text-lg font-bold text-foreground placeholder:text-muted-foreground focus:outline-none border-b-2 border-transparent focus:border-[#5CA9E9] transition-colors"
                   />
                 </div>
              </div>
@@ -307,10 +307,10 @@ const CreateGuideScreen = ({ pack: propPack }) => {
           </div>
           
           {/* Bundle Selection Section */}
-          <div className="bg-white rounded-2xl p-4 shadow-card">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Add to Bundle (Optional)</label>
+          <div className="bg-card rounded-2xl p-4 shadow-card">
+            <label className="block text-sm font-semibold text-muted-foreground mb-2">Add to Bundle (Optional)</label>
             <Select value={selectedBundleId} onValueChange={setSelectedBundleId}>
-              <SelectTrigger className="w-full h-12 rounded-xl bg-gray-50 border-gray-200">
+              <SelectTrigger className="w-full h-12 rounded-xl bg-card border-border text-foreground">
                 <SelectValue placeholder="Select a bundle..." />
               </SelectTrigger>
               <SelectContent>
@@ -327,18 +327,18 @@ const CreateGuideScreen = ({ pack: propPack }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+            <label className="block text-sm font-semibold text-muted-foreground mb-2">Description</label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Briefly describe what this guide is about..."
-              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-white border-2 border-gray-200 focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
+              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-card border-2 border-border focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-semibold text-gray-700">Steps</label>
+              <label className="block text-sm font-semibold text-muted-foreground">Steps</label>
               <Button
                 onClick={addStep}
                 size="sm"
@@ -356,7 +356,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                   key={step.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl p-4 shadow-card"
+                  className="bg-card rounded-2xl p-4 shadow-card"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-2 mt-3">
@@ -370,7 +370,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                         value={step.text}
                         onChange={(e) => updateStep(step.id, 'text', e.target.value)}
                         placeholder="Describe this step..."
-                        className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-transparent text-foreground placeholder:text-muted-foreground border-2 border-border focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
                         rows="2"
                       />
                       
@@ -460,10 +460,10 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-card">
+          <div className="bg-card rounded-2xl p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-gray-800">Make Shareable</h3>
+                <h3 className="font-semibold text-foreground">Make Shareable</h3>
                 <p className="text-sm text-gray-500">Anyone with the link can view</p>
               </div>
               <button

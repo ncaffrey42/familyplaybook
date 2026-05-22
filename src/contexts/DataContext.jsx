@@ -213,7 +213,11 @@ export const DataProvider = ({ children }) => {
     }
 
     const { packIds, bundleNames, bundles, pack_guides, ...guideData } = guideToSave;
-    const cleanSteps = guideData.steps ? guideData.steps.map(({ localId, ...rest }) => rest) : [];
+    // Strip fields that the app no longer surfaces. `title` is gone (guides
+    // are instructions only — no per-step heading); `localId` was form-only.
+    const cleanSteps = guideData.steps
+      ? guideData.steps.map(({ localId, title, ...rest }) => rest)
+      : [];
     const upsertData = { ...guideData, steps: cleanSteps, user_id: user.id };
 
     try {
@@ -289,6 +293,31 @@ export const DataProvider = ({ children }) => {
         logError(error, { context: 'handleSaveBundle' });
         toast({ title: "Error saving bundle", variant: "destructive" });
     }
+  }, [user, navigate, toast, fetchData]);
+
+  // Permanent delete of a user's bundle. Does NOT delete the guides inside —
+  // they live independently and may belong to other bundles. Only the bundle
+  // row itself (and its pack_guides join rows via FK cascade) are removed.
+  const handleDeleteBundle = useCallback(async (bundle) => {
+    if (!user || !bundle?.id) return;
+
+    // Optimistic UI: drop the bundle from local state immediately.
+    setAllBundles(prev => prev.filter(b => b.id !== bundle.id));
+
+    const { error } = await supabase.from('packs').delete().eq('id', bundle.id);
+
+    if (error) {
+      logError(error, { context: 'handleDeleteBundle' });
+      // Rollback by refetching authoritative state.
+      await fetchData(user);
+      toast({ title: "Couldn't delete bundle", description: error.message, variant: "destructive" });
+      return false;
+    }
+
+    UsageTrackingService.updateUsageMetric(user.id, 'bundles', -1).catch(console.error);
+    toast({ title: "🗑️ Bundle deleted", description: `"${bundle.name}" was removed. The guides inside are still in your library.` });
+    navigate('/bundles');
+    return true;
   }, [user, navigate, toast, fetchData]);
 
   const addGuideFromLibraryCore = useCallback(async (guide) => {
@@ -446,7 +475,7 @@ export const DataProvider = ({ children }) => {
   const value = {
     allBundles, allGuides, bundleLibrary, availableLibraryBundles, guideLibrary, favorites, isDataLoaded,
     fetchData: (currentUser) => fetchData(currentUser || user),
-    toggleFavorite, handleSaveGuide, handleSaveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
+    toggleFavorite, handleSaveGuide, handleSaveBundle, handleDeleteBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

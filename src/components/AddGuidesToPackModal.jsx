@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search } from 'lucide-react';
+import GuideIcon from '@/components/GuideIcon';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -101,9 +102,7 @@ const AddGuidesToPackModal = ({ isOpen, onClose, allGuides = [], guidesInPack = 
                       id={`guide-${guide.id}`}
                       className="rounded-md"
                     />
-                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-xl flex-shrink-0">
-                      {guide.icon}
-                    </div>
+                    <GuideIcon iconName={guide.icon} category={guide.category} />
                     <div className="flex-grow">
                       <p className="font-semibold text-foreground">{guide.name}</p>
                       <p className="text-sm text-muted-foreground">{guide.category}</p>

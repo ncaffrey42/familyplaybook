@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, FileText } from 'lucide-react';
+import GuideIcon from '@/components/GuideIcon';
 import { Helmet } from 'react-helmet';
 import SearchInput from '@/components/ui/SearchInput';
 import { searchGuides, searchBundles } from '@/lib/searchUtils';
@@ -41,7 +42,7 @@ const SearchScreen = ({ onNavigate, packs, guides }) => {
                 <meta name="twitter:description" content="Search for packs and guides within your Family Playbook. Find what you need, when you need it." />
                 <meta name="twitter:image" content={defaultImage} />
             </Helmet>
-            <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-24">
+            <div className="min-h-screen bg-background pb-24">
                 <div className="p-6">
                     <SearchInput
                         searchTerm={searchTerm}
@@ -87,9 +88,7 @@ const SearchScreen = ({ onNavigate, packs, guides }) => {
                                                 onClick={() => handleResultClick({ ...guide, type: 'guide' })}
                                                 className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card hover:shadow-soft transition-all duration-300 cursor-pointer flex items-center gap-4"
                                             >
-                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#5CA9E9]/20 to-[#7BC47F]/20 flex items-center justify-center text-2xl">
-                                                    {guide.icon}
-                                                </div>
+                                                <GuideIcon iconName={guide.icon} category={guide.category} />
                                                 <div className="flex-1">
                                                     <h3 className="font-semibold text-gray-800 dark:text-gray-200">{guide.name}</h3>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Guide in {guide.pack}</p>

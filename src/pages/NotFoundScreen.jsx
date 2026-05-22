@@ -20,7 +20,7 @@ import React from 'react';
             <meta property="og:image" content={defaultImage} />
             <meta property="og:url" content={`${siteUrl}/404`} />
           </Helmet>
-          <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 flex flex-col items-center justify-center text-center p-6">
+          <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-6">
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

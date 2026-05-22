@@ -147,7 +147,7 @@ const ErrorLogScreen = () => {
         <meta name="twitter:description" content="View application error logs for debugging purposes." />
         <meta name="twitter:image" content={defaultImage} />
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-24">
+      <div className="min-h-screen bg-background pb-24">
         <div className="p-6">
           <PageHeader title="Error Log" onBack={() => handleNavigate('account')}>
             {logs.length > 0 && (

@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from "@/components/ui/card";
 import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
+import { invokeFunction } from '@/lib/supabaseFunctions';
 import { isInternalPath } from '@/lib/utils';
 
 // sessionStorage key used to round-trip `returnTo` across the Stripe redirect.
@@ -96,11 +97,12 @@ const UpgradeFlow = () => {
 
     try {
       if (hasActiveSubscription) {
-        const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
+        // invokeFunction unpacks FunctionsHttpError and the
+        // `{ success: false }` soft-failure shape, so any toast we
+        // surface has the real edge-function error message.
+        await invokeFunction(supabase, 'change-subscription-plan', {
           body: { plan_key: selectedPlanKey, billing_interval: targetInterval },
         });
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || 'Failed to change plan.');
 
         toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
         const success = await waitForSubscriptionUpdate(selectedPlanKey);

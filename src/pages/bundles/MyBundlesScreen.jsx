@@ -153,8 +153,8 @@ const MyBundlesScreen = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-secondary rounded-2xl p-1 mb-6">
-              <TabsTrigger value="my-bundles" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">My Bundles</TabsTrigger>
-              <TabsTrigger value="library" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold flex items-center gap-2">
+              <TabsTrigger value="my-bundles" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">My Bundles</TabsTrigger>
+              <TabsTrigger value="library" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold flex items-center gap-2">
                 <Library size={16} /> Library
               </TabsTrigger>
             </TabsList>

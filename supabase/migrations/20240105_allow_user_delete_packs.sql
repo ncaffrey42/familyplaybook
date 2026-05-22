@@ -1,0 +1,37 @@
+-- Allow users to delete their own bundles regardless of read-only state.
+--
+-- The Prompt 1 tier-limit work added a RESTRICTIVE policy that blocks DELETE
+-- on rows where `is_pack_editable(id)` returns false. That makes sense for
+-- UPDATE (the rule is "older items are read-only — you can view but not
+-- edit"), but it has a hostile side effect for DELETE: a user who's over
+-- their plan limit can't even clean up old bundles they no longer want.
+--
+-- Decluttering is the right escape hatch — they delete an old bundle,
+-- another older bundle becomes editable (because the rank shifts), and they
+-- can keep working. Forcing them to upgrade their plan just to delete their
+-- own content is the wrong UX.
+--
+-- This migration:
+--   1. Drops the RESTRICTIVE DELETE policy on `packs`. The existing
+--      ownership policy (auth.uid() = user_id) still applies — users can
+--      only delete their own packs.
+--   2. Leaves the UPDATE RESTRICTIVE policy in place. Read-only still means
+--      "can't edit", but no longer means "can't remove".
+--   3. Leaves `pack_guides` policies alone. The FK cascade from packs ->
+--      pack_guides handles cleanup when a parent pack is deleted, so we
+--      don't need to relax pack_guides DELETE for this flow.
+
+DROP POLICY IF EXISTS packs_block_readonly_delete ON public.packs;
+
+-- Sanity note: if `pack_guides.pack_id REFERENCES packs(id) ON DELETE CASCADE`
+-- is not set in your base schema, deleting a pack will leave dangling
+-- pack_guides rows. They're harmless (filtered out at fetch since their
+-- pack_id won't join), but if you want clean tables, add the cascade:
+--
+--   ALTER TABLE public.pack_guides
+--     DROP CONSTRAINT IF EXISTS pack_guides_pack_id_fkey,
+--     ADD CONSTRAINT pack_guides_pack_id_fkey
+--       FOREIGN KEY (pack_id) REFERENCES public.packs(id) ON DELETE CASCADE;
+--
+-- Leaving that as a separate manual step since the base schema lives in
+-- Supabase Studio rather than git.

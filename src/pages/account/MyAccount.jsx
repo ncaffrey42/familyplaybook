@@ -5,9 +5,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Camera, Save } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import AccountLayout from '@/components/AccountLayout';
+import AvatarUpload from '@/components/AvatarUpload';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const MyAccount = () => {
@@ -15,8 +15,10 @@ const MyAccount = () => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [fullName, setFullName] = useState('');
+    // avatar_url is mirrored locally so the form re-renders immediately after
+    // AvatarUpload writes it; refreshProfile() will also update via the
+    // profile/user effect below.
     const [avatarUrl, setAvatarUrl] = useState('');
-    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         if (profile) {
@@ -33,17 +35,19 @@ const MyAccount = () => {
         setIsLoading(true);
 
         try {
+            // Note: `profiles` doesn't have an `updated_at` column in the
+            // current schema — adding one would error in the schema cache.
             const updates = {
                 id: user.id,
                 full_name: fullName,
+                // avatar_url is already persisted by AvatarUpload; included
+                // here so the upsert payload is complete.
                 avatar_url: avatarUrl,
-                updated_at: new Date(),
             };
 
             const { error } = await supabase.from('profiles').upsert(updates);
             if (error) throw error;
-            
-            // Sync with auth metadata just in case
+
             await supabase.auth.updateUser({
                 data: { full_name: fullName, avatar_url: avatarUrl }
             });
@@ -70,38 +74,21 @@ const MyAccount = () => {
                     <CardContent>
                         <form onSubmit={handleUpdateProfile} className="space-y-6">
                             <div className="flex flex-col sm:flex-row gap-6 items-start">
-                                <div className="flex flex-col items-center gap-2">
-                                    <Avatar className="h-24 w-24 border-2 border-gray-100 dark:border-gray-800">
-                                        <AvatarImage src={avatarUrl} />
-                                        <AvatarFallback className="text-2xl">{fullName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    {/* Real avatar upload requires storage setup. For now, simple text URL or disabled button */}
-                                    <Button variant="outline" size="sm" type="button" disabled className="w-full">
-                                        <Camera className="w-4 h-4 mr-2" /> Change
-                                    </Button>
-                                    <span className="text-xs text-muted-foreground">(Upload coming soon)</span>
-                                </div>
-                                
+                                <AvatarUpload
+                                    avatarUrl={avatarUrl}
+                                    fullName={fullName}
+                                    onChange={setAvatarUrl}
+                                />
+
                                 <div className="flex-1 space-y-4 w-full">
                                     <div className="grid gap-2">
                                         <Label htmlFor="fullName">Full Name</Label>
-                                        <Input 
-                                            id="fullName" 
-                                            value={fullName} 
-                                            onChange={(e) => setFullName(e.target.value)} 
+                                        <Input
+                                            id="fullName"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
                                             placeholder="John Doe"
                                             className="max-w-md"
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="avatarUrl">Avatar URL (Optional)</Label>
-                                        <Input 
-                                            id="avatarUrl" 
-                                            value={avatarUrl} 
-                                            onChange={(e) => setAvatarUrl(e.target.value)} 
-                                            placeholder="https://example.com/me.png"
-                                            className="max-w-md text-sm text-gray-500 font-mono"
                                         />
                                     </div>
                                 </div>

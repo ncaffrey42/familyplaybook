@@ -38,8 +38,8 @@ const FavoritesScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-24">
-      <div className="sticky top-0 z-10 bg-[#FAF9F6]/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+    <div className="min-h-screen bg-background pb-24">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-md mx-auto px-4 h-16 flex items-center gap-3">
           <Button 
             variant="ghost" 

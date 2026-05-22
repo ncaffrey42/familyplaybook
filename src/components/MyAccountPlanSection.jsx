@@ -62,7 +62,13 @@ const MyAccountPlanSection = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const isPaid = plan_name !== 'Free';
+  // A plan name of "Couple"/"Family" alone doesn't mean Stripe knows about
+  // this user — dev fixtures and stale rows can have a paid `plan_key`
+  // without an active Stripe subscription, which then surfaces as a
+  // "No active subscription found" failure when the user clicks Downgrade.
+  // Gate on the real subscription state instead.
+  const hasActiveSubscription = status === 'active' || status === 'trialing' || status === 'past_due';
+  const isPaid = plan_name !== 'Free' && hasActiveSubscription;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">

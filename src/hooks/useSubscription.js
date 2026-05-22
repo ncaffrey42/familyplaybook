@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { PLANS } from '@/lib/plans';
 import { AnalyticsService } from '@/services/AnalyticsService';
 import { useToast } from '@/components/ui/use-toast';
+import { invokeFunction } from '@/lib/supabaseFunctions';
 
 export const useSubscription = () => {
     const { user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd, billingInterval } = useAuth();
@@ -68,11 +69,9 @@ export const useSubscription = () => {
         setLoading(true);
         AnalyticsService.track('checkout_started', { planKey, billingInterval });
         try {
-            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            return await invokeFunction(supabase, 'create-checkout-session', {
                 body: { plan_key: planKey, billing_interval: billingInterval }
             });
-            if (error) throw error;
-            return data;
         } catch (err) {
             console.error('Checkout creation error:', err);
             toast({ title: "Checkout Error", description: err.message, variant: "destructive" });
@@ -86,11 +85,9 @@ export const useSubscription = () => {
         setLoading(true);
         AnalyticsService.track('downgrade_started', { toPlanKey });
         try {
-            const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
+            const data = await invokeFunction(supabase, 'change-subscription-plan', {
                 body: { plan_key: toPlanKey, billing_interval: billingInterval || 'month' }
             });
-            if (error) throw error;
-
             AnalyticsService.track('downgrade_completed', { toPlanKey });
             await fetchSubscription();
             return data;

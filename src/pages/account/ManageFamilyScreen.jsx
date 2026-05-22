@@ -161,7 +161,7 @@ const ManageFamilyScreen = ({ onNavigate }) => {
         <title>Manage Family & Friends - Family Playbook</title>
         <meta name="description" content="Invite and manage family and friends." />
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         <div className="p-6">
           <PageHeader title="Family & Friends" onBack={() => onNavigate('account')}>
             <EntitlementGuard action="EDITOR_INVITE">

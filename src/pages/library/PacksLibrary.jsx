@@ -15,7 +15,7 @@ const PacksLibrary = ({ onNavigate, packs, onToggleLike }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Packs Library</h1>

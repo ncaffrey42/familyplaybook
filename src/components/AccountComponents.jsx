@@ -285,7 +285,7 @@ export const PlanCard = ({
                         // Button styling still relies on exact Active state for the "Current Plan" look
                         isActive && !cancelAtPeriodEnd
                             ? "bg-white/20 text-white hover:bg-white/30 cursor-default opacity-80" 
-                            : "bg-white text-gray-900 hover:bg-white/90 hover:scale-[1.02]",
+                            : "bg-white text-foreground hover:bg-white/90 hover:scale-[1.02]",
                         // Highlight upgrades
                          targetLevel > currentLevel && !isActive ? "shadow-xl" : ""
                     )}

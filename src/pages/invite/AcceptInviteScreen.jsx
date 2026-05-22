@@ -75,7 +75,7 @@ const AcceptInviteScreen = () => {
 
   if (authLoading || status === 'idle' || status === 'accepting') {
     return (
-      <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center gap-4 p-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6">
         <Loader size={36} className="animate-spin text-[#5CA9E9]" />
         <p className="text-gray-500 text-sm">Accepting your invitation…</p>
       </div>
@@ -86,12 +86,12 @@ const AcceptInviteScreen = () => {
     return (
       <>
         <Helmet><title>Welcome! - Family Playbook</title></Helmet>
-        <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-6 text-center">
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle size={40} className="text-green-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">You're in!</h1>
+            <h1 className="text-2xl font-bold text-foreground">You're in!</h1>
             <p className="text-gray-500 mt-2 text-sm max-w-xs">
               You've joined a Family Playbook. Head to your home screen to get started.
             </p>
@@ -111,12 +111,12 @@ const AcceptInviteScreen = () => {
     return (
       <>
         <Helmet><title>Already Joined - Family Playbook</title></Helmet>
-        <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-6 text-center">
           <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center">
             <CheckCircle size={40} className="text-[#5CA9E9]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Already joined</h1>
+            <h1 className="text-2xl font-bold text-foreground">Already joined</h1>
             <p className="text-gray-500 mt-2 text-sm max-w-xs">
               This invitation has already been accepted. Head home to continue.
             </p>
@@ -136,12 +136,12 @@ const AcceptInviteScreen = () => {
   return (
     <>
       <Helmet><title>Invalid Invite - Family Playbook</title></Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center gap-6 p-6 text-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
           <XCircle size={40} className="text-red-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Invite not valid</h1>
+          <h1 className="text-2xl font-bold text-foreground">Invite not valid</h1>
           <p className="text-gray-500 mt-2 text-sm max-w-xs">{errorMsg}</p>
         </div>
         <Button

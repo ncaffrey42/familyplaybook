@@ -236,7 +236,7 @@ const GuideDetail = ({ guide: propGuide }) => {
 
   if (!guide) {
     return (
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
               {isLibraryView ? "Library Guide Not Found" : "Guide Not Found"}
@@ -269,7 +269,7 @@ const GuideDetail = ({ guide: propGuide }) => {
         <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={`${siteUrl}/guide/${guide.id}`} />
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-28">
+      <div className="min-h-screen bg-background pb-28">
         {!isLibraryView && (
             <AddGuidesToBundleModal
                 isOpen={isBundleModalOpen}
@@ -437,10 +437,7 @@ const GuideDetail = ({ guide: propGuide }) => {
                           )}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-gray-800 dark:text-gray-100">{step.title}</h3>
-                          </div>
-                          <p className={`text-gray-700 dark:text-gray-300 ${!isLibraryView ? 'pl-0' : ''} ${isChecked && !isLibraryView ? 'line-through opacity-60' : ''}`}>{step.content}</p>
+                          <p className={`text-gray-700 dark:text-gray-300 ${isChecked && !isLibraryView ? 'line-through opacity-60' : ''}`}>{step.content}</p>
                           <StepMedia url={step.mediaUrl} />
                         </div>
                       </div>

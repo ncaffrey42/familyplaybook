@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from '@/lib/supabaseClient';
+import { invokeFunction } from '@/lib/supabaseFunctions';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Helmet } from 'react-helmet';
 import PageHeader from '@/components/PageHeader';
@@ -207,30 +208,26 @@ const SubscriptionScreen = () => {
 
         if (!isPremium || subscriptionStatus === 'canceled') {
             // New Subscription — redirect to Stripe Checkout
-            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            const data = await invokeFunction(supabase, 'create-checkout-session', {
                 body: { plan_key: targetPlan, billing_interval: targetInterval },
             });
-            if (error) throw error;
             if (data?.url) window.location.href = data.url;
             else throw new Error("Failed to start checkout.");
         } else {
             // Change Existing Subscription — update in-place via edge function,
             // then wait for the realtime billing update rather than polling the DB.
-            const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
+            // invokeFunction throws with the real server message on failure,
+            // including the soft-failure { success: false } shape.
+            await invokeFunction(supabase, 'change-subscription-plan', {
                 body: { plan_key: targetPlan, billing_interval: targetInterval },
             });
-            if (error) throw error;
 
-            if (data.success) {
-                toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
-                const success = await waitForSubscriptionUpdate(targetPlan);
-                if (success) {
-                    toast({ title: "Plan Changed!", description: `You are now on the ${targetPlan} plan (${targetInterval}).`, variant: "success" });
-                } else {
-                    toast({ title: "Update Pending", description: "It may take a moment to reflect in your dashboard." });
-                }
+            toast({ title: "Processing...", description: "We're updating your plan.", duration: 3000 });
+            const success = await waitForSubscriptionUpdate(targetPlan);
+            if (success) {
+                toast({ title: "Plan Changed!", description: `You are now on the ${targetPlan} plan (${targetInterval}).`, variant: "success" });
             } else {
-                throw new Error(data.error || "Failed to change plan.");
+                toast({ title: "Update Pending", description: "It may take a moment to reflect in your dashboard." });
             }
         }
     } catch (error) {
@@ -286,7 +283,7 @@ const SubscriptionScreen = () => {
       <Helmet>
         <title>Subscription Plans - Family Playbook</title>
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-12">
+      <div className="min-h-screen bg-background pb-12">
         <div className="p-6">
           <PageHeader title="Subscription Plans" onBack={() => handleNavigate('account')} />
           

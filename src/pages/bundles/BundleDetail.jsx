@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock } from 'lucide-react';
+import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import { Helmet } from 'react-helmet';
@@ -36,6 +36,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     bundleLibrary,
     handleAddGuidesToBundle,
     handleRemoveGuideFromBundle,
+    handleDeleteBundle,
     handleAddBundleFromLibrary,
     isDataLoaded, 
     fetchData 
@@ -47,6 +48,15 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
   const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onConfirmDelete = async () => {
+    if (!bundle) return;
+    setIsDeleting(true);
+    const ok = await handleDeleteBundle(bundle);
+    if (!ok) setIsDeleting(false);
+    // On success the page navigates away, so no need to reset.
+  };
 
   // Determine view mode based on URL path
   const isLibraryView = location.pathname.includes('/library/');
@@ -83,7 +93,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   // Handle Loading State
   if (!bundle && !isDataLoaded) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FAF9F6] dark:bg-gray-950">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground font-medium">Loading bundle data...</p>
       </div>
@@ -94,7 +104,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   if (!bundle) {
     console.warn(`[BundleDetail] 404 - Bundle not found. ID: ${id}, Mode: ${isLibraryView ? 'Library' : 'User'}`);
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FAF9F6] dark:bg-gray-950 px-6 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background px-6 text-center">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -188,7 +198,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
         <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={`${siteUrl}/bundle/${bundle.id}`} />
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-40">
+      <div className="min-h-screen bg-background pb-40">
         {!isLibraryView && (
           <AddGuidesToBundleModal
             isOpen={isModalOpen}
@@ -224,6 +234,38 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
             ) : (
               // User Actions
               <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      aria-label="Delete bundle"
+                      title="Delete bundle"
+                      disabled={isDeleting}
+                    >
+                      <Trash2 size={20} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete &quot;{bundle.name}&quot;?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This bundle will be permanently deleted. The {guides.length} {guides.length === 1 ? 'guide' : 'guides'} inside will stay in your library and remain in any other bundles they belong to.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); onConfirmDelete(); }}
+                        disabled={isDeleting}
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                      >
+                        {isDeleting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting…</>) : 'Delete bundle'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button
                   variant="ghost"
                   size="icon"

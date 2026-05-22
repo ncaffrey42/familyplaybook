@@ -39,7 +39,7 @@ const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack }) => {
 
   if (!pack) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#FAF9F6] dark:bg-gray-950">
+      <div className="flex items-center justify-center h-screen bg-background">
         <p className="text-gray-600 dark:text-gray-400">Bundle not found. Please go back.</p>
       </div>
     );
@@ -137,7 +137,7 @@ const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack }) => {
         <meta name="twitter:description" content={pack.description || `View the guides inside the ${pack.name} bundle.`} />
         <meta name="twitter:image" content={ogImage} />
       </Helmet>
-      <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-40">
+      <div className="min-h-screen bg-background pb-40">
         {/* Modal for adding existing guides to this bundle */}
         <AddGuidesToPackModal
           isOpen={isModalOpen}

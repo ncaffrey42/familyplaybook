@@ -237,15 +237,15 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
   return (
     <div {...getRootProps({ onClick: (e) => e.preventDefault() })} onClick={handleContainerClick} className="group">
       <input {...getInputProps({ ref: fileInputRef })} />
-      <div className={`w-full h-48 rounded-2xl flex flex-col items-center justify-center text-center p-6 cursor-pointer transition-all duration-200 ${isDragActive ? 'bg-purple-50 border-purple-500' : 'bg-gray-50 border-gray-300 hover:bg-white'} border-2 border-dashed`}>
-        <div className="p-3 rounded-full mb-3 bg-gray-100 text-gray-500 group-hover:bg-purple-50 group-hover:text-purple-600">
+      <div className={`w-full h-48 rounded-2xl flex flex-col items-center justify-center text-center p-6 cursor-pointer transition-all duration-200 ${isDragActive ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-500' : 'bg-muted border-border hover:bg-card dark:hover:bg-card'} border-2 border-dashed`}>
+        <div className="p-3 rounded-full mb-3 bg-secondary text-muted-foreground group-hover:bg-purple-50 dark:group-hover:bg-purple-900/30 group-hover:text-purple-600 dark:group-hover:text-purple-400">
             <UploadCloud size={28} />
         </div>
-        <h3 className="font-semibold text-gray-700 dark:text-gray-200">
+        <h3 className="font-semibold text-foreground">
           {isDragActive ? 'Drop it here!' : 'Upload Media'}
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 px-4">Drag & drop or click to browse</p>
-        <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
+        <p className="text-sm text-muted-foreground mt-1 px-4">Drag & drop or click to browse</p>
+        <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><ImageIcon size={12}/> Images &lt;{MAX_IMAGE_SIZE_MB}MB</span>
             <span className="flex items-center gap-1"><Film size={12}/> Video &lt;{MAX_VIDEO_SIZE_MB}MB</span>
         </div>

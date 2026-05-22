@@ -140,8 +140,8 @@ const GuidesLibrary = ({ favorites, toggleFavorite }) => {
 
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full mb-6">
             <TabsList className="grid w-full grid-cols-2 bg-secondary rounded-2xl p-1">
-              <TabsTrigger value="my-guides" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">My Guides</TabsTrigger>
-              <TabsTrigger value="library" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold flex items-center gap-2">
+              <TabsTrigger value="my-guides" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">My Guides</TabsTrigger>
+              <TabsTrigger value="library" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold flex items-center gap-2">
                 <Library size={16} /> Library
               </TabsTrigger>
             </TabsList>
@@ -156,10 +156,10 @@ const GuidesLibrary = ({ favorites, toggleFavorite }) => {
 
           <Tabs value={activeCategoryTab} onValueChange={setActiveCategoryTab} className="w-full mb-6">
             <TabsList className="grid w-full grid-cols-4 bg-secondary rounded-2xl p-1">
-              <TabsTrigger value="all" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">All</TabsTrigger>
-              <TabsTrigger value="How To" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">How To</TabsTrigger>
-              <TabsTrigger value="Find It" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">Find It</TabsTrigger>
-              <TabsTrigger value="Reference" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">Reference</TabsTrigger>
+              <TabsTrigger value="all" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">All</TabsTrigger>
+              <TabsTrigger value="How To" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">How To</TabsTrigger>
+              <TabsTrigger value="Find It" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">Find It</TabsTrigger>
+              <TabsTrigger value="Reference" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-soft data-[state=active]:text-foreground text-sm font-semibold">Reference</TabsTrigger>
             </TabsList>
           </Tabs>
 
