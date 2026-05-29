@@ -29,6 +29,7 @@ export async function requireUser(req: Request) {
  * Stores the customer ID in user_billing so we don't create duplicates.
  */
 export async function getOrCreateStripeCustomer(userId: string, email: string): Promise<string> {
+  // 1. Check if we already have a billing row
   const { data: billing } = await supabaseAdmin
     .from('user_billing')
     .select('stripe_customer_id')
@@ -37,16 +38,38 @@ export async function getOrCreateStripeCustomer(userId: string, email: string): 
 
   if (billing?.stripe_customer_id) return billing.stripe_customer_id;
 
-  const customer = await stripe.customers.create({
-    email,
-    metadata: { user_id: userId },
-  });
+  // 2. Check if a Stripe customer already exists for this email (from older code)
+  const existing = await stripe.customers.list({ email, limit: 1 });
+  let customerId: string;
 
-  await supabaseAdmin
+  if (existing.data.length > 0) {
+    customerId = existing.data[0].id;
+    // Ensure metadata has user_id for webhook resolution
+    await stripe.customers.update(customerId, {
+      metadata: { user_id: userId, supabase_user_id: userId },
+    });
+  } else {
+    const customer = await stripe.customers.create({
+      email,
+      metadata: { user_id: userId, supabase_user_id: userId },
+    });
+    customerId = customer.id;
+  }
+
+  // 3. Upsert billing row with defaults for all columns to avoid NOT NULL failures
+  const { error } = await supabaseAdmin
     .from('user_billing')
-    .upsert({ user_id: userId, stripe_customer_id: customer.id }, { onConflict: 'user_id' });
+    .upsert({
+      user_id: userId,
+      stripe_customer_id: customerId,
+      plan_key: 'free',
+      subscription_status: 'free',
+      cancel_at_period_end: false,
+    }, { onConflict: 'user_id' });
 
-  return customer.id;
+  if (error) console.error('[getOrCreateStripeCustomer] upsert failed:', error);
+
+  return customerId;
 }
 
 /**
