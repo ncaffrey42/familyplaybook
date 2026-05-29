@@ -41,6 +41,10 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
   const currentGuides = usage.active_guides || 0;
   const currentBundles = usage.bundles || 0;
 
+  const periodEndLabel = subscription?.current_period_end
+    ? new Date(subscription.current_period_end).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
+
   const guidesOver = targetLimits.active_guides === null
     ? 0
     : Math.max(0, currentGuides - targetLimits.active_guides);
@@ -73,7 +77,9 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
         <DialogHeader>
           <DialogTitle>Switch to {PLANS[targetPlanKey].displayName}?</DialogTitle>
           <DialogDescription>
-            Your new billing rate applies at the start of the next billing cycle.
+            {periodEndLabel
+              ? `You'll keep your current plan until ${periodEndLabel}, then move to ${PLANS[targetPlanKey].displayName}. You won't be charged again for the higher tier.`
+              : `Your plan changes to ${PLANS[targetPlanKey].displayName} at the end of your current billing period.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -82,12 +88,12 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
             <Lock size={18} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1 text-sm">
               <p className="font-semibold text-amber-900 dark:text-amber-200">
-                {summary} will become read-only.
+                {summary} will become read-only once the change takes effect.
               </p>
               <p className="mt-1 text-amber-800/80 dark:text-amber-300/80">
                 Your most recently edited items stay editable; the rest are
-                still visible and shareable, just not editable. Upgrade
-                anytime to restore editing.
+                still visible and shareable, just not editable. Upgrade anytime
+                to restore editing, or delete items to get back under the limit.
               </p>
             </div>
           </div>

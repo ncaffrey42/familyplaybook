@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Zap, Database, Users, Box, Book, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DowngradeFlow from './DowngradeFlow';
+import { PLANS, PLAN_KEYS, getDowngradePlan } from '@/lib/plans';
 import { format } from 'date-fns';
 
 const UsageMeter = ({ label, current, limit, icon: Icon }) => {
@@ -42,8 +43,18 @@ const MyAccountPlanSection = () => {
   if (loading && !subscription) return <div className="p-8 text-center text-gray-500"><RefreshCw className="animate-spin inline mr-2"/> Loading Usage...</div>;
   if (!subscription) return null;
 
-  const { plan_name, usage = {}, entitlements = [], current_period_end, cancel_at_period_end, status } = subscription;
-  
+  const { plan_name, usage = {}, entitlements = [], current_period_end, cancel_at_period_end, status, scheduled_plan_key, scheduled_change_at } = subscription;
+
+  // The tier the "Downgrade" button targets: one step below the current plan.
+  const currentPlanKey = (plan_name || 'Free').toLowerCase();
+  const downgradeTargetKey = getDowngradePlan(currentPlanKey) || PLAN_KEYS.FREE;
+  const downgradeTargetName = PLANS[downgradeTargetKey]?.displayName || 'Free';
+
+  // A pending end-of-period downgrade, if one is scheduled.
+  const scheduledName = scheduled_plan_key ? (PLANS[scheduled_plan_key]?.displayName || scheduled_plan_key) : null;
+  const scheduledDateLabel = scheduled_change_at ? format(new Date(scheduled_change_at), 'MMM d, yyyy') : null;
+
+
   // Helper to get limit
   const getLimit = (key) => {
       const ent = entitlements.find(e => e.feature_key === key);
@@ -83,7 +94,13 @@ const MyAccountPlanSection = () => {
                   </span>
               )}
           </div>
-          {cancel_at_period_end && (
+          {scheduledName && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} />
+                  Switching to {scheduledName}{scheduledDateLabel ? ` on ${scheduledDateLabel}` : ' at period end'}
+              </p>
+          )}
+          {!scheduledName && cancel_at_period_end && (
               <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                   <AlertCircle size={12} /> Subscription canceling soon
               </p>
@@ -91,7 +108,7 @@ const MyAccountPlanSection = () => {
         </div>
         
         <div className="flex gap-2">
-            {isPaid && (
+            {isPaid && !scheduledName && (
                 <Button variant="outline" size="sm" onClick={() => setShowDowngrade(true)}>
                     Downgrade
                 </Button>
@@ -142,10 +159,10 @@ const MyAccountPlanSection = () => {
         </div>
       </div>
 
-      <DowngradeFlow 
-         isOpen={showDowngrade} 
-         onClose={() => setShowDowngrade(false)} 
-         targetPlanName="Free" // Default logic: downgrade usually means going to Free or lower tier. Simple version.
+      <DowngradeFlow
+         isOpen={showDowngrade}
+         onClose={() => { setShowDowngrade(false); fetchSubscription(); }}
+         targetPlanName={downgradeTargetName}
       />
     </div>
   );

@@ -17,7 +17,10 @@ export const AuthProvider = ({ children }) => {
   const [billingInterval, setBillingInterval] = useState(null);
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState(null);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
-  
+  // Pending end-of-period downgrade (set when a user schedules a tier change).
+  const [scheduledPlanKey, setScheduledPlanKey] = useState(null);
+  const [scheduledChangeAt, setScheduledChangeAt] = useState(null);
+
   const { toast } = useToast();
   const isInitialized = useRef(false);
 
@@ -33,7 +36,9 @@ export const AuthProvider = ({ children }) => {
       setBillingInterval(null);
       setCurrentPeriodEnd(null);
       setCancelAtPeriodEnd(false);
-      
+      setScheduledPlanKey(null);
+      setScheduledChangeAt(null);
+
       try {
         // Clear Supabase tokens from local storage to prevent stale session loops
         const projectId = supabase.supabaseUrl?.split('//')[1]?.split('.')[0] || 'sb';
@@ -99,7 +104,9 @@ export const AuthProvider = ({ children }) => {
         setBillingInterval(billingData.billing_interval);
         setCurrentPeriodEnd(billingData.current_period_end);
         setCancelAtPeriodEnd(billingData.cancel_at_period_end || false);
-        
+        setScheduledPlanKey(billingData.scheduled_plan_key || null);
+        setScheduledChangeAt(billingData.scheduled_change_at || null);
+
         return { profile: profileData, billing: billingData };
     } catch (error) {
         console.error("Error refreshing profile:", error);
@@ -256,7 +263,9 @@ export const AuthProvider = ({ children }) => {
                         setBillingInterval(newRow.billing_interval);
                         setCurrentPeriodEnd(newRow.current_period_end);
                         setCancelAtPeriodEnd(newRow.cancel_at_period_end || false);
-                        
+                        setScheduledPlanKey(newRow.scheduled_plan_key || null);
+                        setScheduledChangeAt(newRow.scheduled_change_at || null);
+
                         // Notify user if meaningful change
                         if (payload.old && payload.old.plan_key !== newRow.plan_key) {
                              toast({ title: "Plan Updated", description: `You are now on the ${newRow.plan_key} plan.` });
@@ -298,6 +307,8 @@ export const AuthProvider = ({ children }) => {
     billingInterval,
     currentPeriodEnd,
     cancelAtPeriodEnd,
+    scheduledPlanKey,
+    scheduledChangeAt,
     isPremium,
     refreshProfile,
     waitForSubscriptionUpdate,

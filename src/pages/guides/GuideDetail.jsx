@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Share2, CheckCircle2, Circle, Heart, Pencil, Copy, Loader2, MoreVertical, Download, Package, Plus, Lock } from 'lucide-react';
+import { Share2, CheckCircle2, Circle, Heart, Pencil, Copy, Loader2, MoreVertical, Download, Package, Plus, Lock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -10,8 +10,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import PageHeader from '@/components/PageHeader';
 import { logError } from '@/lib/errorLogger';
 import { useData } from '@/contexts/DataContext';
@@ -51,6 +62,7 @@ const GuideDetail = ({ guide: propGuide }) => {
     fetchData,
     handleAddGuideFromLibrary,
     handleAddAndEditFromLibrary,
+    handleDeleteGuide,
     allBundles
   } = useData();
   
@@ -61,6 +73,8 @@ const GuideDetail = ({ guide: propGuide }) => {
   const [isBundleModalOpen, setIsBundleModalOpen] = useState(false);
   const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
   const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Resolution Logic
   const isLibraryView = location.pathname.includes('/library/');
@@ -114,6 +128,17 @@ const GuideDetail = ({ guide: propGuide }) => {
       return true;
     }
     return false;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!guide?.id) return;
+    setIsDeleting(true);
+    const ok = await handleDeleteGuide(guide.id);
+    setIsDeleting(false);
+    if (ok) {
+      setIsDeleteOpen(false);
+      navigate('/guides');
+    }
   };
 
   const handleShare = async () => {
@@ -321,8 +346,22 @@ const GuideDetail = ({ guide: propGuide }) => {
                   <Button variant="ghost" size="icon" onClick={handleShare} disabled={isSharing} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Share">
                     {isSharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 size={20} />}
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="More actions">
+                        <MoreVertical size={20} className="text-gray-500 dark:text-gray-400" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleDuplicate}><Copy size={16} className="mr-2"/> Duplicate</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                        <Trash2 size={16} className="mr-2"/> Delete Guide
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                
+
                 <div className="md:hidden">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -339,6 +378,10 @@ const GuideDetail = ({ guide: propGuide }) => {
                             {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 size={16} className="mr-2"/>} Share
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleDuplicate}><Copy size={16} className="mr-2"/> Duplicate</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                            <Trash2 size={16} className="mr-2"/> Delete Guide
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -382,18 +425,46 @@ const GuideDetail = ({ guide: propGuide }) => {
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This guide is read-only</p>
               <p className="text-sm text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                You're over your plan's guide limit. Upgrade to edit, share, or remove this guide.
+                You're over your plan's guide limit. Upgrade to edit it, or delete it to get back under your limit.
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => setIsReadOnlyModalOpen(true)}
-              className="ml-2 flex-shrink-0"
-            >
-              Upgrade
-            </Button>
+            <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsDeleteOpen(true)}
+                className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200"
+              >
+                Delete
+              </Button>
+              <Button size="sm" onClick={() => setIsReadOnlyModalOpen(true)}>
+                Upgrade
+              </Button>
+            </div>
           </div>
         )}
+
+        <AlertDialog open={isDeleteOpen} onOpenChange={(open) => { if (!open) setIsDeleteOpen(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this guide?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes “{guide?.name}”, including its steps and
+                media. This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Keep guide</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? <Loader2 className="animate-spin h-4 w-4" /> : 'Delete guide'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <main className="p-6 space-y-6">
           {(guide.description || content?.description) && (

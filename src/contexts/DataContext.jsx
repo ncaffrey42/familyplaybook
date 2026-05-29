@@ -438,6 +438,51 @@ export const DataProvider = ({ children }) => {
     }
   }, [user, navigate, toast, fetchData]);
   
+  // Permanently delete a guide the user owns. Used as the recovery path when a
+  // guide is read-only after a downgrade (deleting it frees up a slot under the
+  // new plan's limit). RLS guarantees a user can only delete their own rows.
+  const handleDeleteGuide = useCallback(async (guideId) => {
+    if (!user || !guideId) return false;
+    try {
+      await supabase.from('pack_guides').delete().eq('guide_id', guideId);
+      await supabase.from('shared_links').delete().eq('guide_id', guideId);
+
+      const { error } = await supabase.from('guides').delete().eq('id', guideId).eq('user_id', user.id);
+      if (error) throw error;
+
+      UsageTrackingService.updateUsageMetric(user.id, 'active_guides', -1).catch(e => console.error("Usage tracking failed", e));
+      await fetchData(user);
+      toast({ title: "Guide deleted", variant: "success" });
+      return true;
+    } catch (error) {
+      logError(error, { context: 'handleDeleteGuide' });
+      toast({ title: "Couldn't delete guide", description: error.message, variant: "destructive" });
+      return false;
+    }
+  }, [user, toast, fetchData]);
+
+  // Permanently delete a bundle the user owns. Removes the bundle and its
+  // guide associations (the guides themselves are kept).
+  const handleDeleteBundle = useCallback(async (bundleId) => {
+    if (!user || !bundleId) return false;
+    try {
+      await supabase.from('pack_guides').delete().eq('pack_id', bundleId);
+      await supabase.from('shared_links').delete().eq('bundle_id', bundleId);
+
+      const { error } = await supabase.from('packs').delete().eq('id', bundleId).eq('user_id', user.id);
+      if (error) throw error;
+
+      UsageTrackingService.updateUsageMetric(user.id, 'bundles', -1).catch(e => console.error("Usage tracking failed", e));
+      await fetchData(user);
+      toast({ title: "Bundle deleted", variant: "success" });
+      return true;
+    } catch (error) {
+      logError(error, { context: 'handleDeleteBundle' });
+      toast({ title: "Couldn't delete bundle", description: error.message, variant: "destructive" });
+      return false;
+    }
+  }, [user, toast, fetchData]);
+
   const getGuideById = useCallback((guideId) => {
     if (!allGuides || allGuides.length === 0) return undefined;
     return allGuides.find(g => g.id === guideId);
@@ -446,7 +491,7 @@ export const DataProvider = ({ children }) => {
   const value = {
     allBundles, allGuides, bundleLibrary, availableLibraryBundles, guideLibrary, favorites, isDataLoaded,
     fetchData: (currentUser) => fetchData(currentUser || user),
-    toggleFavorite, handleSaveGuide, handleSaveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, getGuideById,
+    toggleFavorite, handleSaveGuide, handleSaveBundle, handleAddGuideFromLibrary, handleAddAndEditFromLibrary, handleAddGuidesToBundle, handleAddBundleFromLibrary, handleRemoveGuideFromBundle, handleDeleteGuide, handleDeleteBundle, getGuideById,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -22,6 +22,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useLocation, useNavigate } from 'react-router-dom';
+import DowngradeFlow from '@/components/DowngradeFlow';
+import { PLANS } from '@/lib/plans';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center p-4">
@@ -139,7 +141,8 @@ const SubscriptionScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isManaging, setIsManaging] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  
+  const [downgradeTarget, setDowngradeTarget] = useState(null);
+
   const handleNavigate = useNavigation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -196,6 +199,15 @@ const SubscriptionScreen = () => {
   const isPaidUser = isPremium || planKey === 'couple' || planKey === 'family';
 
   const handleAction = async (targetPlan, targetInterval) => {
+    // Downgrades to a lower tier are confirmed through DowngradeFlow, which
+    // explains the end-of-period timing and which items become read-only.
+    const currentLevel = PLAN_LEVELS[planKey] || 0;
+    const targetLevel = PLAN_LEVELS[targetPlan] || 0;
+    if (isPaidUser && !isPastDue && targetLevel < currentLevel) {
+        setDowngradeTarget(PLANS[targetPlan]?.displayName || targetPlan);
+        return;
+    }
+
     setIsLoading(true);
     try {
         if (isPastDue) {
@@ -427,6 +439,12 @@ const SubscriptionScreen = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      <DowngradeFlow
+        isOpen={!!downgradeTarget}
+        onClose={() => { setDowngradeTarget(null); refreshProfile(); }}
+        targetPlanName={downgradeTarget}
+      />
     </>
   );
 };

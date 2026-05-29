@@ -31,6 +31,43 @@ async function resolveUserId(customerId: string): Promise<string | null> {
   return meta.user_id ?? meta.supabase_user_id ?? null;
 }
 
+// Derive a pending end-of-period downgrade from the subscription's state.
+// Returns nulls when nothing is pending (e.g. an active plan with no scheduled
+// change), which clears any stale scheduled_* values on the billing row.
+async function getScheduledDowngrade(sub: Stripe.Subscription): Promise<{
+  scheduled_plan_key: string | null;
+  scheduled_change_at: string | null;
+}> {
+  // Cancellation at period end = scheduled downgrade to free.
+  if (sub.cancel_at_period_end) {
+    return {
+      scheduled_plan_key: 'free',
+      scheduled_change_at: new Date(sub.current_period_end * 1000).toISOString(),
+    };
+  }
+
+  // A subscription schedule = a deferred paid→paid tier change. The phase that
+  // starts at or after the current period end carries the new price.
+  if (sub.schedule) {
+    try {
+      const schedule = await stripe.subscriptionSchedules.retrieve(sub.schedule as string);
+      const future = schedule.phases.find(p => p.start_date >= sub.current_period_end);
+      const priceId = future?.items?.[0]?.price;
+      const inferred = typeof priceId === 'string' ? inferPlanFromPriceId(priceId) : null;
+      if (inferred && future) {
+        return {
+          scheduled_plan_key: inferred.planKey,
+          scheduled_change_at: new Date(future.start_date * 1000).toISOString(),
+        };
+      }
+    } catch (err) {
+      console.warn('[stripe-webhook] Could not read subscription schedule:', err.message);
+    }
+  }
+
+  return { scheduled_plan_key: null, scheduled_change_at: null };
+}
+
 function getSubscriptionBillingData(sub: Stripe.Subscription) {
   const item = sub.items.data[0];
   const priceId = item?.price?.id ?? null;
@@ -77,7 +114,8 @@ async function handleSubscriptionUpsert(sub: Stripe.Subscription) {
     console.warn('[stripe-webhook] Could not resolve user_id for customer:', sub.customer);
     return;
   }
-  await upsertBilling(userId, getSubscriptionBillingData(sub));
+  const scheduled = await getScheduledDowngrade(sub);
+  await upsertBilling(userId, { ...getSubscriptionBillingData(sub), ...scheduled });
   console.log(`[stripe-webhook] Billing updated for user ${userId} — status: ${sub.status}`);
 }
 
@@ -90,6 +128,9 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
     stripe_subscription_id: sub.id,
     cancel_at_period_end: false,
     current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    // The downgrade has now taken effect — clear the pending marker.
+    scheduled_plan_key: null,
+    scheduled_change_at: null,
   });
   console.log(`[stripe-webhook] Subscription deleted for user ${userId}`);
 }
