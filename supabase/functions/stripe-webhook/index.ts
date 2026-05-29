@@ -23,10 +23,12 @@ async function resolveUserId(customerId: string): Promise<string | null> {
 
   if (data?.user_id) return data.user_id;
 
-  // 2. Fall back to Stripe customer metadata (set during customer creation)
+  // 2. Fall back to Stripe customer metadata
+  //    Handle both 'user_id' (new) and 'supabase_user_id' (legacy) metadata keys
   const customer = await stripe.customers.retrieve(customerId);
   if (customer.deleted) return null;
-  return (customer as Stripe.Customer).metadata?.user_id ?? null;
+  const meta = (customer as Stripe.Customer).metadata ?? {};
+  return meta.user_id ?? meta.supabase_user_id ?? null;
 }
 
 function getSubscriptionBillingData(sub: Stripe.Subscription) {
@@ -129,7 +131,7 @@ Deno.serve(async (req) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
   } catch (err) {
     console.error('[stripe-webhook] Signature verification failed:', err.message);
     return new Response(`Webhook signature invalid: ${err.message}`, { status: 400 });
