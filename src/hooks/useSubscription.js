@@ -6,7 +6,7 @@ import { AnalyticsService } from '@/services/AnalyticsService';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useSubscription = () => {
-    const { user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd, billingInterval } = useAuth();
+    const { user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd, billingInterval, scheduledPlanKey, scheduledChangeAt } = useAuth();
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -49,6 +49,8 @@ export const useSubscription = () => {
                 status: subscriptionStatus || 'free',
                 current_period_end: currentPeriodEnd,
                 cancel_at_period_end: cancelAtPeriodEnd,
+                scheduled_plan_key: scheduledPlanKey || null,
+                scheduled_change_at: scheduledChangeAt || null,
                 entitlements: entitlementsRes.data || [],
                 usage: usageMap,
             };
@@ -62,7 +64,7 @@ export const useSubscription = () => {
         } finally {
             setLoading(false);
         }
-    }, [user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd]);
+    }, [user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd, scheduledPlanKey, scheduledChangeAt]);
 
     const createCheckoutSession = async (planKey, billingInterval = 'month') => {
         setLoading(true);
@@ -90,8 +92,23 @@ export const useSubscription = () => {
                 body: { plan_key: toPlanKey, billing_interval: billingInterval || 'month' }
             });
             if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error || 'Downgrade failed');
 
             AnalyticsService.track('downgrade_completed', { toPlanKey });
+
+            // Downgrades apply at the end of the current billing period. Confirm
+            // that to the user rather than implying an immediate change.
+            const when = data?.effective_date
+                ? new Date(data.effective_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                : null;
+            toast({
+                title: 'Downgrade scheduled',
+                description: when
+                    ? `You'll keep your current plan until ${when}, then switch to ${PLANS[toPlanKey]?.displayName || toPlanKey}.`
+                    : `Your plan will switch to ${PLANS[toPlanKey]?.displayName || toPlanKey} at the end of your billing period.`,
+                variant: 'success',
+            });
+
             await fetchSubscription();
             return data;
         } catch (err) {

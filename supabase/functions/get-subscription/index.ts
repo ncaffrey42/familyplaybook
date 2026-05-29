@@ -6,6 +6,8 @@ const FREE_PLAN_DEFAULT = {
   subscription_status: 'free',
   billing_interval: null,
   current_period_end: null,
+  scheduled_plan_key: null,
+  scheduled_change_at: null,
 };
 
 Deno.serve(async (req) => {
@@ -17,7 +19,7 @@ Deno.serve(async (req) => {
 
     const { data: billing, error } = await supabaseAdmin
       .from('user_billing')
-      .select('plan_key, subscription_status, billing_interval, current_period_end')
+      .select('plan_key, subscription_status, billing_interval, current_period_end, scheduled_plan_key, scheduled_change_at')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -38,6 +40,8 @@ Deno.serve(async (req) => {
       subscription_status: billing.subscription_status ?? 'free',
       billing_interval: billing.billing_interval ?? null,
       current_period_end: billing.current_period_end ?? null,
+      scheduled_plan_key: billing.scheduled_plan_key ?? null,
+      scheduled_change_at: billing.scheduled_change_at ?? null,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

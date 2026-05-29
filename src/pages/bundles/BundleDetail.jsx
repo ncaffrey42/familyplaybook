@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock } from 'lucide-react';
+import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import { Helmet } from 'react-helmet';
@@ -17,6 +17,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -37,8 +44,9 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     handleAddGuidesToBundle,
     handleRemoveGuideFromBundle,
     handleAddBundleFromLibrary,
-    isDataLoaded, 
-    fetchData 
+    handleDeleteBundle,
+    isDataLoaded,
+    fetchData
   } = useData();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -47,6 +55,8 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
   const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Determine view mode based on URL path
   const isLibraryView = location.pathname.includes('/library/');
@@ -128,6 +138,17 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
       return true;
     }
     return false;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!bundle?.id) return;
+    setIsDeleting(true);
+    const ok = await handleDeleteBundle(bundle.id);
+    setIsDeleting(false);
+    if (ok) {
+      setIsDeleteOpen(false);
+      navigate('/bundles');
+    }
   };
 
   const handleShare = async () => {
@@ -233,6 +254,22 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                   <Edit size={20} />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Share2 size={20} /></Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100" aria-label="More actions">
+                      <MoreVertical size={20} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { if (!gateReadOnly(`/bundle/${bundle.id}/edit`)) navigate(`/bundle/${bundle.id}/edit`); }}>
+                      <Edit size={16} className="mr-2" /> Edit Bundle
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                      <Trash2 size={16} className="mr-2" /> Delete Bundle
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </PageHeader>
@@ -264,18 +301,46 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This bundle is read-only</p>
               <p className="text-sm text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                You're over your plan's bundle limit. Upgrade to edit, share, or remove this bundle.
+                You're over your plan's bundle limit. Upgrade to edit it, or delete it to get back under your limit.
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => setIsReadOnlyModalOpen(true)}
-              className="ml-2 flex-shrink-0"
-            >
-              Upgrade
-            </Button>
+            <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsDeleteOpen(true)}
+                className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200"
+              >
+                Delete
+              </Button>
+              <Button size="sm" onClick={() => setIsReadOnlyModalOpen(true)}>
+                Upgrade
+              </Button>
+            </div>
           </div>
         )}
+
+        <AlertDialog open={isDeleteOpen} onOpenChange={(open) => { if (!open) setIsDeleteOpen(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this bundle?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes “{bundle?.name}”. The guides inside it
+                are kept. This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Keep bundle</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? <Loader2 className="animate-spin h-4 w-4" /> : 'Delete bundle'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <main className="px-6">
           {guides.length > 0 ? (

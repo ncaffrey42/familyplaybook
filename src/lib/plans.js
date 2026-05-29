@@ -97,6 +97,16 @@ export function getUpgradePlan(planKey) {
 }
 
 /**
+ * Returns the next tier below the given plan_key, or null if already at the
+ * lowest tier (free).
+ */
+export function getDowngradePlan(planKey) {
+  const idx = PLAN_ORDER.indexOf(planKey);
+  if (idx <= 0) return null;
+  return PLAN_ORDER[idx - 1];
+}
+
+/**
  * Returns true if planA is a higher tier than planB.
  */
 export function isHigherTier(planA, planB) {
