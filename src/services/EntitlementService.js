@@ -1,8 +1,12 @@
 import { supabase } from '@/lib/supabaseClient';
-import { PLANS } from '@/lib/plans';
 
 /**
  * Service to handle user entitlement checks based on subscription plans.
+ *
+ * The plan_entitlements DB table is the single source of truth for numeric
+ * limits — this service never reads limit numbers from src/lib/plans.js (which
+ * is presentation-only). Plans are looked up by the stable plan_key, never by
+ * display name.
  */
 export class EntitlementService {
   /**
@@ -14,6 +18,8 @@ export class EntitlementService {
   constructor({ dataFetcher } = {}) {
     // Cache structure: Map<userId, { data: UserEntitlements, timestamp: number }>
     this.cache = new Map();
+    // Cache of limits per plan_key (for any plan, not just the current user's).
+    this._planLimitsCache = new Map();
     this.TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
     this._dataFetcher = dataFetcher || null;
 
@@ -87,9 +93,10 @@ export class EntitlementService {
           result = this._deny('UNKNOWN_ACTION');
       }
 
-      // 3. Add upgrade suggestion if denied
+      // 3. Add upgrade suggestion if denied. Prefer the stable plan_key; fall
+      //    back to name for injected test fixtures that only set `name`.
       if (!result.allowed) {
-        result.upgrade_suggestion = this._getUpgradeSuggestion(plan.name, result.reason_code);
+        result.upgrade_suggestion = this._getUpgradeSuggestion(plan.key ?? plan.name, result.reason_code);
       }
 
       // 4. Logging
@@ -143,13 +150,13 @@ export class EntitlementService {
 
     // Default to free plan if no billing record exists (new user)
     const planKey = billing?.plan_key || 'free';
-    const planDisplayName = PLANS[planKey]?.displayName || 'Free';
 
-    // Look up the plan's UUID so we can query plan_entitlements
+    // Look up the plan by the stable plan_key — NOT by display name, which is
+    // presentation-only and can be renamed without affecting entitlements.
     const { data: planRecord } = await supabase
       .from('plans')
       .select('id, name')
-      .eq('name', planDisplayName)
+      .eq('plan_key', planKey)
       .single();
 
     const planId = planRecord?.id;
@@ -162,25 +169,47 @@ export class EntitlementService {
       supabase.from('user_usage').select('*').eq('user_id', userId)
     ]);
 
-    const entitlementsMap = {};
-    (entitlementsRes.data || []).forEach(e => {
-      entitlementsMap[e.feature_key] = {
-        value: e.feature_value_int, // might be null for text features
-        textValue: e.feature_value_text,
-        isUnlimited: e.is_unlimited
-      };
-    });
-
     const usageMap = {};
     (usageRes.data || []).forEach(u => {
       usageMap[u.feature_key] = u.current_usage;
     });
 
     return {
-      plan: { name: planDisplayName, id: planId },
-      entitlements: entitlementsMap,
+      plan: { key: planKey, name: planRecord?.name ?? planKey, id: planId },
+      entitlements: this._entitlementsMap(entitlementsRes.data),
       usage: usageMap
     };
+  }
+
+  /** Shape a plan_entitlements result set into a feature_key → entitlement map. */
+  _entitlementsMap(rows) {
+    const map = {};
+    (rows || []).forEach(e => {
+      map[e.feature_key] = {
+        value: e.feature_value_int, // might be null for text features
+        textValue: e.feature_value_text,
+        isUnlimited: e.is_unlimited
+      };
+    });
+    return map;
+  }
+
+  /** Fetch the entitlements map for any plan by its plan_key (or null). */
+  async _fetchEntitlementsByPlanKey(planKey) {
+    const { data: planRecord } = await supabase
+      .from('plans')
+      .select('id')
+      .eq('plan_key', planKey)
+      .single();
+
+    if (!planRecord?.id) return null;
+
+    const { data } = await supabase
+      .from('plan_entitlements')
+      .select('*')
+      .eq('plan_id', planRecord.id);
+
+    return this._entitlementsMap(data);
   }
 
   /**
@@ -305,6 +334,28 @@ export class EntitlementService {
    */
   invalidateCache(userId) {
     this.cache.delete(userId);
+    // Plan-keyed limits are plan definitions, not user state, but clear them too
+    // so a limit change picked up after an upgrade isn't masked by a stale entry.
+    this._planLimitsCache.clear();
+  }
+
+  /**
+   * Extract the numeric limits relevant to tier-limit read-only enforcement
+   * from an entitlements map. `null` for any limit means unlimited. A missing
+   * entitlement is treated as unlimited (fail open), matching the DB functions.
+   */
+  _numericLimitsFromEntitlements(entitlements = {}) {
+    const numeric = (key) => {
+      const e = entitlements[`${key}_max`];
+      if (!e) return null; // missing entitlement → treat as unlimited (fail open)
+      return e.isUnlimited ? null : e.value;
+    };
+    return {
+      active_guides: numeric('active_guides'),
+      bundles: numeric('bundles'),
+      storage_bytes: numeric('storage_bytes'),
+      editors: numeric('editors'),
+    };
   }
 
   /**
@@ -322,18 +373,33 @@ export class EntitlementService {
     if (!userId) return null;
     const data = await this._getUserData(userId);
     if (!data) return null;
-    const ent = data.entitlements || {};
-    const numeric = (key) => {
-      const e = ent[`${key}_max`];
-      if (!e) return null; // missing entitlement → treat as unlimited (fail open)
-      return e.isUnlimited ? null : e.value;
-    };
-    return {
-      active_guides: numeric('active_guides'),
-      bundles: numeric('bundles'),
-      storage_bytes: numeric('storage_bytes'),
-      editors: numeric('editors'),
-    };
+    return this._numericLimitsFromEntitlements(data.entitlements || {});
+  }
+
+  /**
+   * Returns the numeric limits for an arbitrary plan by plan_key (e.g. to
+   * preview a downgrade target's limits), sourced from plan_entitlements.
+   * Cached per plan_key for the same TTL as user data.
+   *
+   * @param {string} planKey
+   * @returns {Promise<{active_guides: number|null, bundles: number|null, storage_bytes: number|null, editors: number|null}|null>}
+   */
+  async getPlanLimitsByKey(planKey) {
+    if (!planKey) return null;
+
+    const now = Date.now();
+    const cached = this._planLimitsCache.get(planKey);
+    if (cached && (now - cached.timestamp < this.TTL)) return cached.data;
+
+    const entitlements = this._dataFetcher
+      ? (await this._dataFetcher(null, planKey))?.entitlements
+      : await this._fetchEntitlementsByPlanKey(planKey);
+
+    if (!entitlements) return null;
+
+    const limits = this._numericLimitsFromEntitlements(entitlements);
+    this._planLimitsCache.set(planKey, { data: limits, timestamp: now });
+    return limits;
   }
 }
 

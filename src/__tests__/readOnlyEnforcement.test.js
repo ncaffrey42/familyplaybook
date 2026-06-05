@@ -211,7 +211,9 @@ describe('countReadOnly', () => {
   });
 });
 
-// Plan limits taken from src/lib/plans.js — keep in sync.
+// Test fixtures only. The real numeric limits live in the plan_entitlements DB
+// table (read at runtime via EntitlementService); these literals just exercise
+// the ranking algorithm at representative tier sizes.
 const PLAN_LIMITS = {
   free:   { active_guides: 5,  bundles: 2 },
   couple: { active_guides: 25, bundles: 10 },
@@ -307,4 +309,50 @@ describe('tier scenario integration', () => {
       }
     });
   });
+});
+
+// Independent reference implementation of the SERVER's read-only rule, mirroring
+// is_guide_editable / is_pack_editable in
+// supabase/migrations/20240103_readonly_tier_enforcement.sql:
+//   editable = top-N rows by (updated_at DESC, id DESC); the rest are read-only;
+//   a NULL limit (unlimited plan) means nothing is read-only.
+// If the client (applyReadOnlyFlags) and this reference ever disagree, the UI
+// would show a different locked set than RLS enforces — exactly the drift we
+// must prevent. Items are given distinct updated_at values so the id tiebreaker
+// (which both implementations apply identically) doesn't enter into it.
+function serverReadOnlyIds(items, limit) {
+  if (limit === null || limit === undefined) return new Set();
+  const ranked = [...items].sort((a, b) => {
+    const ta = new Date(a.updated_at).getTime();
+    const tb = new Date(b.updated_at).getTime();
+    if (ta !== tb) return tb - ta;                       // updated_at DESC
+    return String(b.id).localeCompare(String(a.id));     // id DESC
+  });
+  return new Set(ranked.slice(Math.max(0, limit)).map(i => i.id));
+}
+
+describe('client read-only set matches the server RLS rule', () => {
+  const setOfReadOnly = (items, limit) =>
+    new Set(applyReadOnlyFlags(items, limit).filter(i => i.is_read_only).map(i => i.id));
+
+  // A spread of item counts and limits, including under/at/over and unlimited.
+  const itemCounts = [0, 1, 5, 12, 25, 40];
+  const limits = [null, 0, 1, 2, 5, 10, 25];
+
+  for (const count of itemCounts) {
+    for (const limit of limits) {
+      it(`agrees for ${count} items at limit ${limit}`, () => {
+        // Distinct, non-monotonic-with-id updated_at so ordering is by time.
+        const items = Array.from({ length: count }, (_, i) => ({
+          id: `item-${String(i).padStart(2, '0')}`,
+          updated_at: new Date(Date.UTC(2026, 0, 1 + ((i * 7) % 90))).toISOString(),
+        }));
+
+        const client = setOfReadOnly(items, limit);
+        const server = serverReadOnlyIds(items, limit);
+
+        expect([...client].sort()).toEqual([...server].sort());
+      });
+    }
+  }
 });

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { PLANS } from '@/lib/plans';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { cn } from '@/lib/utils';
 
 /**
@@ -17,11 +16,12 @@ import { cn } from '@/lib/utils';
  * without a roundtrip through the entitlement cache.
  */
 const UsageBadge = ({ resourceType, current }) => {
-  const { planKey } = useAuth();
-  const plan = PLANS[planKey] || PLANS.free;
+  // Limits come from plan_entitlements (the same source RLS enforces), not from
+  // hardcoded constants. `null` while loading or on unlimited plans → no badge.
+  const limits = usePlanLimits();
   const limit = resourceType === 'bundle'
-    ? plan.limits.bundles
-    : plan.limits.active_guides;
+    ? limits?.bundles
+    : limits?.active_guides;
 
   if (limit === null || limit === undefined) return null;
 

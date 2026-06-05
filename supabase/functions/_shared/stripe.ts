@@ -101,3 +101,30 @@ export function inferPlanFromPriceId(priceId: string): { planKey: string; interv
   }
   return null;
 }
+
+/**
+ * Source-of-truth precedence for a subscription's CURRENT plan, shared by
+ * stripe-webhook (reconciling billing state) and change-subscription-plan
+ * (routing upgrade vs downgrade):
+ *
+ *   1. The live Stripe price on the subscription — what the customer is actually
+ *      billed for right now. This is the ONLY signal that stays correct for plan
+ *      changes made through the Stripe Billing Portal, which never write our app
+ *      metadata. Treat it as authoritative for the current plan.
+ *   2. (caller-supplied fallback) subscription.metadata.plan_key or our stored
+ *      user_billing.plan_key — only a HINT of intended state, written by our own
+ *      checkout / change-plan flows. Use ONLY when the live price isn't in our
+ *      env map (e.g. a legacy or unmapped price).
+ *   3. (caller-supplied fallback) 'free' — last resort.
+ *
+ * This helper implements step 1: it returns the plan inferred from the live
+ * price, or null when the price isn't recognised, leaving the fallback to the
+ * caller — their fallback source differs (the webhook has event metadata, the
+ * change-plan function has the DB billing row).
+ */
+export function planFromSubscriptionPrice(
+  sub: Stripe.Subscription,
+): { planKey: string; interval: string } | null {
+  const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+  return priceId ? inferPlanFromPriceId(priceId) : null;
+}

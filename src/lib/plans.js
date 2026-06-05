@@ -1,25 +1,15 @@
 /**
- * Canonical plan → feature mapping for Family Playbook.
+ * Presentation metadata for Family Playbook plans: plan_key, display name,
+ * pricing shown in the UI, and feature flags used for marketing/comparison copy.
  *
- * This is the single source of truth for:
- *   - What each plan is called (plan_key matches user_billing.plan_key)
- *   - What limits apply at each tier
- *   - What EntitlementService validates against (via plan_entitlements DB table)
+ * This file is NOT the source of truth for numeric limits. Plan limits
+ * (active_guides, bundles, editors, storage) live exclusively in the
+ * plan_entitlements DB table and are read at runtime via EntitlementService
+ * (which RLS also enforces). Keeping the numbers in one place — the DB — means
+ * the client read-only set can't silently drift from what the server enforces.
  *
- * The values here are the display / documentation layer. The DB is the authority
- * for enforcement — these constants should stay in sync with the plan_entitlements
- * table in Supabase.
- *
- * ┌─────────────────────────────────────────────────────────────────┐
- * │  plan_key   │ active_guides │ bundles │ editors │ storage │ AI  │
- * ├─────────────┼───────────────┼─────────┼─────────┼─────────┼─────┤
- * │  free       │       5       │    2    │    0    │  50 MB  │  ✗  │
- * │  couple     │      25       │   10    │    1    │ 500 MB  │  ✓  │
- * │  family     │   unlimited   │ unlimited│   10   │   5 GB  │  ✓  │
- * └─────────────┴───────────────┴─────────┴─────────┴─────────┴─────┘
- *
- * editor limit = number of additional users (beyond the account owner) that
- * can be invited to edit guides and bundles.
+ * `plan_key` matches user_billing.plan_key and plans.plan_key; `displayName` is
+ * presentation only and can be renamed freely without affecting entitlements.
  */
 
 export const PLAN_KEYS = {
@@ -36,12 +26,6 @@ export const PLANS = {
     key: 'free',
     displayName: 'Free',
     price: { month: 0, year: 0 },
-    limits: {
-      active_guides: 5,
-      bundles: 2,
-      editors: 0,
-      storage_bytes: 50 * 1024 * 1024,   // 50 MB
-    },
     features: {
       ai_generation: false,
       host_mode: false,
@@ -54,12 +38,6 @@ export const PLANS = {
     key: 'couple',
     displayName: 'Couple',
     price: { month: 6.99, year: 69.90 },
-    limits: {
-      active_guides: 25,
-      bundles: 10,
-      editors: 1,
-      storage_bytes: 500 * 1024 * 1024,  // 500 MB
-    },
     features: {
       ai_generation: true,
       host_mode: false,
@@ -72,12 +50,6 @@ export const PLANS = {
     key: 'family',
     displayName: 'Family',
     price: { month: 13.99, year: 139.90 },
-    limits: {
-      active_guides: null,   // null = unlimited
-      bundles: null,
-      editors: 10,
-      storage_bytes: 5 * 1024 * 1024 * 1024,  // 5 GB
-    },
     features: {
       ai_generation: true,
       host_mode: true,

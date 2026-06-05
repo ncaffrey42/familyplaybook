@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { entitlementService } from '@/services/EntitlementService';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -36,7 +37,20 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
     return match || PLAN_KEYS.FREE;
   }, [targetPlanName]);
 
-  const targetLimits = PLANS[targetPlanKey].limits;
+  // Target plan limits come from plan_entitlements (the same numbers RLS uses to
+  // decide what becomes read-only), not from hardcoded constants. Fetched when
+  // the modal opens; null until loaded (so no read-only warning is shown yet).
+  const [targetLimits, setTargetLimits] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isOpen) return;
+    entitlementService
+      .getPlanLimitsByKey(targetPlanKey)
+      .then((l) => { if (!cancelled) setTargetLimits(l); })
+      .catch(() => { if (!cancelled) setTargetLimits(null); });
+    return () => { cancelled = true; };
+  }, [isOpen, targetPlanKey]);
+
   const usage = subscription?.usage || {};
   const currentGuides = usage.active_guides || 0;
   const currentBundles = usage.bundles || 0;
@@ -45,10 +59,10 @@ const DowngradeFlow = ({ isOpen, onClose, targetPlanName }) => {
     ? new Date(subscription.current_period_end).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
 
-  const guidesOver = targetLimits.active_guides === null
+  const guidesOver = !targetLimits || targetLimits.active_guides === null
     ? 0
     : Math.max(0, currentGuides - targetLimits.active_guides);
-  const bundlesOver = targetLimits.bundles === null
+  const bundlesOver = !targetLimits || targetLimits.bundles === null
     ? 0
     : Math.max(0, currentBundles - targetLimits.bundles);
 
