@@ -25,11 +25,12 @@ export const useSubscription = () => {
 
             const planDisplayName = PLANS[planKey]?.displayName || 'Free';
 
-            // Look up plan UUID so we can query plan_entitlements
+            // Look up plan UUID by the stable plan_key (not display name) so we
+            // can query plan_entitlements.
             const { data: planRecord } = await supabase
                 .from('plans')
                 .select('id')
-                .eq('name', planDisplayName)
+                .eq('plan_key', planKey || 'free')
                 .single();
 
             const [entitlementsRes, usageRes] = await Promise.all([
