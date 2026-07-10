@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X, Mic, Sparkles } from 'lucide-react';
+import VoiceCaptureSheet from '@/components/VoiceCaptureSheet';
+import { AI_GENERATION_ENABLED } from '@/lib/featureFlags';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
@@ -51,6 +53,20 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   // Track which step is currently having media uploaded
   const [activeMediaStepId, setActiveMediaStepId] = useState(null);
+
+  // Voice-to-Guide: dictation sheet + the transcript banner shown after a
+  // draft is applied ("here's what we heard" — display only, never saved).
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [aiTranscript, setAiTranscript] = useState(null);
+
+  const applyAiDraft = (draft) => {
+    setGuideName(draft.guideName);
+    setDescription(draft.description);
+    setCategory(draft.category);
+    setIcon(draft.icon);
+    setSteps(draft.steps);
+    setAiTranscript(draft.transcript || null);
+  };
 
   // Populate form if editing
   useEffect(() => {
@@ -239,6 +255,11 @@ const CreateGuideScreen = ({ pack: propPack }) => {
         onClose={handleReadOnlyModalClose}
         resourceType="guide"
       />
+      <VoiceCaptureSheet
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        onDraft={applyAiDraft}
+      />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -252,8 +273,37 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </Button>
             <h1 className="text-2xl font-bold text-gray-800">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
           </div>
-          
+          {AI_GENERATION_ENABLED && !guideId && (
+            <Button
+              variant="outline"
+              onClick={() => setIsVoiceOpen(true)}
+              className="rounded-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300"
+            >
+              <Mic size={16} /> Dictate
+            </Button>
+          )}
         </div>
+
+        {aiTranscript && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 p-4">
+            <Sparkles size={18} className="mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+            <div className="flex-1 text-sm">
+              <p className="font-semibold text-purple-900 dark:text-purple-200">
+                Drafted from your recording — review before saving
+              </p>
+              <p className="mt-1 text-purple-800/80 dark:text-purple-300/80 line-clamp-3">
+                “{aiTranscript}”
+              </p>
+            </div>
+            <button
+              onClick={() => setAiTranscript(null)}
+              className="text-purple-400 hover:text-purple-600"
+              aria-label="Dismiss transcript"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
