@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Helmet } from 'react-helmet';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useNavigation } from '@/hooks/useNavigation';
 import { supabase } from '@/lib/supabaseClient';
 
 const SEND_INVITE_FN = 'send-family-invite';
@@ -22,9 +23,11 @@ function getInitials(nameOrEmail = '') {
   return nameOrEmail.slice(0, 2).toUpperCase();
 }
 
-const ManageFamilyScreen = ({ onNavigate }) => {
+const ManageFamilyScreen = () => {
   const { toast } = useToast();
   const { user, session } = useAuth();
+  // App.jsx renders this route without props — navigation comes from the hook.
+  const onNavigate = useNavigation();
 
   const [invitations, setInvitations]   = useState([]);
   const [loading, setLoading]           = useState(true);

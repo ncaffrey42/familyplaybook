@@ -21,6 +21,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // A pending downgrade leaves a subscription schedule attached, and Stripe
+    // refuses cancel_at_period_end while a schedule manages the subscription —
+    // release it first (the cancellation supersedes the scheduled downgrade).
+    const subscription = await stripe.subscriptions.retrieve(billing.stripe_subscription_id);
+    if (subscription.schedule) {
+      await stripe.subscriptionSchedules.release(subscription.schedule as string);
+    }
+
     // Cancel at period end — user retains access until the period expires
     await stripe.subscriptions.update(billing.stripe_subscription_id, {
       cancel_at_period_end: true,

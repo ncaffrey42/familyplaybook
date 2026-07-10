@@ -1,6 +1,11 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { stripe, supabaseAdmin, requireUser, getOrCreateStripeCustomer, getPriceId } from '../_shared/stripe.ts';
 
+// Subscription states that must block a new Checkout session. past_due is
+// included: the fix for a failed payment is the Billing Portal, never a
+// second subscription.
+const BLOCKING_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -17,6 +22,27 @@ Deno.serve(async (req) => {
     }
 
     const customerId = await getOrCreateStripeCustomer(user.id, user.email!);
+
+    // Guard: never open a second Checkout for a user who already has a live
+    // subscription. We ask Stripe directly (not just user_billing) because the
+    // DB can lag behind Stripe when webhooks are delayed or failing — exactly
+    // the state that once produced a double subscription and a double charge.
+    const existing = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 10,
+    });
+    const liveSub = existing.data.find((s) => BLOCKING_STATUSES.has(s.status));
+    if (liveSub) {
+      return new Response(
+        JSON.stringify({
+          error: 'You already have an active subscription. Use the plan switcher to change tiers instead.',
+          code: 'already_subscribed',
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const priceId = getPriceId(plan_key, billing_interval);
     const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:3000';
 

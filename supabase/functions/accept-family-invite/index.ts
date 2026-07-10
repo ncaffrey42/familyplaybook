@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     // Look up the invitation by token
     const { data: invitation, error: fetchError } = await supabaseAdmin
       .from('family_invitations')
-      .select('id, owner_user_id, invited_email, status, role')
+      .select('id, owner_user_id, invited_email, status, role, created_at')
       .eq('token', token)
       .maybeSingle();
 
@@ -37,6 +37,24 @@ Deno.serve(async (req) => {
     // Prevent the owner from accepting their own invite
     if (invitation.owner_user_id === acceptingUser.id) {
       return json({ error: 'You cannot accept your own invitation.' }, 400);
+    }
+
+    // Tokens are bearer credentials — bound to the invited address and
+    // time-limited so a forwarded or leaked link can't grant membership to
+    // whoever finds it, whenever.
+    const INVITE_TTL_DAYS = 14;
+    const ageMs = Date.now() - new Date(invitation.created_at).getTime();
+    if (ageMs > INVITE_TTL_DAYS * 24 * 60 * 60 * 1000) {
+      return json({ error: 'This invitation has expired. Ask for a new invite.' }, 410);
+    }
+
+    if (
+      invitation.invited_email &&
+      acceptingUser.email?.toLowerCase() !== invitation.invited_email.toLowerCase()
+    ) {
+      return json({
+        error: 'This invitation was sent to a different email address. Sign in with the invited address to accept it.',
+      }, 403);
     }
 
     // Mark accepted and link the accepting user

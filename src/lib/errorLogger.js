@@ -37,7 +37,15 @@ const addBreadcrumb = (type, data) => {
 
 const getLogs = async () => {
   try {
-    const { data, error } = await supabase.from('error_logs').select('*').order('created_at', { ascending: false });
+    // RLS already scopes error_logs to the owner; the explicit filter makes
+    // the intent visible and keeps the query correct even if policies change.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('error_logs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   } catch (error) {

@@ -5,6 +5,26 @@ import { PLANS } from '@/lib/plans';
 import { AnalyticsService } from '@/services/AnalyticsService';
 import { useToast } from '@/components/ui/use-toast';
 
+/**
+ * Unwrap a supabase.functions.invoke error into an Error carrying the edge
+ * function's own message and `code`. Non-2xx responses arrive as a generic
+ * FunctionsHttpError ("Edge Function returned a non-2xx status code") with the
+ * real JSON body hidden on `error.context` — without this, users see the
+ * generic text instead of, e.g., "You already have an active subscription."
+ */
+export const toFunctionError = async (error) => {
+    let message = error.message;
+    let code = null;
+    try {
+        const body = await error.context?.json();
+        if (body?.error) message = body.error;
+        code = body?.code ?? null;
+    } catch { /* no JSON body — keep the generic message */ }
+    const err = new Error(message);
+    err.code = code;
+    return err;
+};
+
 export const useSubscription = () => {
     const { user, planKey, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd, billingInterval, scheduledPlanKey, scheduledChangeAt } = useAuth();
     const [subscription, setSubscription] = useState(null);
@@ -74,7 +94,7 @@ export const useSubscription = () => {
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
                 body: { plan_key: planKey, billing_interval: billingInterval }
             });
-            if (error) throw error;
+            if (error) throw await toFunctionError(error);
             return data;
         } catch (err) {
             console.error('Checkout creation error:', err);
@@ -92,7 +112,7 @@ export const useSubscription = () => {
             const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
                 body: { plan_key: toPlanKey, billing_interval: billingInterval || 'month' }
             });
-            if (error) throw error;
+            if (error) throw await toFunctionError(error);
             if (data && data.success === false) throw new Error(data.error || 'Downgrade failed');
 
             AnalyticsService.track('downgrade_completed', { toPlanKey });

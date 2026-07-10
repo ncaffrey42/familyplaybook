@@ -10,6 +10,13 @@ import DowngradeFlow from './DowngradeFlow';
 const PlanComparisonTable = () => {
   const { subscription } = useSubscription();
   const currentPlanName = subscription?.plan_name || 'Free';
+
+  // A pending end-of-period change (downgrade or cancellation). While one
+  // exists, further downgrades are blocked here just like on the plans screen.
+  const scheduledPlanKey = subscription?.scheduled_plan_key || null;
+  const scheduledDateLabel = subscription?.scheduled_change_at
+    ? new Date(subscription.scheduled_change_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : null;
   
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
@@ -58,8 +65,18 @@ const PlanComparisonTable = () => {
     if (targetIdx > currentIdx) {
       return { label: "Upgrade", disabled: false, variant: "default", action: 'upgrade' };
     }
-    
-    return { label: "Downgrade", disabled: false, variant: "outline", action: 'downgrade' };
+
+    // This tier is already the pending end-of-period change.
+    if (scheduledPlanKey && tiers[targetIdx] === scheduledPlanKey) {
+      return {
+        label: scheduledDateLabel ? `Scheduled · ${scheduledDateLabel}` : "Scheduled",
+        disabled: true, variant: "secondary", action: null,
+      };
+    }
+
+    // Only one pending change at a time: block further downgrades until the
+    // scheduled one is kept (undone) or takes effect. Upgrades stay enabled.
+    return { label: "Downgrade", disabled: !!scheduledPlanKey, variant: "outline", action: 'downgrade' };
   };
 
   const handleAction = (plan, action) => {

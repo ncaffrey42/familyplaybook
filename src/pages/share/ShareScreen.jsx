@@ -173,7 +173,7 @@ const ShareScreen = () => {
                 </div>
 
                  {!isLoading && (
-                    <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#FAF9F6]/80 dark:bg-gray-950/80 backdrop-blur-sm border-t border-border z-10">
+                    <div className="fixed bottom-0 left-0 right-0 p-4 pb-safe bg-[#FAF9F6]/80 dark:bg-gray-950/80 backdrop-blur-sm border-t border-border z-10">
                         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
                             <Button variant="outline" onClick={downloadQRCode} className="w-full h-12 text-base">
                                 <Download size={18} className="mr-2" />

@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Helmet } from 'react-helmet';
 import { useNavigation } from '@/hooks/useNavigation';
+import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,9 +118,11 @@ import {
                 <SettingsItem icon={BookOpen} title="My Packs" isButton onClick={() => handleNavigate('packs')}>
                   <ChevronRight size={20} className="text-muted-foreground" />
                 </SettingsItem>
-                <SettingsItem icon={Users} title="Family & Friends" isButton onClick={() => handleNavigate('manageFamily')}>
-                  <ChevronRight size={20} className="text-muted-foreground" />
-                </SettingsItem>
+                {FAMILY_SHARING_ENABLED && (
+                  <SettingsItem icon={Users} title="Family & Friends" isButton onClick={() => handleNavigate('manageFamily')}>
+                    <ChevronRight size={20} className="text-muted-foreground" />
+                  </SettingsItem>
+                )}
                 <SettingsItem icon={theme === 'light' ? Moon : Sun} title="Dark Mode" isLast>
                   <Switch
                     checked={theme === 'dark'}

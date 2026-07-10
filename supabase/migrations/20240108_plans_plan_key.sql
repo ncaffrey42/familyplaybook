@@ -15,12 +15,19 @@
 ALTER TABLE public.plans
   ADD COLUMN IF NOT EXISTS plan_key TEXT;
 
--- Backfill from the existing display name. The current plans are single-word
--- ('Free' / 'Couple' / 'Family'), so LOWER(TRIM(name)) reproduces the plan_key
--- that user_billing already stores. New plans should set plan_key explicitly
--- rather than rely on this transform.
+-- Backfill plan_key to the canonical set used by user_billing
+-- ({free, couple, family}). We map by display-name PREFIX rather than a plain
+-- LOWER(name), because the display names don't lowercase cleanly to the
+-- plan_key — e.g. the Couple tier is stored as "Couples" (plural), so
+-- LOWER('Couples') = 'couples' would NOT match user_billing.plan_key 'couple'.
+-- New plans should set plan_key explicitly rather than rely on this mapping.
 UPDATE public.plans
-   SET plan_key = LOWER(TRIM(name))
+   SET plan_key = CASE
+     WHEN name ILIKE 'free%'   THEN 'free'
+     WHEN name ILIKE 'couple%' THEN 'couple'   -- matches 'Couple' and 'Couples'
+     WHEN name ILIKE 'famil%'  THEN 'family'
+     ELSE LOWER(TRIM(name))
+   END
  WHERE plan_key IS NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS plans_plan_key_idx ON public.plans (plan_key);
