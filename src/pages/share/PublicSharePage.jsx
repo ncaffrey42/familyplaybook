@@ -57,78 +57,32 @@ const PublicSharePage = () => {
             }
 
             try {
-                const { data: shareData, error: shareError } = await supabase
-                    .from('shared_links')
-                    .select('guide_id, bundle_id')
-                    .eq('id', shareId)
-                    .single();
+                // Shared content is resolved through a single SECURITY DEFINER
+                // RPC keyed by the exact (unguessable) share link id. RLS gives
+                // anonymous visitors no direct read access to shared_links /
+                // guides / packs, so this is the only door in.
+                const { data, error: rpcError } = await supabase
+                    .rpc('get_shared_content', { p_share_id: shareId });
 
-                if (shareError || !shareData) {
-                    throw new Error("Share link not found");
-                }
-                
-                const { guide_id, bundle_id } = shareData;
-                
-                let fetchedBundle;
-                if (bundle_id) {
-                    const { data: bundleData, error: bundleError } = await supabase
-                        .from('packs')
-                        .select('id, name, description, color, image')
-                        .eq('id', bundle_id)
-                        .single();
-                    if (bundleError) throw new Error(`Bundle fetch error: ${bundleError.message}`);
-                    setBundle(bundleData);
-                    fetchedBundle = bundleData;
-                    
-                    const { data: guidesInBundle, error: guidesError } = await supabase
-                        .from('pack_guides')
-                        .select('guides(id, name, description, icon, category, is_shareable, shared_links(id))')
-                        .eq('pack_id', bundle_id);
+                if (rpcError) throw rpcError;
+                if (!data) throw new Error("Share link not found");
 
-                    if (guidesError) throw guidesError;
-                    
-                    const guidesWithLinks = guidesInBundle
-                      .map(item => ({...item.guides, shareId: item.guides.shared_links[0]?.id }))
-                      .filter(g => g && g.is_shareable && g.shareId);
-                    
-                    setBundleGuides(guidesWithLinks);
+                if (data.type === 'private') {
+                    setError({ type: 'not_shareable' });
+                    setLoading(false);
+                    return;
                 }
 
-                if (guide_id) {
-                    const { data: guideData, error: guideError } = await supabase
-                        .from('guides')
-                        .select('id, name, description, icon, steps, is_shareable, category')
-                        .eq('id', guide_id)
-                        .single();
-                        
-                    if (guideError) throw new Error(`Guide fetch error: ${guideError.message}`);
-                    if (!guideData.is_shareable) {
-                        setError({ type: 'not_shareable' });
-                        setLoading(false);
-                        return;
-                    };
-                    
-                    setGuide(guideData);
-                    
-                    // If this guide is part of a bundle, also fetch bundle info
-                    const { data: packGuide, error: pgError } = await supabase.from('pack_guides').select('pack_id').eq('guide_id', guide_id).maybeSingle();
-                    if(pgError) throw pgError;
-                    
-                    if(packGuide && !fetchedBundle) {
-                        const { data: bundleData, error: bundleError } = await supabase
-                            .from('packs')
-                            .select('id, name, description, color, image')
-                            .eq('id', packGuide.pack_id)
-                            .single();
-                        if (bundleError) throw new Error(`Bundle fetch error for guide: ${bundleError.message}`);
-                        setBundle(bundleData);
-                    }
+                if (data.type === 'guide') {
+                    setGuide(data.guide);
+                    if (data.bundle) setBundle(data.bundle);
+                } else if (data.type === 'bundle') {
+                    setBundle(data.bundle);
+                    setBundleGuides(data.bundle_guides || []);
+                } else {
+                    throw new Error("Empty share link");
                 }
 
-                if (!guide_id && !bundle_id) {
-                     throw new Error("Empty share link");
-                }
-                
             } catch (err) {
                 logError(err, { context: 'PublicSharePage', shareId });
                 setError({ type: 'not_found' });
