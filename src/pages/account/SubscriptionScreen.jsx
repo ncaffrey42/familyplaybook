@@ -59,7 +59,7 @@ const PLAN_LEVELS = {
     'family': 2
 };
 
-const PlanCard = ({ title, price, interval, features, icon: Icon, gradient, isActive, isCurrentTier, currentPlanKey, targetPlanKey, isLoading, onAction, isPastDue }) => {
+const PlanCard = ({ title, price, interval, features, icon: Icon, gradient, isActive, isCurrentTier, currentPlanKey, targetPlanKey, isLoading, onAction, isPastDue, scheduledPlanKey, scheduledDateLabel }) => {
     // Logic for button text & state
     let buttonText = "Upgrade";
     let isDisabled = false;
@@ -75,9 +75,17 @@ const PlanCard = ({ title, price, interval, features, icon: Icon, gradient, isAc
         buttonText = `Switch to ${interval === 'year' ? 'Annual' : 'Monthly'}`;
     } else if (isPastDue) {
         buttonText = "Fix Payment";
-        isDisabled = true; 
+        isDisabled = true;
+    } else if (scheduledPlanKey && targetPlanKey === scheduledPlanKey) {
+        // This tier is already the pending end-of-period change.
+        buttonText = scheduledDateLabel ? `Scheduled · ${scheduledDateLabel}` : "Scheduled";
+        isDisabled = true;
     } else if (targetLevel < currentLevel) {
+        // Only one pending change at a time: further downgrades are blocked
+        // until the scheduled one is kept or takes effect. Upgrades stay
+        // enabled — upgrading cancels the pending downgrade server-side.
         buttonText = "Downgrade";
+        isDisabled = !!scheduledPlanKey;
     }
 
     return (
@@ -135,6 +143,7 @@ const SubscriptionScreen = () => {
   const { toast } = useToast();
   const {
       user, isPremium, planKey, subscriptionStatus, billingInterval: currentBillingInterval,
+      scheduledPlanKey, scheduledChangeAt,
       refreshProfile, waitForSubscriptionUpdate, loading
   } = useAuth();
   
@@ -199,11 +208,46 @@ const SubscriptionScreen = () => {
   const isPastDue = subscriptionStatus === 'past_due' || subscriptionStatus === 'unpaid';
   const isPaidUser = isPremium || planKey === 'couple' || planKey === 'family';
 
+  // A pending end-of-period change (downgrade or cancellation). While one
+  // exists, further downgrades are blocked — the user first keeps their plan
+  // (undo) or lets the change take effect.
+  const scheduledDateLabel = scheduledChangeAt
+      ? new Date(scheduledChangeAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+  const currentPlanName = PLANS[planKey]?.displayName || 'your current plan';
+  const scheduledPlanName = scheduledPlanKey ? (PLANS[scheduledPlanKey]?.displayName || scheduledPlanKey) : null;
+
+  // Undo the pending change: re-selecting the current plan releases the
+  // Stripe schedule (or clears cancel_at_period_end) server-side.
+  const handleKeepCurrentPlan = async () => {
+    setIsLoading(true);
+    try {
+        const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
+            body: { plan_key: planKey, billing_interval: currentBillingInterval || 'month' },
+        });
+        if (error) throw await toFunctionError(error);
+        if (data?.success === false) throw new Error(data.error || 'Could not cancel the plan change.');
+        toast({ title: 'Plan change canceled', description: `You'll stay on ${currentPlanName}.`, variant: 'success' });
+        await refreshProfile();
+    } catch (error) {
+        console.error('Keep plan error:', error);
+        toast({ title: 'Error', description: error.message || 'Something went wrong.', variant: 'destructive' });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   const handleAction = async (targetPlan, targetInterval) => {
     // Downgrades to a lower tier are confirmed through DowngradeFlow, which
     // explains the end-of-period timing and which items become read-only.
     const currentLevel = PLAN_LEVELS[planKey] || 0;
     const targetLevel = PLAN_LEVELS[targetPlan] || 0;
+    if (scheduledPlanKey && targetLevel < currentLevel) {
+        // Belt-and-braces: the buttons are disabled, but never queue a second
+        // downgrade behind an existing scheduled change.
+        toast({ title: 'Change already scheduled', description: `Your plan switches to ${scheduledPlanName}${scheduledDateLabel ? ` on ${scheduledDateLabel}` : ' at period end'}.` });
+        return;
+    }
     if (isPaidUser && !isPastDue && targetLevel < currentLevel) {
         setDowngradeTarget(PLANS[targetPlan]?.displayName || targetPlan);
         return;
@@ -328,6 +372,26 @@ const SubscriptionScreen = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                 >
+                    {scheduledPlanKey && !isPastDue && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="text-amber-600 flex-shrink-0" />
+                                <div>
+                                    <p className="font-bold text-amber-800 dark:text-amber-300">
+                                        {scheduledPlanKey === 'free' ? 'Cancellation scheduled' : 'Downgrade scheduled'}
+                                    </p>
+                                    <p className="text-sm text-amber-700 dark:text-amber-200">
+                                        You'll keep {currentPlanName}{scheduledDateLabel ? ` until ${scheduledDateLabel}` : ''}, then switch to {scheduledPlanName}. You won't be charged again for {currentPlanName}.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={handleKeepCurrentPlan} disabled={isLoading} className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-200 flex-shrink-0">
+                                {isLoading ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
+                                Keep {currentPlanName}
+                            </Button>
+                        </div>
+                    )}
+
                     {isPastDue && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -391,6 +455,8 @@ const SubscriptionScreen = () => {
                             isLoading={isLoading}
                             onAction={() => handleAction('couple', billingCycle)}
                             isPastDue={isPastDue}
+                            scheduledPlanKey={scheduledPlanKey}
+                            scheduledDateLabel={scheduledDateLabel}
                         />
 
                         {/* Family Plan */}
@@ -408,6 +474,8 @@ const SubscriptionScreen = () => {
                             isLoading={isLoading}
                             onAction={() => handleAction('family', billingCycle)}
                             isPastDue={isPastDue}
+                            scheduledPlanKey={scheduledPlanKey}
+                            scheduledDateLabel={scheduledDateLabel}
                         />
                     </div>
 
@@ -420,6 +488,11 @@ const SubscriptionScreen = () => {
                                     Billing Portal
                                 </Button>
                                 
+                                {scheduledPlanKey === 'free' ? (
+                                    <Button variant="ghost" disabled className="w-full text-gray-400">
+                                        Cancellation scheduled{scheduledDateLabel ? ` · ${scheduledDateLabel}` : ''}
+                                    </Button>
+                                ) : (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant="ghost" className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -441,6 +514,7 @@ const SubscriptionScreen = () => {
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
+                                )}
                             </div>
                         </div>
                     )}
