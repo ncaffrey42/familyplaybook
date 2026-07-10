@@ -102,6 +102,13 @@ async function handleRequest(req: Request): Promise<Response> {
       if (plan_key === 'free') {
         // Downgrade to Free = cancel the paid subscription at period end. There
         // is no 'free' Stripe price, so we never call getPriceId('free').
+        //
+        // A pending paid→paid downgrade leaves a subscription schedule attached,
+        // and Stripe refuses cancel_at_period_end while a schedule manages the
+        // subscription — release it first (the cancellation supersedes it).
+        if (subscription.schedule) {
+          await stripe.subscriptionSchedules.release(subscription.schedule as string);
+        }
         await stripe.subscriptions.update(billing.stripe_subscription_id, {
           cancel_at_period_end: true,
           metadata: { ...subscription.metadata, user_id: user.id },

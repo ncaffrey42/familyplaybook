@@ -311,12 +311,12 @@ const SubscriptionScreen = () => {
       setIsManaging(true);
       try {
           const { error } = await supabase.functions.invoke('cancel-subscription');
-          if (error) throw error;
-          
+          if (error) throw await toFunctionError(error);
+
           toast({ title: "Subscription Canceled", description: "Your plan has been canceled.", variant: "default" });
-          await refreshProfile(); 
+          await refreshProfile();
       } catch (error) {
-           toast({ title: "Error", description: "Failed to cancel.", variant: "destructive" });
+           toast({ title: "Error", description: error.message || "Failed to cancel.", variant: "destructive" });
       } finally {
           setIsManaging(false);
       }

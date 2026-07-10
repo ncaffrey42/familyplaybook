@@ -112,7 +112,7 @@ export const useSubscription = () => {
             const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
                 body: { plan_key: toPlanKey, billing_interval: billingInterval || 'month' }
             });
-            if (error) throw error;
+            if (error) throw await toFunctionError(error);
             if (data && data.success === false) throw new Error(data.error || 'Downgrade failed');
 
             AnalyticsService.track('downgrade_completed', { toPlanKey });
