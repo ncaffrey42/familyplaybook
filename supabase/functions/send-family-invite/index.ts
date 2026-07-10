@@ -1,3 +1,4 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { supabaseAdmin, requireUser } from '../_shared/stripe.ts';
 
@@ -87,28 +88,34 @@ Deno.serve(async (req) => {
 
     const inviteUrl = `${appUrl}/invite/accept?token=${invitation.token}`;
 
-    // Send the invitation email via Supabase Auth
-    // generateLink with type 'invite' creates the user if needed and emails them
+    // Send the invitation email via Supabase Auth.
+    // NOTE: admin.generateLink only GENERATES a link — it never sends email.
+    // inviteUserByEmail actually sends (and creates the user) but fails for
+    // existing users; for those we send a magic-link email via the anon
+    // client's signInWithOtp, which also delivers a real email.
     let emailSent = false;
     try {
-      const { error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'invite',
-        email: normalizedEmail,
-        options: { redirectTo: inviteUrl },
-      });
-      if (!linkError) {
+      const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        normalizedEmail,
+        { redirectTo: inviteUrl },
+      );
+      if (!inviteError) {
         emailSent = true;
       } else {
-        // User already exists — fall back to a magic link
-        const { error: magicError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
+        const supabaseAnon = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+        );
+        const { error: otpError } = await supabaseAnon.auth.signInWithOtp({
           email: normalizedEmail,
-          options: { redirectTo: inviteUrl },
+          options: { emailRedirectTo: inviteUrl },
         });
-        if (!magicError) emailSent = true;
+        if (!otpError) emailSent = true;
+        else console.warn('[send-family-invite] email delivery failed:', otpError.message);
       }
-    } catch (_) {
+    } catch (err) {
       // Email delivery is best-effort; the invite link still works
+      console.warn('[send-family-invite] email delivery failed:', err.message);
     }
 
     return json({ invite_url: inviteUrl, email_sent: emailSent });

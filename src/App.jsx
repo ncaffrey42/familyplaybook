@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
 import { Toaster } from "@/components/ui/toaster";
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { UsageTrackingProvider } from './contexts/UsageTrackingContext';
@@ -112,7 +113,7 @@ const AppContent = () => {
           <Route path="/check-email" element={<CheckEmailScreen />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/share/:shareId" element={<PublicSharePage />} />
-          <Route path="/invite/accept" element={<LazyRoute><AcceptInviteScreen /></LazyRoute>} />
+          <Route path="/invite/accept" element={FAMILY_SHARING_ENABLED ? <LazyRoute><AcceptInviteScreen /></LazyRoute> : <Navigate to="/" replace />} />
           <Route path="/update-password" element={<UpdatePasswordScreen />} />
           <Route path="/onboarding" element={<OnboardingScreen />} />
 
@@ -155,7 +156,7 @@ const AppContent = () => {
           <Route path="/account/settings" element={<PrivateRoute><LazyRoute><AccountSettings /></LazyRoute></PrivateRoute>} />
           <Route path="/account/subscription" element={<LazyRoute><SubscriptionScreen /></LazyRoute>} />
           <Route path="/account/upgrade" element={<LazyRoute><UpgradeFlow /></LazyRoute>} />
-          <Route path="/account/family" element={<LazyRoute><ManageFamilyScreen /></LazyRoute>} />
+          <Route path="/account/family" element={FAMILY_SHARING_ENABLED ? <LazyRoute><ManageFamilyScreen /></LazyRoute> : <Navigate to="/account" replace />} />
           <Route path="/settings" element={<LazyRoute><SettingsScreen /></LazyRoute>} />
 
           {/* Other */}
