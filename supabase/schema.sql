@@ -1,8 +1,18 @@
 -- Family Playbook: public schema snapshot (generated from the live database)
 -- Source of truth for a NEW environment: apply this file first, then mark
--- all migrations up to and including 20240110 as applied
+-- all migrations up to and including 20240112 as applied
 -- (supabase migration repair --status applied <versions>).
 -- Regenerate with scripts/generate-schema-snapshot (see repo docs).
+
+CREATE TABLE IF NOT EXISTS public.ai_generations (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  user_id uuid NOT NULL,
+  kind text NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT ai_generations_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_generations_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+ALTER TABLE public.ai_generations ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.error_logs (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -101,6 +111,7 @@ ALTER TABLE public.library_packs ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.pack_guides (
   pack_id uuid NOT NULL,
   guide_id uuid NOT NULL,
+  position integer,
   CONSTRAINT pack_guides_pkey PRIMARY KEY (pack_id, guide_id),
   CONSTRAINT pack_guides_guide_id_fkey FOREIGN KEY (guide_id) REFERENCES guides(id) ON DELETE CASCADE,
   CONSTRAINT pack_guides_pack_id_fkey FOREIGN KEY (pack_id) REFERENCES packs(id) ON DELETE CASCADE
@@ -296,6 +307,7 @@ CREATE TABLE IF NOT EXISTS public.webhook_events (
 ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- ── Indexes ──────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS ai_generations_user_created_idx ON public.ai_generations USING btree (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS guides_user_updated_idx ON public.guides USING btree (user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_guides_is_archived ON public.guides USING btree (is_archived);
 CREATE INDEX IF NOT EXISTS idx_guides_name_gin ON public.guides USING gin (to_tsvector('english'::regconfig, name));
@@ -303,6 +315,7 @@ CREATE INDEX IF NOT EXISTS idx_guides_user_id ON public.guides USING btree (user
 CREATE INDEX IF NOT EXISTS idx_library_guides_library_pack_id ON public.library_guides USING btree (library_pack_id);
 CREATE INDEX IF NOT EXISTS idx_pack_guides_guide_id ON public.pack_guides USING btree (guide_id);
 CREATE INDEX IF NOT EXISTS idx_pack_guides_pack_id ON public.pack_guides USING btree (pack_id);
+CREATE INDEX IF NOT EXISTS pack_guides_pack_position_idx ON public.pack_guides USING btree (pack_id, "position");
 CREATE INDEX IF NOT EXISTS idx_packs_is_archived ON public.packs USING btree (is_archived);
 CREATE INDEX IF NOT EXISTS idx_packs_user_id ON public.packs USING btree (user_id);
 CREATE INDEX IF NOT EXISTS packs_user_updated_idx ON public.packs USING btree (user_id, updated_at DESC);
@@ -925,6 +938,7 @@ CREATE TRIGGER update_user_billing_modtime BEFORE UPDATE ON public.user_billing 
 CREATE TRIGGER on_subscription_created_usage AFTER INSERT ON public.user_subscriptions FOR EACH ROW EXECUTE FUNCTION handle_new_subscription_usage();
 
 -- ── RLS policies ─────────────────────────────────────────────
+CREATE POLICY "ai_generations_owner_select" ON public.ai_generations FOR SELECT TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "Users can delete their own error logs" ON public.error_logs FOR DELETE USING ((auth.uid() = user_id));
 CREATE POLICY "Users can insert their own error logs" ON public.error_logs FOR INSERT WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "Users can view their own error logs" ON public.error_logs FOR SELECT USING ((auth.uid() = user_id));
