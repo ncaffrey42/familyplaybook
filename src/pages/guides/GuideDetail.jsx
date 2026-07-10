@@ -121,6 +121,9 @@ const GuideDetail = ({ guide: propGuide }) => {
   };
 
   const isReadOnly = !!guide?.is_read_only && !isLibraryView;
+  // Family members see shared guides but only the owner can share or delete
+  // them (RLS enforces this server-side; the UI hides the affordances).
+  const isOwner = !guide?.is_shared_with_me;
   const gateReadOnly = (returnToOverride = null) => {
     if (isReadOnly) {
       setReadOnlyReturnTo(returnToOverride);
@@ -343,9 +346,11 @@ const GuideDetail = ({ guide: propGuide }) => {
                   <Button variant="ghost" size="icon" onClick={handleFavoriteClick} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Favorite">
                       <Heart size={20} className={isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-500 dark:text-gray-400'} />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={handleShare} disabled={isSharing} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Share">
-                    {isSharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 size={20} />}
-                  </Button>
+                  {isOwner && (
+                    <Button variant="ghost" size="icon" onClick={handleShare} disabled={isSharing} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Share">
+                      {isSharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 size={20} />}
+                    </Button>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="More actions">
@@ -354,10 +359,14 @@ const GuideDetail = ({ guide: propGuide }) => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={handleDuplicate}><Copy size={16} className="mr-2"/> Duplicate</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
-                        <Trash2 size={16} className="mr-2"/> Delete Guide
-                      </DropdownMenuItem>
+                      {isOwner && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                            <Trash2 size={16} className="mr-2"/> Delete Guide
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -374,14 +383,20 @@ const GuideDetail = ({ guide: propGuide }) => {
                         <DropdownMenuItem onClick={handleFavoriteClick}>
                             <Heart size={16} className={`mr-2 ${isFavorited ? 'text-red-500 fill-red-500' : ''}`} /> {isFavorited ? 'Unfavorite' : 'Favorite'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleShare} disabled={isSharing}>
-                            {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 size={16} className="mr-2"/>} Share
-                        </DropdownMenuItem>
+                        {isOwner && (
+                          <DropdownMenuItem onClick={handleShare} disabled={isSharing}>
+                              {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 size={16} className="mr-2"/>} Share
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={handleDuplicate}><Copy size={16} className="mr-2"/> Duplicate</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
-                            <Trash2 size={16} className="mr-2"/> Delete Guide
-                        </DropdownMenuItem>
+                        {isOwner && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                                <Trash2 size={16} className="mr-2"/> Delete Guide
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

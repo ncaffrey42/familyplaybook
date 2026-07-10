@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Lock, FileText, ShieldOff, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BundleImage from '@/components/BundleImage';
+import GuideIcon from '@/components/GuideIcon';
 import { isVideoUrl } from '@/lib/utils';
 
 const LoadingSpinner = () => (
@@ -118,9 +119,15 @@ const PublicSharePage = () => {
                             <p className="text-sm opacity-80 mb-2">From the bundle: {bundle.name}</p>
                         )}
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-4xl shadow-soft">
-                                {guide ? guide.icon : <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} className="w-full h-full object-cover rounded-2xl" />}
-                            </div>
+                            {/* guide.icon stores a lucide icon NAME (e.g. "Utensils") —
+                                render it through GuideIcon, never as raw text. */}
+                            {guide ? (
+                                <GuideIcon iconName={guide.icon} category={guide.category} size={32} className="w-16 h-16 bg-white/20 text-white shadow-soft" />
+                            ) : (
+                                <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shadow-soft">
+                                    <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} className="w-full h-full object-cover rounded-2xl" />
+                                </div>
+                            )}
                             <h1 className="text-3xl font-bold">{pageTitle}</h1>
                         </div>
                     </div>
@@ -175,7 +182,7 @@ const PublicSharePage = () => {
                                             transition={{ delay: index * 0.1 }}
                                             className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md flex items-center gap-4 hover:shadow-lg transition-shadow duration-300"
                                         >
-                                            <div className="w-14 h-14 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-2xl flex-shrink-0">{g.icon}</div>
+                                            <GuideIcon iconName={g.icon} category={g.category} className="w-14 h-14 rounded-xl" />
                                             <div className="flex-1">
                                                 <h3 className="font-semibold text-gray-800 dark:text-gray-200">{g.name}</h3>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">{g.category}</p>

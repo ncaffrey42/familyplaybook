@@ -28,5 +28,11 @@ pnpm-debug.log*
 # Vite cache
 .vite/
 
+# Claude Code local state (worktrees, session settings)
+.claude/
+
+# Supabase CLI local state
+supabase/.temp/
+
 # TypeScript
 *.tsbuildinfo

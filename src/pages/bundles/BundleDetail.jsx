@@ -131,6 +131,9 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   }
 
   const isReadOnly = !!bundle?.is_read_only && !isLibraryView;
+  // Family members see shared bundles but only the owner can share or delete
+  // them (RLS enforces this server-side; the UI hides the affordances).
+  const isOwner = !bundle?.is_shared_with_me;
   const gateReadOnly = (returnToOverride = null) => {
     if (isReadOnly) {
       setReadOnlyReturnTo(returnToOverride);
@@ -253,7 +256,9 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                 >
                   <Edit size={20} />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Share2 size={20} /></Button>
+                {isOwner && (
+                  <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100"><Share2 size={20} /></Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-gray-100" aria-label="More actions">
@@ -264,10 +269,14 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                     <DropdownMenuItem onClick={() => { if (!gateReadOnly(`/bundle/${bundle.id}/edit`)) navigate(`/bundle/${bundle.id}/edit`); }}>
                       <Edit size={16} className="mr-2" /> Edit Bundle
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
-                      <Trash2 size={16} className="mr-2" /> Delete Bundle
-                    </DropdownMenuItem>
+                    {isOwner && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600 focus:text-red-600 dark:text-red-400">
+                          <Trash2 size={16} className="mr-2" /> Delete Bundle
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -295,7 +304,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
           </motion.div>
         </header>
 
-        {isReadOnly && (
+        {isReadOnly && isOwner && (
           <div className="mx-6 mb-6 -mt-2 flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
             <Lock size={18} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1">
@@ -317,6 +326,15 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                 Upgrade
               </Button>
             </div>
+          </div>
+        )}
+        {isReadOnly && !isOwner && (
+          <div className="mx-6 mb-6 -mt-2 flex items-start gap-3 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 p-4">
+            <Lock size={18} className="mt-0.5 flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
+            <p className="flex-1 text-sm text-indigo-900 dark:text-indigo-200">
+              <span className="font-semibold">Shared with you — view only.</span>{' '}
+              Only the owner (or members they invite as editors) can make changes.
+            </p>
           </div>
         )}
 

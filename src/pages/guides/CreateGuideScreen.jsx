@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X, Sparkles } from 'lucide-react';
+import AiGuideSheet from '@/components/AiGuideSheet';
+import { AI_GENERATION_ENABLED } from '@/lib/featureFlags';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
 import { useLimitNotification } from '@/contexts/LimitNotificationContext';
@@ -51,6 +53,22 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   // Track which step is currently having media uploaded
   const [activeMediaStepId, setActiveMediaStepId] = useState(null);
+
+  // Voice-to-Guide: dictation sheet + the transcript banner shown after a
+  // draft is applied ("here's what we heard" — display only, never saved).
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiTranscript, setAiTranscript] = useState(null);
+  const [aiSource, setAiSource] = useState(null); // 'voice' | 'text'
+
+  const applyAiDraft = (draft) => {
+    setGuideName(draft.guideName);
+    setDescription(draft.description);
+    setCategory(draft.category);
+    setIcon(draft.icon);
+    setSteps(draft.steps);
+    setAiTranscript(draft.transcript || null);
+    setAiSource(draft.source || 'voice');
+  };
 
   // Populate form if editing
   useEffect(() => {
@@ -239,6 +257,11 @@ const CreateGuideScreen = ({ pack: propPack }) => {
         onClose={handleReadOnlyModalClose}
         resourceType="guide"
       />
+      <AiGuideSheet
+        isOpen={isAiOpen}
+        onClose={() => setIsAiOpen(false)}
+        onDraft={applyAiDraft}
+      />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -252,8 +275,39 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </Button>
             <h1 className="text-2xl font-bold text-gray-800">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
           </div>
-          
+          {AI_GENERATION_ENABLED && !guideId && (
+            <Button
+              variant="outline"
+              onClick={() => setIsAiOpen(true)}
+              className="rounded-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300"
+            >
+              <Sparkles size={16} /> Create with AI
+            </Button>
+          )}
         </div>
+
+        {/* This screen is light-only (hardcoded bg), so the banner uses fixed
+            high-contrast colors rather than theme-aware ones. */}
+        {aiTranscript && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-purple-200 bg-white p-4 shadow-card">
+            <Sparkles size={18} className="mt-0.5 flex-shrink-0 text-purple-600" />
+            <div className="flex-1 text-sm">
+              <p className="font-semibold text-purple-900">
+                Drafted from your {aiSource === 'text' ? 'description' : 'recording'} — review the steps below before saving
+              </p>
+              <p className="mt-1 text-gray-600 line-clamp-3 italic">
+                “{aiTranscript}”
+              </p>
+            </div>
+            <button
+              onClick={() => setAiTranscript(null)}
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Dismiss"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -332,7 +386,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Briefly describe what this guide is about..."
-              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-white border-2 border-gray-200 focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
+              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-white text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
             />
           </div>
 
@@ -370,7 +424,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                         value={step.text}
                         onChange={(e) => updateStep(step.id, 'text', e.target.value)}
                         placeholder="Describe this step..."
-                        className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
                         rows="2"
                       />
                       
