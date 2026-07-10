@@ -4,23 +4,29 @@ import { Package, FileText } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import SearchInput from '@/components/ui/SearchInput';
 import { searchGuides, searchBundles } from '@/lib/searchUtils';
+import { useData } from '@/contexts/DataContext';
+import { useNavigation } from '@/hooks/useNavigation';
 
-const SearchScreen = ({ onNavigate, packs, guides }) => {
+const SearchScreen = () => {
     const [searchTerm, setSearchTerm] = useState('');
+    // App.jsx renders this route without props — data and navigation come
+    // from the shared context/hook like every other screen.
+    const { allBundles, allGuides } = useData();
+    const onNavigate = useNavigation();
 
-    const filteredPacks = searchTerm 
-        ? searchBundles(packs, searchTerm)
+    const filteredPacks = searchTerm
+        ? searchBundles(allBundles || [], searchTerm)
         : [];
 
     const filteredGuides = searchTerm
-        ? searchGuides(guides, searchTerm)
+        ? searchGuides(allGuides || [], searchTerm)
         : [];
 
     const handleResultClick = (item) => {
         if (item.type === 'guide') {
-            onNavigate('guideDetail', { guide: item });
+            onNavigate('guideDetail', { guideId: item.id });
         } else if (item.type === 'pack') {
-            onNavigate('packDetail', { pack: item });
+            onNavigate('bundleDetail', { bundleId: item.id });
         }
     };
 
@@ -92,7 +98,7 @@ const SearchScreen = ({ onNavigate, packs, guides }) => {
                                                 </div>
                                                 <div className="flex-1">
                                                     <h3 className="font-semibold text-gray-800 dark:text-gray-200">{guide.name}</h3>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400">Guide in {guide.pack}</p>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">{guide.category ? `Guide · ${guide.category}` : 'Guide'}</p>
                                                 </div>
                                             </motion.div>
                                         ))}

@@ -40,9 +40,6 @@ const BundlesLibrary = lazy(() => import('./pages/library/BundlesLibrary'));
 const MyPacksScreen = lazy(() => import('./pages/packs/MyPacksScreen'));
 const CreatePackScreen = lazy(() => import('./pages/packs/CreatePackScreen'));
 const PackDetail = lazy(() => import('./pages/packs/PackDetail'));
-// Library
-const PacksLibrary = lazy(() => import('./pages/library/PacksLibrary'));
-
 // Account
 const MyAccount = lazy(() => import('./pages/account/MyAccount'));
 const PlansPage = lazy(() => import('./pages/account/PlansPage'));
@@ -144,7 +141,6 @@ const AppContent = () => {
           <Route path="/bundle/:id/edit" element={<LazyRoute><CreateBundleScreen /></LazyRoute>} />
 
           {/* Library */}
-          <Route path="/library/packs" element={<LazyRoute><PacksLibrary /></LazyRoute>} />
           <Route path="/library/guide/:id" element={<LazyRoute><GuideDetail /></LazyRoute>} />
           <Route path="/library/bundles" element={<LazyRoute><BundlesLibrary /></LazyRoute>} />
           <Route path="/library/bundle/:id" element={<LazyRoute><BundleDetail /></LazyRoute>} />

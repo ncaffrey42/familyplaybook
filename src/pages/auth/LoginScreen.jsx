@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Helmet } from 'react-helmet';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 
 const LoginScreen = () => {
@@ -13,6 +14,8 @@ const LoginScreen = () => {
   const { signInWithOtp, signInWithGoogle, signInWithDiscord, signInWithFacebook, signIn, signUp, resetPasswordForEmail, session } = useAuth();
   const { fetchData } = useData();
   const handleNavigate = useNavigation();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +32,24 @@ const LoginScreen = () => {
 
   useEffect(() => {
     if (session) {
-        handleNavigate('home');
+        // Honor the destination the user was originally headed to: either the
+        // ?returnTo= query param (set by AcceptInviteScreen) or the location
+        // state saved by PrivateRoute. Only internal absolute paths are
+        // accepted, so a crafted link can't turn this into an open redirect.
+        const isSafePath = (p) => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//');
+        const returnTo = new URLSearchParams(location.search).get('returnTo');
+        const fromState = location.state?.from
+            ? `${location.state.from.pathname || ''}${location.state.from.search || ''}`
+            : null;
+        if (isSafePath(returnTo)) {
+            navigate(returnTo, { replace: true });
+        } else if (isSafePath(fromState) && fromState !== '/login') {
+            navigate(fromState, { replace: true });
+        } else {
+            handleNavigate('home');
+        }
     }
-  }, [session, handleNavigate]);
+  }, [session, handleNavigate, navigate, location]);
 
   // OPTIMIZATION: Prefetch dashboard components when user starts typing
   const handleEmailChange = (e) => {
