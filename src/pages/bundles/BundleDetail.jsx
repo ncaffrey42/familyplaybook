@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock, MoreVertical, Trash2 } from 'lucide-react';
+import { Edit, Share2, Plus, Frown, FileText, BookPlus, Archive, Loader2, RefreshCw, Download, Lock, MoreVertical, Trash2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import { Helmet } from 'react-helmet';
@@ -52,6 +52,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const { toast } = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [aiAssembled, setAiAssembled] = useState(!!location.state?.aiAssembled);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isReadOnlyModalOpen, setIsReadOnlyModalOpen] = useState(false);
   const [readOnlyReturnTo, setReadOnlyReturnTo] = useState(null);
@@ -74,6 +75,14 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
     // Look in user's private data
     bundle = propBundle || allBundles.find(b => String(b.id) === String(id));
     guides = propGuides || allGuides.filter(g => g.bundles && g.bundles.includes(bundle?.id));
+    // Render in the bundle's curated order when positions exist (AI-assembled
+    // bundles set them); guides without a position sort last, stably.
+    if (bundle && guides && !propGuides) {
+      guides = [...guides].sort((a, b) =>
+        (a.bundlePositions?.[bundle.id] ?? Number.MAX_SAFE_INTEGER) -
+        (b.bundlePositions?.[bundle.id] ?? Number.MAX_SAFE_INTEGER)
+      );
+    }
   }
 
   // Debug Logging for Routing/Data Issues
@@ -335,6 +344,20 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
               <span className="font-semibold">Shared with you — view only.</span>{' '}
               Only the owner (or members they invite as editors) can make changes.
             </p>
+          </div>
+        )}
+        {aiAssembled && (
+          <div className="mx-6 mb-6 -mt-2 flex items-start gap-3 rounded-2xl border border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 p-4">
+            <Sparkles size={18} className="mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+            <div className="flex-1 text-sm">
+              <p className="font-semibold text-purple-900 dark:text-purple-200">AI assembled this bundle for you</p>
+              <p className="mt-0.5 text-purple-800/80 dark:text-purple-300/80">
+                Add or remove any guide, then share it with the button above. Emergency guides are listed first.
+              </p>
+            </div>
+            <button onClick={() => setAiAssembled(false)} className="text-purple-400 hover:text-purple-600" aria-label="Dismiss">
+              <X size={16} />
+            </button>
           </div>
         )}
 

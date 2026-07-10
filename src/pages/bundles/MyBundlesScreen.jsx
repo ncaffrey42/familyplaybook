@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Library, Frown, BookOpen, Lock } from 'lucide-react'; // Added BookOpen for Guides link
+import { Plus, Library, Frown, BookOpen, Lock, Sparkles } from 'lucide-react'; // Added BookOpen for Guides link
+import HandoffAssembleSheet from '@/components/HandoffAssembleSheet';
+import { AI_GENERATION_ENABLED } from '@/lib/featureFlags';
 import { Helmet } from 'react-helmet';
 import { useData } from '@/contexts/DataContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -102,6 +104,7 @@ const BundleList = ({ bundles, isLibrary = false, onTabChange }) => {
 const MyBundlesScreen = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('my-bundles');
+  const [isHandoffOpen, setIsHandoffOpen] = useState(false);
   const { allBundles, availableLibraryBundles } = useData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -176,16 +179,31 @@ const MyBundlesScreen = () => {
 
         </main>
         
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/bundles/create')}
-          className="fixed bottom-28 right-6 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-green text-white shadow-lg z-40"
-          aria-label="Create New Bundle"
-        >
-          <Plus size={28} />
-        </motion.button>
+        <div className="fixed bottom-28 right-6 flex flex-col items-end gap-3 z-40">
+          {AI_GENERATION_ENABLED && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsHandoffOpen(true)}
+              className="flex items-center gap-2 h-12 pl-4 pr-5 rounded-full bg-purple-600 text-white shadow-lg"
+              aria-label="Assemble a handoff bundle with AI"
+            >
+              <Sparkles size={18} /> <span className="text-sm font-semibold">Handoff</span>
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/bundles/create')}
+            className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-green text-white shadow-lg"
+            aria-label="Create New Bundle"
+          >
+            <Plus size={28} />
+          </motion.button>
+        </div>
       </div>
+
+      <HandoffAssembleSheet isOpen={isHandoffOpen} onClose={() => setIsHandoffOpen(false)} />
     </>
   );
 };

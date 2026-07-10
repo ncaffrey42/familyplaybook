@@ -101,7 +101,7 @@ export const DataProvider = ({ children }) => {
 
       const results = await Promise.allSettled([
         supabase.from('packs').select('*, pack_guides(guide_id)').in('user_id', ownerIds),
-        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, updated_at, is_shareable, description, template_id, pack_guides(pack_id)').in('user_id', ownerIds).order('created_at', { ascending: false }),
+        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, updated_at, is_shareable, description, template_id, pack_guides(pack_id, position)').in('user_id', ownerIds).order('created_at', { ascending: false }),
         supabase.from('user_favorites').select('guide_id').eq('user_id', targetUser.id),
         supabase.from('library_packs').select('*, library_guides(*)'),
         supabase.from('library_guides').select('*, library_packs(id, name)')
@@ -140,7 +140,14 @@ export const DataProvider = ({ children }) => {
       const formattedGuides = guidesData.map(g => ({
         ...g,
         bundles: g.pack_guides?.map(pg => pg.pack_id) || [],
-        bundleNames: g.pack_guides?.map(pg => bundleMap.get(pg.pack_id)).filter(Boolean) || []
+        bundleNames: g.pack_guides?.map(pg => bundleMap.get(pg.pack_id)).filter(Boolean) || [],
+        // Per-bundle ordering ({ [pack_id]: position }); used by BundleDetail to
+        // render AI-assembled bundles in their curated (priority) order.
+        bundlePositions: Object.fromEntries(
+          (g.pack_guides || [])
+            .filter(pg => pg.position != null)
+            .map(pg => [pg.pack_id, pg.position])
+        ),
       }));
 
       // Annotate ownership: content owned by a family the user belongs to is

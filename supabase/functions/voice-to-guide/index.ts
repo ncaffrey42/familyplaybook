@@ -1,9 +1,7 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
-import { supabaseAdmin, requireUser } from '../_shared/stripe.ts';
+import { requireUser } from '../_shared/stripe.ts';
+import { checkAiQuota, recordAiGeneration } from '../_shared/ai.ts';
 
-// ── Limits (see SPEC_VOICE_TO_GUIDE.md) ───────────────────────────────────────
-export const DAILY_CAP_PAID = 20;       // abuse protection, not economics
-export const LIFETIME_CAP_FREE = 3;     // free-tier upsell taste
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 
 // Must match GuideIconPicker's standardIcons — every name is guaranteed to
@@ -57,71 +55,6 @@ export function sanitizeDraft(raw: unknown): GuideDraft | null {
 }
 
 // ── Quota ─────────────────────────────────────────────────────────────────────
-
-type QuotaResult =
-  | { ok: true; remaining: number | null }
-  | { ok: false; status: number; error: string; code: string };
-
-async function checkQuota(userId: string): Promise<QuotaResult> {
-  const { data: billing } = await supabaseAdmin
-    .from('user_billing')
-    .select('plan_key')
-    .eq('user_id', userId)
-    .maybeSingle();
-  const planKey = billing?.plan_key ?? 'free';
-
-  if (planKey === 'free') {
-    // Free tier: a lifetime taste of the feature.
-    const { count } = await supabaseAdmin
-      .from('ai_generations')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-    if ((count ?? 0) >= LIFETIME_CAP_FREE) {
-      return {
-        ok: false,
-        status: 403,
-        code: 'upgrade_required',
-        error: `You've used your ${LIFETIME_CAP_FREE} free AI generations. Upgrade to keep dictating guides.`,
-      };
-    }
-    return { ok: true, remaining: LIFETIME_CAP_FREE - (count ?? 0) - 1 };
-  }
-
-  // Paid tiers: require the ai_generation entitlement, then a daily cap.
-  const { data: plan } = await supabaseAdmin
-    .from('plans')
-    .select('id, plan_entitlements(feature_key, feature_value_int)')
-    .eq('plan_key', planKey)
-    .maybeSingle();
-  const ent = (plan?.plan_entitlements ?? []).find(
-    (e: { feature_key: string }) => e.feature_key === 'ai_generation',
-  );
-  if (!ent || (ent.feature_value_int ?? 0) < 1) {
-    return {
-      ok: false,
-      status: 403,
-      code: 'upgrade_required',
-      error: 'AI generation is not included in your plan.',
-    };
-  }
-
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-  const { count } = await supabaseAdmin
-    .from('ai_generations')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', todayStart.toISOString());
-  if ((count ?? 0) >= DAILY_CAP_PAID) {
-    return {
-      ok: false,
-      status: 429,
-      code: 'rate_limited',
-      error: `Daily limit of ${DAILY_CAP_PAID} AI generations reached — try again tomorrow.`,
-    };
-  }
-  return { ok: true, remaining: null };
-}
 
 // ── OpenAI calls ──────────────────────────────────────────────────────────────
 
@@ -233,7 +166,7 @@ async function handleRequest(req: Request): Promise<Response> {
   try {
     const user = await requireUser(req);
 
-    const quota = await checkQuota(user.id);
+    const quota = await checkAiQuota(user.id);
     if (!quota.ok) return json({ error: quota.error, code: quota.code }, quota.status);
 
     const apiKey = Deno.env.get('OPENAI_API_KEY');
@@ -285,10 +218,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Record usage only after a successful generation.
-    const { error: ledgerError } = await supabaseAdmin
-      .from('ai_generations')
-      .insert({ user_id: user.id, kind: source === 'text' ? 'text_guide' : 'voice_guide' });
-    if (ledgerError) console.error('[voice-to-guide] ledger insert failed:', ledgerError.message);
+    await recordAiGeneration(user.id, source === 'text' ? 'text_guide' : 'voice_guide');
 
     // The transcript is returned for the review banner only — it is never
     // persisted (see spec: privacy decision).
