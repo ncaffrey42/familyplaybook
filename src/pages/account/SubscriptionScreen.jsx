@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useLocation, useNavigate } from 'react-router-dom';
 import DowngradeFlow from '@/components/DowngradeFlow';
+import { toFunctionError } from '@/hooks/useSubscription';
 import { PLANS } from '@/lib/plans';
 
 const LoadingSpinner = () => (
@@ -222,7 +223,7 @@ const SubscriptionScreen = () => {
             const { data, error } = await supabase.functions.invoke('create-checkout-session', {
                 body: { plan_key: targetPlan, billing_interval: targetInterval },
             });
-            if (error) throw error;
+            if (error) throw await toFunctionError(error);
             if (data?.url) window.location.href = data.url;
             else throw new Error("Failed to start checkout.");
         } else {
@@ -247,7 +248,16 @@ const SubscriptionScreen = () => {
         }
     } catch (error) {
         console.error('Subscription Action Error:', error);
-        toast({ title: 'Error', description: error.message || "Something went wrong.", variant: 'destructive' });
+        if (error.code === 'already_subscribed') {
+            // The server refused a second Checkout because a live subscription
+            // exists that our local state hasn't caught up with. Resync so the
+            // page reflects the real plan and routes future clicks to the
+            // change-plan flow instead.
+            toast({ title: 'Already subscribed', description: error.message });
+            refreshProfile();
+        } else {
+            toast({ title: 'Error', description: error.message || "Something went wrong.", variant: 'destructive' });
+        }
     } finally {
         setIsLoading(false);
     }
