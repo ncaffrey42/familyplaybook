@@ -84,11 +84,24 @@ export const DataProvider = ({ children }) => {
     if (!targetUser) return;
     
     addBreadcrumb('fetchData started');
-    
+
     try {
+      // Families this user belongs to (accepted invitations). Their owners'
+      // content is fetched alongside the user's own — RLS grants members
+      // SELECT (and editors UPDATE) via 20240110_family_member_access.
+      const { data: memberships } = await supabase
+        .from('family_invitations')
+        .select('owner_user_id, role')
+        .eq('invited_user_id', targetUser.id)
+        .eq('status', 'accepted');
+      const sharedOwnerRoles = Object.fromEntries(
+        (memberships || []).map(m => [m.owner_user_id, m.role])
+      );
+      const ownerIds = [targetUser.id, ...Object.keys(sharedOwnerRoles)];
+
       const results = await Promise.allSettled([
-        supabase.from('packs').select('*, pack_guides(guide_id)').eq('user_id', targetUser.id),
-        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, updated_at, is_shareable, description, template_id, pack_guides(pack_id)').eq('user_id', targetUser.id).order('created_at', { ascending: false }),
+        supabase.from('packs').select('*, pack_guides(guide_id)').in('user_id', ownerIds),
+        supabase.from('guides').select('id, user_id, name, icon, category, steps, content, created_at, updated_at, is_shareable, description, template_id, pack_guides(pack_id)').in('user_id', ownerIds).order('created_at', { ascending: false }),
         supabase.from('user_favorites').select('guide_id').eq('user_id', targetUser.id),
         supabase.from('library_packs').select('*, library_guides(*)'),
         supabase.from('library_guides').select('*, library_packs(id, name)')
@@ -130,12 +143,35 @@ export const DataProvider = ({ children }) => {
         bundleNames: g.pack_guides?.map(pg => bundleMap.get(pg.pack_id)).filter(Boolean) || []
       }));
 
-      // Tier-limit read-only derivation. The N most recently updated items
-      // stay editable; the rest are flagged read-only and the same logic
-      // is enforced server-side via RLS.
+      // Annotate ownership: content owned by a family the user belongs to is
+      // marked shared, with the member's role. Own items get 'owner'.
+      const annotate = (items) => items.map(item => {
+        if (item.user_id === targetUser.id) {
+          return { ...item, access_role: 'owner', is_shared_with_me: false };
+        }
+        return {
+          ...item,
+          access_role: sharedOwnerRoles[item.user_id] || 'viewer',
+          is_shared_with_me: true,
+        };
+      });
+      const annotatedBundles = annotate(formattedBundles);
+      const annotatedGuides = annotate(formattedGuides);
+
+      // Tier-limit read-only derivation applies to the user's OWN items (the
+      // N most recently updated stay editable — enforced server-side by RLS).
+      // Shared items are read-only for viewers; editors can edit, still
+      // subject to the owner's tier limits server-side.
       const planLimits = await entitlementService.getPlanLimits(targetUser.id).catch(() => null);
-      const flaggedBundles = applyReadOnlyFlags(formattedBundles, planLimits?.bundles);
-      const flaggedGuides = applyReadOnlyFlags(formattedGuides, planLimits?.active_guides);
+      const splitFlag = (items, limit) => {
+        const own = items.filter(i => !i.is_shared_with_me);
+        const shared = items
+          .filter(i => i.is_shared_with_me)
+          .map(i => ({ ...i, is_read_only: i.access_role !== 'editor' }));
+        return [...applyReadOnlyFlags(own, limit), ...shared];
+      };
+      const flaggedBundles = splitFlag(annotatedBundles, planLimits?.bundles);
+      const flaggedGuides = splitFlag(annotatedGuides, planLimits?.active_guides);
 
       setAllBundles(flaggedBundles);
       setAllGuides(flaggedGuides);

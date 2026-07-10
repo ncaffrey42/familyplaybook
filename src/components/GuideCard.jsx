@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Library, Lock } from 'lucide-react';
+import { Heart, Library, Lock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GuideIcon from '@/components/GuideIcon';
 
@@ -24,7 +24,16 @@ const GuideCard = ({ guide, isFavorited, onToggleFavorite, onClick, isLibrary = 
       )}
       onClick={onClick}
     >
-      {isReadOnly && (
+      {guide.is_shared_with_me ? (
+        <div
+          className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-indigo-600/85 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white"
+          aria-label={guide.access_role === 'editor' ? 'Shared with you — you can edit' : 'Shared with you — view only'}
+          title={guide.access_role === 'editor' ? 'Shared with you — you can edit' : 'Shared with you — view only'}
+        >
+          <Users size={10} strokeWidth={3} />
+          <span>Shared</span>
+        </div>
+      ) : isReadOnly && (
         <div
           className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-gray-900/70 dark:bg-gray-100/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white dark:text-gray-900"
           aria-label="Read-only — upgrade to edit"

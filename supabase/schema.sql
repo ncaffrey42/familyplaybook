@@ -1,6 +1,6 @@
 -- Family Playbook: public schema snapshot (generated from the live database)
 -- Source of truth for a NEW environment: apply this file first, then mark
--- all migrations up to and including 20240109 as applied
+-- all migrations up to and including 20240110 as applied
 -- (supabase migration repair --status applied <versions>).
 -- Regenerate with scripts/generate-schema-snapshot (see repo docs).
 
@@ -643,6 +643,22 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.is_accepted_family_member(p_owner_id uuid, p_required_role text DEFAULT NULL::text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+      FROM family_invitations
+     WHERE owner_user_id   = p_owner_id
+       AND invited_user_id = auth.uid()
+       AND status          = 'accepted'
+       AND (p_required_role IS NULL OR role = p_required_role)
+  );
+$function$;
+
 CREATE OR REPLACE FUNCTION public.is_guide_editable(p_guide_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -919,6 +935,8 @@ CREATE POLICY "Users can delete their own guides." ON public.guides FOR DELETE U
 CREATE POLICY "Users can insert their own guides." ON public.guides FOR INSERT WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "Users can update their own guides." ON public.guides FOR UPDATE USING ((auth.uid() = user_id));
 CREATE POLICY "guides_block_readonly_update" ON public.guides AS RESTRICTIVE FOR UPDATE USING (is_guide_editable(id)) WITH CHECK (is_guide_editable(id));
+CREATE POLICY "guides_editor_update" ON public.guides FOR UPDATE TO authenticated USING (is_accepted_family_member(user_id, 'editor'::text)) WITH CHECK (is_accepted_family_member(user_id, 'editor'::text));
+CREATE POLICY "guides_member_select" ON public.guides FOR SELECT TO authenticated USING (is_accepted_family_member(user_id));
 CREATE POLICY "guides_owner_delete" ON public.guides FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "guides_owner_select" ON public.guides FOR SELECT TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "Allow public read access to library guides" ON public.library_guides FOR SELECT USING (true);
@@ -933,6 +951,11 @@ CREATE POLICY "Allow owners to manage pack_guides" ON public.pack_guides FOR ALL
    FROM guides
   WHERE ((guides.id = pack_guides.guide_id) AND (guides.user_id = auth.uid()))))));
 CREATE POLICY "pack_guides_block_readonly_insert" ON public.pack_guides AS RESTRICTIVE FOR INSERT WITH CHECK (is_pack_editable(pack_id));
+CREATE POLICY "pack_guides_member_select" ON public.pack_guides FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
+   FROM packs p
+  WHERE ((p.id = pack_guides.pack_id) AND is_accepted_family_member(p.user_id)))) OR (EXISTS ( SELECT 1
+   FROM guides g
+  WHERE ((g.id = pack_guides.guide_id) AND is_accepted_family_member(g.user_id))))));
 CREATE POLICY "pack_guides_owner_delete" ON public.pack_guides FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
    FROM packs p
   WHERE ((p.id = pack_guides.pack_id) AND (p.user_id = auth.uid())))));
@@ -947,6 +970,8 @@ CREATE POLICY "Users can insert their own packs." ON public.packs FOR INSERT WIT
 CREATE POLICY "Users can update their own packs." ON public.packs FOR UPDATE USING ((auth.uid() = user_id));
 CREATE POLICY "Users can view their own archived packs" ON public.packs FOR SELECT USING (((auth.uid() = user_id) AND (is_archived = true)));
 CREATE POLICY "packs_block_readonly_update" ON public.packs AS RESTRICTIVE FOR UPDATE USING (is_pack_editable(id)) WITH CHECK (is_pack_editable(id));
+CREATE POLICY "packs_editor_update" ON public.packs FOR UPDATE TO authenticated USING (is_accepted_family_member(user_id, 'editor'::text)) WITH CHECK (is_accepted_family_member(user_id, 'editor'::text));
+CREATE POLICY "packs_member_select" ON public.packs FOR SELECT TO authenticated USING (is_accepted_family_member(user_id));
 CREATE POLICY "packs_owner_delete" ON public.packs FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "packs_owner_select" ON public.packs FOR SELECT TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "Public read access to entitlements" ON public.plan_entitlements FOR SELECT USING (true);
