@@ -1,178 +1,132 @@
-# Spec: AI Handoff Sheet ("Tonight's Sitter Brief")
+# Spec: AI Handoff Bundle ("Tonight's Sitter Brief")
 
 **Status:** Draft for approval — not yet implemented
-**Effort estimate:** ~2–3 focused days (M)
+**Effort estimate:** ~1–2 focused days (S–M)
 **Feature flag:** reuses `VITE_ENABLE_AI_GENERATION`
-**Depends on:** the share-link RPC (`get_shared_content`), the AI entitlement +
-`ai_generations` ledger, and the guide/bundle data model — all already shipped.
+**Depends on:** the AI entitlement + `ai_generations` ledger, the bundle
+(`packs` / `pack_guides`) model, and the existing bundle share flow — all
+already shipped.
 
 ## 1. What it is
 
 The user picks an occasion ("Babysitter tonight", "Grandparents this weekend",
-"House-sitter next week") and, optionally, which guides or bundles matter.
-AI assembles their scattered guides into **one prioritized, at-a-glance brief**
-— emergency info first, then routines, then the "good to know" quirks — and
-publishes it as a **share link and printable page**.
+"House-sitter next week") and, optionally, a note. AI **curates their existing
+guides into a ready-to-share bundle** — the right guides for that occasion,
+ordered sensibly, with a fitting name and description — that the user reviews
+and shares like any other bundle.
 
-This is the product's core promise made real: it turns a *library of guides*
-into a *moment of magic* for the person actually holding the fort. It's
-inherently viral — every sitter who opens it sees "Made with Family Playbook",
-and no competitor does this today.
+The output is a **real, normal bundle** (a `packs` row + `pack_guides`), not a
+new snapshot type. It lives in My Bundles, is editable, and shares through the
+exact flow that already exists. AI does the *curation and framing*; the app's
+proven bundle + share machinery does everything else.
 
-## 2. Why it's different from bundle-sharing
+## 2. Why "assemble a bundle" (not a one-page brief)
 
-Sharing a bundle today just lists guides. A handoff sheet:
-- **Reorders by urgency for a caregiver**, not by how the owner filed things
-- **Synthesizes across guides** — pulls the vet number, the wifi password, the
-  allergy note into a single "Emergency & Essentials" block even though they
-  live in three different guides
-- **Adapts tone to the occasion** — a babysitter brief leads with bedtime and
-  allergies; a house-sitter brief leads with the alarm code and the plants
-- Is **a snapshot** — generated for a date, not a live-editable guide, so the
-  sitter can't accidentally change anything
+- **Reuses everything.** Bundles already render on the public share page,
+  already have share links, already print, already respect RLS and family
+  access. Net-new surface is basically one edge function.
+- **Editable & durable.** The user can tweak the assembled bundle (add/remove a
+  guide, rename it) before and after sharing — it's not a frozen artifact.
+- **Familiar mental model.** "AI made me a bundle for the babysitter" needs no
+  new concept; the user already understands bundles and sharing.
+- **Still magic.** The value is the *curation*: from 30 scattered guides, AI
+  picks the 6 a sitter actually needs and names it "Saturday with the Kids."
 
 ## 3. User flow
 
-1. **Entry:** "Create Handoff Sheet" — from the Home screen and/or a bundle's
-   overflow menu. (AI-gated, same as Voice-to-Guide.)
-2. **Occasion picker:** a few presets (Babysitter, Family/Grandparents,
-   House-sitter, Pet-sitter, Travel/Away) + a free-text "Anything they should
-   know?" box (e.g. "kids have a dentist appt at 4, don't forget").
-3. **Source selection:** default = "everything shareable"; optionally narrow to
-   a bundle or hand-pick guides. Show which guides will be included.
-4. **Generating:** "Assembling the brief…" (~5–15 s).
-5. **Review:** the generated sheet renders in-app (editable title + a light
-   review — the user can remove a section or regenerate). Prominent **Share
-   link** + **Print** + **Copy** actions.
-6. **Live sheet:** the share link opens the existing public share page,
-   rendered in a new "handoff" layout — clean, print-friendly, phone-first.
+1. **Entry:** "Assemble a Handoff" (AI-gated) — from the Home screen and/or the
+   My Bundles "+" menu.
+2. **Occasion picker:** presets (Babysitter, Family/Grandparents, House-sitter,
+   Pet-sitter, Travel/Away) + a free-text "Anything they should know?" box.
+3. **Scope (optional):** default = consider all the user's guides; optionally
+   restrict to a source bundle or a set of categories.
+4. **Assembling:** "Picking the right guides…" (~5–10 s).
+5. **Review:** lands on the **normal Bundle detail screen** for the newly
+   created bundle, with a one-time banner ("AI assembled this for your
+   babysitter — add or remove anything, then share"). Everything from here —
+   edit, reorder, share link, print — is the existing bundle UI.
+6. **Share:** the existing bundle Share button → existing public share page.
 
-## 4. Data model
-
-Two changes, both additive (no breaking migration).
-
-### 4.1 New table `handoff_sheets`
-
-```sql
-CREATE TABLE public.handoff_sheets (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title        text NOT NULL,          -- "Weekend with the Grandparents"
-  occasion     text NOT NULL,          -- preset key: babysitter | family | housesitter | petsitter | travel
-  intro        text,                   -- 1-2 sentence warm opener
-  sections     jsonb NOT NULL,         -- ordered [{ heading, priority, items:[{label, detail}] }]
-  source_guide_ids uuid[] DEFAULT '{}',-- provenance (for "regenerate" + analytics)
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  expires_at   timestamptz            -- optional auto-expiry (see §7)
-);
-ALTER TABLE public.handoff_sheets ENABLE ROW LEVEL SECURITY;
--- owner full access; anon reads ONLY via the share RPC (never direct select)
-CREATE POLICY handoff_owner_all ON public.handoff_sheets
-  FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-```
-
-`sections` is a rendered snapshot, so the sheet stays stable even if the
-underlying guides change later. Example:
-
-```json
-[
-  { "heading": "🚨 Emergency & Essentials", "priority": 1, "items": [
-      { "label": "Our cells", "detail": "Mom 555-0100 · Dad 555-0142" },
-      { "label": "Poison Control", "detail": "1-800-222-1222" },
-      { "label": "Peanut allergy", "detail": "Ella — EpiPen in the hall closet" } ] },
-  { "heading": "🌙 Bedtime", "priority": 2, "items": [ ... ] },
-  { "heading": "📶 Good to know", "priority": 3, "items": [
-      { "label": "Wifi", "detail": "Network: Nest · Pass: familyplay22" } ] }
-]
-```
-
-### 4.2 Extend `shared_links`
-
-```sql
-ALTER TABLE public.shared_links
-  ADD COLUMN handoff_id uuid REFERENCES public.handoff_sheets(id) ON DELETE CASCADE;
-```
-
-A share link now points at a guide, a bundle, **or** a handoff sheet — the same
-unguessable-id sharing model, so no new public surface.
-
-### 4.3 Extend `get_shared_content` RPC
-
-Add a branch: when `shared_links.handoff_id` is set, return
-`{ type: 'handoff', handoff: { title, intro, sections, occasion } }`. Anonymous
-visitors still reach it only through the exact link id — consistent with the
-security model we already shipped.
-
-## 5. Edge function: `generate-handoff`
+## 4. Edge function: `assemble-handoff-bundle`
 
 - **Auth + gating:** `requireUser`; same `ai_generation` entitlement + quota +
-  `ai_generations` ledger (`kind: 'handoff'`) as Voice-to-Guide.
-- **Input:** `{ occasion, note?, guide_ids?, bundle_id? }`.
-- **Gather:** service-role select the chosen guides (or all shareable guides,
-  or a bundle's guides) for the user — name, category, description, steps.
-  Cap at ~40 guides to bound the prompt.
-- **Synthesize:** one `gpt-4o-mini` call with a strict JSON schema
-  (`{ title, intro, sections[] }`), system prompt tuned per occasion:
-  - Lead with an **Emergency & Essentials** section: contacts, medical/allergy
-    info, addresses, alarm/lock codes — pulled from ANY guide.
-  - Then occasion-appropriate routines, then "good to know".
-  - **Never invent** contacts, doses, codes, or names — extract only what the
-    guides contain (same guardrail as Voice-to-Guide).
-  - Keep it to one screen/page: merge, don't dump; prefer 3–6 sections.
-- **Persist:** insert `handoff_sheets` row + a `shared_links` row with
-  `handoff_id`; return `{ share_id, handoff }`.
-- **Cost:** one completion over guide text — a few cents; covered by the same
-  daily/lifetime caps.
+  `ai_generations` ledger (`kind: 'handoff_bundle'`) as Voice-to-Guide.
+- **Input:** `{ occasion, note?, source_bundle_id?, categories? }`.
+- **Gather candidates:** service-role select the user's guides in scope —
+  `id, name, category, description` (NOT full steps; keeps the prompt small and
+  cheap). Cap at ~60 candidates.
+- **Curate:** one `gpt-4o-mini` call with a strict JSON schema:
 
-## 6. Client
+  ```json
+  {
+    "bundle_name":        "string ≤ 50 chars, e.g. 'Saturday with the Kids'",
+    "bundle_description": "string, 1-2 sentences for the sitter",
+    "guide_ids":          ["<subset of the candidate ids, in priority order>"]
+  }
+  ```
 
-- `src/components/HandoffWizard.jsx` — occasion picker → source selection →
-  generate → review, mirroring the AiGuideSheet patterns.
-- `src/pages/handoff/HandoffReview.jsx` (or a screen) — post-generation review
-  with Share/Print/Copy and a "Regenerate" button.
-- `PublicSharePage` — add a `type === 'handoff'` layout: print-optimized
-  (`@media print` styles, `window.print()` button), sections rendered as
-  priority-ordered cards, the "Made with Family Playbook" footer CTA.
+  System prompt per occasion: pick the guides a person in THIS role actually
+  needs (a babysitter → bedtime, allergies, emergency contacts, house rules; a
+  pet-sitter → feeding, walks, vet); order emergency/medical/contact guides
+  first; ignore irrelevant guides; **only choose from the provided candidate
+  ids — never invent guides or content.**
+- **Validate:** intersect returned `guide_ids` with the candidate set (drop any
+  hallucinated ids); require ≥1 valid guide or return a friendly 422.
+- **Create the bundle:** insert a `packs` row (name, description, a default
+  color/icon) then `pack_guides` rows for the chosen guides. This is the same
+  write `handleSaveBundle` performs — consider extracting a shared server path,
+  or just replicate the two inserts.
+- **Return:** `{ bundle_id }`. The client navigates to the bundle for review.
+- **Cost:** one small completion over guide titles/descriptions — sub-cent;
+  covered by the same daily/lifetime caps.
+
+## 5. Client
+
+- `src/components/HandoffAssembleSheet.jsx` — occasion picker + note + optional
+  scope + "Assemble" button; mirrors `AiGuideSheet` patterns and gating.
+- On success: `navigate('/bundle/:id', { state: { aiAssembled: true } })`.
+- `BundleDetail` — show a dismissible "AI assembled this…" banner when
+  `location.state.aiAssembled`, then it's the normal bundle screen.
 - Entry points gated on `AI_GENERATION_ENABLED` + plan entitlement.
-- Reuse `mapDraftToForm`-style sanitization for the sections payload.
+- No new share page, no new render layout — bundles already do all of it.
+
+## 6. Optional polish (not required for v1)
+
+- **Guide ordering in bundles.** `pack_guides` has no order column, so the
+  AI's priority order isn't currently persistable. If we want emergency guides
+  to render first, add `pack_guides.position int` + sort by it (small, additive
+  migration). v1 can ship without it (insertion order is close enough).
+- **AI-generated cover guide.** If key info (e.g. a single emergency-contacts
+  card) is missing, optionally generate one new guide via the existing
+  voice-to-guide structuring path and include it. Defer to v2.
 
 ## 7. Product decisions (need owner input)
 
-1. **Expiry:** should a sitter link auto-expire (e.g. 7 days after the
-   occasion) so old briefs with the alarm code don't linger? Recommend an
-   optional expiry with a sensible default per occasion; owner can revoke
-   anytime (needs the share-link revocation UI — small, worth adding here).
-2. **Regeneration vs snapshot:** keep the snapshot immutable and offer
-   "Regenerate" (new version), or make it re-pull live guides each open?
-   Recommend snapshot (predictable for the sitter, and privacy-safer).
-3. **Free tier:** counts against the 3-generation lifetime taste, or handoff
-   sheets are paid-only (stronger upsell)? Recommend counting against the free
-   taste so people feel the magic once.
-4. **Sensitive data surface:** these briefs concentrate alarm codes, allergies,
-   addresses. Confirm we want a visible "anyone with the link can view — share
-   carefully" notice, optional expiry, and easy revoke.
+1. **New bundle every time, or update a per-occasion one?** Recommend a new
+   bundle each time (cheap, non-destructive), lightly de-duped by name.
+2. **Free tier:** count against the 3-generation lifetime taste, or paid-only?
+   Recommend counting against the free taste so people feel the magic once.
+3. **Scope default:** "all guides" vs "pick a source bundle first." Recommend
+   defaulting to all guides with an optional narrow.
+4. **Guide ordering (§6):** ship v1 without persisted order, or include the
+   small `position` migration now? Recommend without, add later if it matters.
 
 ## 8. Testing plan
 
-- Unit (vitest): section-payload sanitization; occasion → prompt selection.
-- Function (Deno): schema-valid happy path; empty-guides guard; over-limit 403;
-  "never invent" — feed guides with no phone number, assert none appears.
-- Live E2E: seed 3 guides (feeding, bedtime, wifi) → generate babysitter sheet
-  → assert Emergency section leads and pulls across guides → open share link
-  anonymously → print layout renders.
+- Unit (vitest): candidate-id validation (drop hallucinated ids); occasion →
+  prompt selection.
+- Function (Deno): schema-valid happy path; empty-candidates guard; over-limit
+  403; hallucinated-id filtering; "never invent" — assert every returned id
+  exists in the candidate set.
+- Live E2E: seed ~8 guides across categories → assemble a babysitter bundle →
+  assert it's a real `packs` row with sensible `pack_guides` (kid/safety guides
+  chosen, unrelated ones excluded) → open the bundle → share via the existing
+  flow → anonymous share link renders it.
 
-## 9. Out of scope (later)
+## 9. Why this is the right second AI feature
 
-- Multiple saved handoff templates per household
-- Scheduling ("text this link to the sitter at 5pm") — pairs with the existing
-  scheduled-tasks capability
-- QR code on the printed sheet (the app already depends on `qrcode.react`)
-- Voice input for the occasion note (reuse `useVoiceRecorder`)
-
-## 10. Why this is the right second AI feature
-
-Voice-to-Guide fills the library; the Handoff Sheet is what makes the library
-*pay off*. It reuses everything already built — the AI entitlement/ledger, the
-share-link RPC, the public share page — so the net-new surface is one table
-column, one table, one edge function, and one render layout. Medium effort,
-outsized differentiation.
+Voice-to-Guide fills the library; the Handoff Bundle makes the library *pay
+off* — and because the output is a plain bundle, it reuses the AI
+entitlement/ledger, the bundle model, the bundle UI, and the entire share
+stack. The only genuinely new thing is one curation edge function and a small
+picker sheet. Small–Medium effort, outsized differentiation.
