@@ -20,7 +20,7 @@ def q(sql):
 out = []
 out.append("-- Family Playbook: public schema snapshot (generated from the live database)")
 out.append("-- Source of truth for a NEW environment: apply this file first, then mark")
-out.append("-- all migrations up to and including 20240110 as applied")
+out.append("-- all migrations up to and including 20240112 as applied")
 out.append("-- (supabase migration repair --status applied <versions>).")
 out.append("-- Regenerate with scripts/generate-schema-snapshot (see repo docs).")
 out.append("")
