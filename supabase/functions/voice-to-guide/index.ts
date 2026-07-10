@@ -236,24 +236,44 @@ async function handleRequest(req: Request): Promise<Response> {
     const quota = await checkQuota(user.id);
     if (!quota.ok) return json({ error: quota.error, code: quota.code }, quota.status);
 
-    const formData = await req.formData();
-    const audio = formData.get('audio');
-    if (!(audio instanceof Blob) || audio.size === 0) {
-      return json({ error: 'No audio provided', code: 'bad_request' }, 400);
-    }
-    if (audio.size > MAX_AUDIO_BYTES) {
-      return json({ error: 'Recording too large — keep it under 3 minutes.', code: 'too_large' }, 413);
-    }
-
     const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
 
-    const transcript = await transcribe(audio, apiKey);
-    if (transcript.length < 10) {
-      return json({
-        error: "We couldn't make a guide out of that — try again, a bit slower and closer to the mic.",
-        code: 'empty_transcript',
-      }, 422);
+    // Two input modes share the same structuring pipeline:
+    //   - audio (multipart)  → Whisper transcription → transcript
+    //   - typed prompt (JSON) → the prompt IS the transcript (skip Whisper)
+    const contentType = req.headers.get('content-type') ?? '';
+    let transcript: string;
+    let source: 'voice' | 'text';
+
+    if (contentType.includes('application/json')) {
+      const { prompt } = await req.json().catch(() => ({ prompt: '' }));
+      transcript = (typeof prompt === 'string' ? prompt : '').trim();
+      source = 'text';
+      if (transcript.length < 10) {
+        return json({
+          error: 'Tell us a bit more about the guide you want — one or two sentences.',
+          code: 'empty_transcript',
+        }, 422);
+      }
+      if (transcript.length > 4000) transcript = transcript.slice(0, 4000);
+    } else {
+      const formData = await req.formData();
+      const audio = formData.get('audio');
+      if (!(audio instanceof Blob) || audio.size === 0) {
+        return json({ error: 'No audio provided', code: 'bad_request' }, 400);
+      }
+      if (audio.size > MAX_AUDIO_BYTES) {
+        return json({ error: 'Recording too large — keep it under 3 minutes.', code: 'too_large' }, 413);
+      }
+      source = 'voice';
+      transcript = await transcribe(audio, apiKey);
+      if (transcript.length < 10) {
+        return json({
+          error: "We couldn't make a guide out of that — try again, a bit slower and closer to the mic.",
+          code: 'empty_transcript',
+        }, 422);
+      }
     }
 
     const draft = sanitizeDraft(await structureGuide(transcript, apiKey));
@@ -267,12 +287,12 @@ async function handleRequest(req: Request): Promise<Response> {
     // Record usage only after a successful generation.
     const { error: ledgerError } = await supabaseAdmin
       .from('ai_generations')
-      .insert({ user_id: user.id, kind: 'voice_guide' });
+      .insert({ user_id: user.id, kind: source === 'text' ? 'text_guide' : 'voice_guide' });
     if (ledgerError) console.error('[voice-to-guide] ledger insert failed:', ledgerError.message);
 
     // The transcript is returned for the review banner only — it is never
     // persisted (see spec: privacy decision).
-    return json({ transcript, guide: draft, free_remaining: quota.remaining });
+    return json({ transcript, source, guide: draft, free_remaining: quota.remaining });
   } catch (err) {
     console.error('[voice-to-guide]', err);
     return json(

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X, Mic, Sparkles } from 'lucide-react';
-import VoiceCaptureSheet from '@/components/VoiceCaptureSheet';
+import { ArrowLeft, Plus, GripVertical, Image, Video, Loader2, Check, Trash2, X, Sparkles } from 'lucide-react';
+import AiGuideSheet from '@/components/AiGuideSheet';
 import { AI_GENERATION_ENABLED } from '@/lib/featureFlags';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { useEntitlements } from '@/contexts/EntitlementContext';
@@ -56,8 +56,9 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   // Voice-to-Guide: dictation sheet + the transcript banner shown after a
   // draft is applied ("here's what we heard" — display only, never saved).
-  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiTranscript, setAiTranscript] = useState(null);
+  const [aiSource, setAiSource] = useState(null); // 'voice' | 'text'
 
   const applyAiDraft = (draft) => {
     setGuideName(draft.guideName);
@@ -66,6 +67,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
     setIcon(draft.icon);
     setSteps(draft.steps);
     setAiTranscript(draft.transcript || null);
+    setAiSource(draft.source || 'voice');
   };
 
   // Populate form if editing
@@ -255,9 +257,9 @@ const CreateGuideScreen = ({ pack: propPack }) => {
         onClose={handleReadOnlyModalClose}
         resourceType="guide"
       />
-      <VoiceCaptureSheet
-        isOpen={isVoiceOpen}
-        onClose={() => setIsVoiceOpen(false)}
+      <AiGuideSheet
+        isOpen={isAiOpen}
+        onClose={() => setIsAiOpen(false)}
         onDraft={applyAiDraft}
       />
       <div className="p-6">
@@ -276,29 +278,31 @@ const CreateGuideScreen = ({ pack: propPack }) => {
           {AI_GENERATION_ENABLED && !guideId && (
             <Button
               variant="outline"
-              onClick={() => setIsVoiceOpen(true)}
+              onClick={() => setIsAiOpen(true)}
               className="rounded-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300"
             >
-              <Mic size={16} /> Dictate
+              <Sparkles size={16} /> Create with AI
             </Button>
           )}
         </div>
 
+        {/* This screen is light-only (hardcoded bg), so the banner uses fixed
+            high-contrast colors rather than theme-aware ones. */}
         {aiTranscript && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 p-4">
-            <Sparkles size={18} className="mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-purple-200 bg-white p-4 shadow-card">
+            <Sparkles size={18} className="mt-0.5 flex-shrink-0 text-purple-600" />
             <div className="flex-1 text-sm">
-              <p className="font-semibold text-purple-900 dark:text-purple-200">
-                Drafted from your recording — review before saving
+              <p className="font-semibold text-purple-900">
+                Drafted from your {aiSource === 'text' ? 'description' : 'recording'} — review the steps below before saving
               </p>
-              <p className="mt-1 text-purple-800/80 dark:text-purple-300/80 line-clamp-3">
+              <p className="mt-1 text-gray-600 line-clamp-3 italic">
                 “{aiTranscript}”
               </p>
             </div>
             <button
               onClick={() => setAiTranscript(null)}
-              className="text-purple-400 hover:text-purple-600"
-              aria-label="Dismiss transcript"
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Dismiss"
             >
               <X size={16} />
             </button>
@@ -382,7 +386,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Briefly describe what this guide is about..."
-              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-white border-2 border-gray-200 focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
+              className="w-full min-h-[80px] px-4 py-3 rounded-2xl bg-white text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus-visible:ring-0 focus-visible:border-[#5CA9E9] focus:outline-none transition-colors shadow-card resize-none"
             />
           </div>
 
@@ -420,7 +424,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                         value={step.text}
                         onChange={(e) => updateStep(step.id, 'text', e.target.value)}
                         placeholder="Describe this step..."
-                        className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-[#5CA9E9] focus:outline-none transition-colors resize-none"
                         rows="2"
                       />
                       
