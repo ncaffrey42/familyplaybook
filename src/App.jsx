@@ -122,49 +122,49 @@ const AppContent = () => {
           <Route path="/home" element={<PrivateRoute><LazyRoute><HomeScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Packs routes (legacy naming) */}
-          <Route path="/packs" element={<LazyRoute><MyPacksScreen /></LazyRoute>} />
-          <Route path="/packs/create" element={<LazyRoute><CreatePackScreen /></LazyRoute>} />
-          <Route path="/pack/:id" element={<LazyRoute><PackDetail /></LazyRoute>} />
+          <Route path="/packs" element={<PrivateRoute><LazyRoute><MyPacksScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/packs/create" element={<PrivateRoute><LazyRoute><CreatePackScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/pack/:id" element={<PrivateRoute><LazyRoute><PackDetail /></LazyRoute></PrivateRoute>} />
 
           {/* Guides */}
-          <Route path="/guides" element={<LazyRoute><GuidesLibrary /></LazyRoute>} />
-          <Route path="/library" element={<LazyRoute><GuidesLibrary /></LazyRoute>} />
-          <Route path="/guides/create" element={<LazyRoute><CreateGuideScreen /></LazyRoute>} />
-          <Route path="/guide/new" element={<LazyRoute><CreateGuideScreen /></LazyRoute>} />
-          <Route path="/guide/:id" element={<LazyRoute><GuideDetail /></LazyRoute>} />
-          <Route path="/guide/:id/edit" element={<LazyRoute><CreateGuideScreen /></LazyRoute>} />
+          <Route path="/guides" element={<PrivateRoute><LazyRoute><GuidesLibrary /></LazyRoute></PrivateRoute>} />
+          <Route path="/library" element={<PrivateRoute><LazyRoute><GuidesLibrary /></LazyRoute></PrivateRoute>} />
+          <Route path="/guides/create" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/guide/new" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/guide/:id" element={<PrivateRoute><LazyRoute><GuideDetail /></LazyRoute></PrivateRoute>} />
+          <Route path="/guide/:id/edit" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Bundles */}
-          <Route path="/bundles" element={<LazyRoute><MyBundlesScreen /></LazyRoute>} />
-          <Route path="/bundles/create" element={<LazyRoute><CreateBundleScreen /></LazyRoute>} />
-          <Route path="/createBundle" element={<LazyRoute><CreateBundleScreen /></LazyRoute>} />
-          <Route path="/bundle/:id" element={<LazyRoute><BundleDetail /></LazyRoute>} />
-          <Route path="/bundle/:id/edit" element={<LazyRoute><CreateBundleScreen /></LazyRoute>} />
+          <Route path="/bundles" element={<PrivateRoute><LazyRoute><MyBundlesScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/bundles/create" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/createBundle" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/bundle/:id" element={<PrivateRoute><LazyRoute><BundleDetail /></LazyRoute></PrivateRoute>} />
+          <Route path="/bundle/:id/edit" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Library */}
-          <Route path="/library/guide/:id" element={<LazyRoute><GuideDetail /></LazyRoute>} />
-          <Route path="/library/bundles" element={<LazyRoute><BundlesLibrary /></LazyRoute>} />
-          <Route path="/library/bundle/:id" element={<LazyRoute><BundleDetail /></LazyRoute>} />
+          <Route path="/library/guide/:id" element={<PrivateRoute><LazyRoute><GuideDetail /></LazyRoute></PrivateRoute>} />
+          <Route path="/library/bundles" element={<PrivateRoute><LazyRoute><BundlesLibrary /></LazyRoute></PrivateRoute>} />
+          <Route path="/library/bundle/:id" element={<PrivateRoute><LazyRoute><BundleDetail /></LazyRoute></PrivateRoute>} />
 
           {/* Search */}
-          <Route path="/search" element={<LazyRoute><SearchScreen /></LazyRoute>} />
+          <Route path="/search" element={<PrivateRoute><LazyRoute><SearchScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Account */}
           <Route path="/account" element={<PrivateRoute><LazyRoute><MyAccount /></LazyRoute></PrivateRoute>} />
           <Route path="/account/plans" element={<PrivateRoute><LazyRoute><PlansPage /></LazyRoute></PrivateRoute>} />
           <Route path="/plans" element={<PrivateRoute><LazyRoute><PlansPage /></LazyRoute></PrivateRoute>} />
           <Route path="/account/settings" element={<PrivateRoute><LazyRoute><AccountSettings /></LazyRoute></PrivateRoute>} />
-          <Route path="/account/subscription" element={<LazyRoute><SubscriptionScreen /></LazyRoute>} />
-          <Route path="/account/upgrade" element={<LazyRoute><UpgradeFlow /></LazyRoute>} />
-          <Route path="/account/family" element={FAMILY_SHARING_ENABLED ? <LazyRoute><ManageFamilyScreen /></LazyRoute> : <Navigate to="/account" replace />} />
-          <Route path="/settings" element={<LazyRoute><SettingsScreen /></LazyRoute>} />
+          <Route path="/account/subscription" element={<PrivateRoute><LazyRoute><SubscriptionScreen /></LazyRoute></PrivateRoute>} />
+          <Route path="/account/upgrade" element={<PrivateRoute><LazyRoute><UpgradeFlow /></LazyRoute></PrivateRoute>} />
+          <Route path="/account/family" element={FAMILY_SHARING_ENABLED ? <PrivateRoute><LazyRoute><ManageFamilyScreen /></LazyRoute></PrivateRoute> : <Navigate to="/account" replace />} />
+          <Route path="/settings" element={<PrivateRoute><LazyRoute><SettingsScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Other */}
-          <Route path="/host-mode" element={<LazyRoute><HostMode /></LazyRoute>} />
-          <Route path="/favorites" element={<LazyRoute><FavoritesScreen /></LazyRoute>} />
+          <Route path="/host-mode" element={<PrivateRoute><LazyRoute><HostMode /></LazyRoute></PrivateRoute>} />
+          <Route path="/favorites" element={<PrivateRoute><LazyRoute><FavoritesScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Admin */}
-          <Route path="/admin/errors" element={<LazyRoute><ErrorLogScreen /></LazyRoute>} />
+          <Route path="/admin/errors" element={<PrivateRoute><LazyRoute><ErrorLogScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Dev */}
           {import.meta.env.DEV && (
