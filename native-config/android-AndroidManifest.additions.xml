@@ -1,0 +1,29 @@
+<!--
+  Android manifest additions — apply after `npm run mobile:add` generates
+  android/app/src/main/AndroidManifest.xml.
+
+  1) Add these <uses-permission> and <uses-feature> lines INSIDE <manifest>,
+     above the <application> tag.
+  2) Add the intent-filter to the MainActivity <activity> so the OAuth
+     deep-link (familyplaybook://auth/callback) reopens the app.
+-->
+
+<!-- ===== permissions (place inside <manifest>, before <application>) ===== -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.CAMERA" />
+<!-- Scoped media access (Android 13+); the older READ_EXTERNAL_STORAGE is
+     only needed for API <= 32 and can be maxSdkVersion-limited. -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+<uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+<!-- ===== deep-link intent-filter (place INSIDE the MainActivity <activity>) ===== -->
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="familyplaybook" android:host="auth" />
+</intent-filter>

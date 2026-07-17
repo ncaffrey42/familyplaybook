@@ -1,0 +1,38 @@
+<!--
+  iOS permission usage strings — paste these <key>/<string> pairs into
+  ios/App/App/Info.plist (inside the top-level <dict>) after `npm run mobile:add`
+  generates the iOS project. Apple REJECTS builds that use these capabilities
+  without a usage-description string.
+
+  Also add the OAuth URL scheme (CFBundleURLTypes) so
+  familyplaybook://auth/callback deep-links back into the app.
+-->
+
+<!-- Microphone: Voice-to-Guide dictation (MediaRecorder / getUserMedia audio) -->
+<key>NSMicrophoneUsageDescription</key>
+<string>Family Playbook uses the microphone so you can dictate a guide by voice.</string>
+
+<!-- Camera: attach a photo or video to a guide step -->
+<key>NSCameraUsageDescription</key>
+<string>Family Playbook uses the camera to add photos and videos to your guides.</string>
+
+<!-- Photo library (read): choose existing images/videos for a guide -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Family Playbook accesses your photos so you can add them to your guides.</string>
+
+<!-- Photo library (add): save media if the user chooses to -->
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Family Playbook can save images you create to your photo library.</string>
+
+<!-- OAuth deep-link scheme (Google/Facebook/Discord/Apple return here) -->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>com.familyplaybook.app</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>familyplaybook</string>
+    </array>
+  </dict>
+</array>
