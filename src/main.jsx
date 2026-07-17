@@ -6,9 +6,13 @@ import './index.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider } from '@/contexts/SupabaseAuthContext';
 import { initErrorLogger } from '@/lib/errorLogger';
+import { initNativeAuth } from '@/lib/nativeAuth';
 
 // Initialize error logging service
 initErrorLogger();
+
+// Register the native OAuth deep-link handler (no-op on web).
+initNativeAuth();
 
 // Register service worker for PWA support
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

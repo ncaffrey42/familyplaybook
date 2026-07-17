@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { isNative, NATIVE_AUTH_REDIRECT } from '@/lib/native';
 
 const AuthContext = createContext();
 
@@ -288,9 +289,33 @@ export const AuthProvider = ({ children }) => {
   }, [user, clearAuthState, refreshProfile, toast]);
 
   const getRedirectUrl = (path = '/auth/callback') => {
+    // In the native app, OAuth must return to the custom URL scheme so the
+    // Capacitor deep-link handler (nativeAuth.js) can complete the session.
+    // On web this is unchanged.
+    if (isNative()) return NATIVE_AUTH_REDIRECT;
     let url = window.location.origin;
     url = url.replace(/\/$/, '');
     return `${url}${path}`;
+  };
+
+  // Shared OAuth launcher. On web, Supabase redirects the page as usual. On
+  // native, we skip the in-app redirect, open the provider in the system
+  // browser, and let the deep-link listener (nativeAuth.js) finish the
+  // exchange when the provider bounces back to familyplaybook://auth/callback.
+  const launchOAuth = async (provider, label, extra = {}) => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: getRedirectUrl(), skipBrowserRedirect: isNative(), ...extra },
+    });
+    if (error) {
+      toast({ variant: 'destructive', title: `${label} Sign In Failed`, description: error.message });
+      return { error };
+    }
+    if (isNative() && data?.url) {
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: data.url });
+    }
+    return { error: null };
   };
 
   const isPremium = (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && 
@@ -323,24 +348,13 @@ export const AuthProvider = ({ children }) => {
         if (error) toast({ variant: "destructive", title: "Sign up Failed", description: error.message });
         return { data, error };
     },
-    signInWithGoogle: async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: getRedirectUrl(), queryParams: { access_type: 'offline', prompt: 'consent' } }
-        });
-        if (error) toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });
-        return { error };
-    },
-    signInWithFacebook: async () => {
-        const { error } = await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo: getRedirectUrl() } });
-        if (error) toast({ variant: "destructive", title: "Facebook Sign In Failed", description: error.message });
-        return { error };
-    },
-    signInWithDiscord: async () => {
-        const { error } = await supabase.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: getRedirectUrl() } });
-        if (error) toast({ variant: "destructive", title: "Discord Sign In Failed", description: error.message });
-        return { error };
-    },
+    signInWithGoogle: () => launchOAuth('google', 'Google', { queryParams: { access_type: 'offline', prompt: 'consent' } }),
+    signInWithFacebook: () => launchOAuth('facebook', 'Facebook'),
+    signInWithDiscord: () => launchOAuth('discord', 'Discord'),
+    // Apple guideline 4.8: Sign in with Apple must be offered alongside other
+    // third-party logins. Configure the provider in the Supabase dashboard
+    // (see MOBILE_BUILD.md).
+    signInWithApple: () => launchOAuth('apple', 'Apple'),
     signInWithOtp: async (email) => {
         const { error } = await supabase.auth.signInWithOtp({
             email,
