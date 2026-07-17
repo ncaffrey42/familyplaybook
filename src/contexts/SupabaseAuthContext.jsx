@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback, use
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { isNative, NATIVE_AUTH_REDIRECT } from '@/lib/native';
+import { initRevenueCat, logoutRevenueCat } from '@/lib/revenuecat';
 
 const AuthContext = createContext();
 
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }) => {
   // Helper to clear all auth-related state
   const clearAuthState = useCallback(() => {
       console.log("🧹 Clearing auth state...");
+      logoutRevenueCat(); // native IAP: forget the identified user (no-op on web)
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -193,6 +195,7 @@ export const AuthProvider = ({ children }) => {
                setSession(currentSession);
                setUser(validUser);
                await refreshProfile(validUser);
+               initRevenueCat(validUser.id); // native IAP identity (no-op on web)
            }
         } else {
             // No session found
@@ -238,9 +241,10 @@ export const AuthProvider = ({ children }) => {
             
             if (currentUser) {
                 await refreshProfile(currentUser);
+                initRevenueCat(currentUser.id); // native IAP identity (no-op on web)
             }
         }
-        
+
         setLoading(false);
       }
     });

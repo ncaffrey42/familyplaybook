@@ -24,6 +24,8 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import DowngradeFlow from '@/components/DowngradeFlow';
 import { toFunctionError } from '@/hooks/useSubscription';
+import { useNativePurchases } from '@/hooks/useNativePurchases';
+import { iapActive } from '@/lib/revenuecat';
 import { PLANS } from '@/lib/plans';
 
 const LoadingSpinner = () => (
@@ -153,6 +155,9 @@ const SubscriptionScreen = () => {
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [downgradeTarget, setDowngradeTarget] = useState(null);
 
+  const { purchasePlan, restorePurchases, manageSubscriptions, loading: iapLoading } = useNativePurchases();
+  const useIap = iapActive();
+
   const handleNavigate = useNavigation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -238,6 +243,30 @@ const SubscriptionScreen = () => {
   };
 
   const handleAction = async (targetPlan, targetInterval) => {
+    // Native app: purchase through the store via RevenueCat (Stripe is not
+    // allowed for in-app subscriptions). The store handles upgrade/downgrade
+    // within the subscription group; entitlements land in user_billing via the
+    // RevenueCat webhook, so we then wait for that billing update.
+    if (useIap) {
+      setIsLoading(true);
+      try {
+        const { success, cancelled } = await purchasePlan(targetPlan, targetInterval);
+        if (cancelled) return;
+        if (success) {
+          toast({ title: 'Processing…', description: 'Confirming your subscription.', duration: 3000 });
+          const updated = await waitForSubscriptionUpdate(targetPlan);
+          toast({
+            title: updated ? 'You’re all set!' : 'Almost there',
+            description: updated ? `You’re now on the ${targetPlan} plan.` : 'It may take a moment to reflect here.',
+            variant: updated ? 'success' : 'default',
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // Downgrades to a lower tier are confirmed through DowngradeFlow, which
     // explains the end-of-period timing and which items become read-only.
     const currentLevel = PLAN_LEVELS[planKey] || 0;
@@ -479,7 +508,31 @@ const SubscriptionScreen = () => {
                         />
                     </div>
 
-                    {isPaidUser && (
+                    {/* Restore Purchases — required on native (App Store 3.1.1);
+                        available to everyone so a reinstalled/re-logged-in user
+                        can recover an active subscription. */}
+                    {useIap && (
+                        <div className="mt-8 text-center">
+                            <Button variant="ghost" size="sm" onClick={restorePurchases} disabled={iapLoading} className="text-gray-500">
+                                {iapLoading ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
+                                Restore Purchases
+                            </Button>
+                        </div>
+                    )}
+
+                    {isPaidUser && useIap && (
+                        <div className="mt-8 space-y-4 border-t border-gray-200 dark:border-gray-800 pt-8">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Subscription Management</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Your subscription is billed through the {PLANS && 'App Store / Google Play'}. Manage or cancel it there.
+                            </p>
+                            <Button variant="outline" onClick={manageSubscriptions} className="w-full">
+                                <Shield className="mr-2" size={16} /> Manage Subscription
+                            </Button>
+                        </div>
+                    )}
+
+                    {isPaidUser && !useIap && (
                         <div className="mt-12 space-y-4 border-t border-gray-200 dark:border-gray-800 pt-8">
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100">Subscription Management</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -487,7 +540,7 @@ const SubscriptionScreen = () => {
                                     {isManaging ? <Loader2 className="animate-spin mr-2" size={16} /> : <Shield className="mr-2" size={16} />}
                                     Billing Portal
                                 </Button>
-                                
+
                                 {scheduledPlanKey === 'free' ? (
                                     <Button variant="ghost" disabled className="w-full text-gray-400">
                                         Cancellation scheduled{scheduledDateLabel ? ` · ${scheduledDateLabel}` : ''}
