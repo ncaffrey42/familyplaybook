@@ -120,10 +120,27 @@ const AccountSettings = () => {
         }
     };
 
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const handleDeleteAccount = async () => {
-        // In a real app, this would likely trigger a cloud function to cleanup data
-        // For this environment, we will sign out and show a message
-        toast({ title: "Account Deletion Request", description: "This feature requires admin approval in this demo environment.", variant: "default" });
+        setIsDeleting(true);
+        try {
+            // Permanently deletes the account + all data (and cancels any
+            // active Stripe subscription) server-side. Required by the app
+            // stores; irreversible.
+            const { data, error } = await supabase.functions.invoke('delete-account');
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error || 'Deletion failed');
+
+            toast({ title: 'Account deleted', description: 'Your account and all data have been permanently removed.' });
+            await signOut();
+            navigate('/login', { replace: true });
+        } catch (err) {
+            console.error('Delete account error:', err);
+            toast({ title: 'Deletion Failed', description: err.message || 'Could not delete your account. Please try again.', variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -253,8 +270,11 @@ const AccountSettings = () => {
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">Delete Account</AlertDialogAction>
+                                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+                                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Delete Account
+                                        </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
