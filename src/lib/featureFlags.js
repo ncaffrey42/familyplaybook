@@ -18,3 +18,14 @@ export const FAMILY_SHARING_ENABLED =
  */
 export const AI_GENERATION_ENABLED =
   import.meta.env.VITE_ENABLE_AI_GENERATION === 'true';
+
+/**
+ * HOST_MODE_ENABLED gates the Host Mode screen. Default OFF: Host Mode is
+ * currently a non-functional mockup (the PIN is local-only React state, the
+ * QR points at a route that doesn't exist, nothing is enforced server-side).
+ * Hidden so app-store review doesn't flag a dead/placeholder feature. Flip on
+ * only once Host Mode is actually implemented. The real "share with a guest"
+ * paths today are share links and family sharing.
+ */
+export const HOST_MODE_ENABLED =
+  import.meta.env.VITE_ENABLE_HOST_MODE === 'true';

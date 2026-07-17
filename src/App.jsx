@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
+import { FAMILY_SHARING_ENABLED, HOST_MODE_ENABLED } from '@/lib/featureFlags';
 import { Toaster } from "@/components/ui/toaster";
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { UsageTrackingProvider } from './contexts/UsageTrackingContext';
@@ -160,7 +160,7 @@ const AppContent = () => {
           <Route path="/settings" element={<PrivateRoute><LazyRoute><SettingsScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Other */}
-          <Route path="/host-mode" element={<PrivateRoute><LazyRoute><HostMode /></LazyRoute></PrivateRoute>} />
+          <Route path="/host-mode" element={HOST_MODE_ENABLED ? <PrivateRoute><LazyRoute><HostMode /></LazyRoute></PrivateRoute> : <Navigate to="/account" replace />} />
           <Route path="/favorites" element={<PrivateRoute><LazyRoute><FavoritesScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Admin */}

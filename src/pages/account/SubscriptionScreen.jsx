@@ -464,7 +464,7 @@ const SubscriptionScreen = () => {
                             title="Family Plan"
                             price={plans.family[billingCycle].price}
                             interval={billingCycle}
-                            features={['Up to 5 Members', 'Host Mode', 'Advanced Roles']}
+                            features={['Up to 5 Members', 'Shared Editing', 'AI Handoff Bundles']}
                             icon={Crown}
                             gradient="from-[#5CA9E9] to-[#7BC47F]"
                             isActive={isCurrentInterval('family', billingCycle)}

@@ -36,3 +36,13 @@ supabase/.temp/
 
 # TypeScript
 *.tsbuildinfo
+
+# Capacitor native build artifacts (the ios/ and android/ projects themselves
+# are committed after `npm run mobile:add`, but their build output is not)
+ios/App/Pods/
+ios/App/App/public/
+ios/DerivedData/
+android/.gradle/
+android/app/build/
+android/build/
+*.xcuserstate
