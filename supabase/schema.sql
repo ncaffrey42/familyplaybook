@@ -189,6 +189,15 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
 );
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.revenuecat_webhook_events (
+  id text NOT NULL,
+  type text,
+  app_user_id text,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT revenuecat_webhook_events_pkey PRIMARY KEY (id)
+);
+ALTER TABLE public.revenuecat_webhook_events ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE IF NOT EXISTS public.shared_links (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   user_id uuid,
@@ -238,6 +247,7 @@ CREATE TABLE IF NOT EXISTS public.user_billing (
   last_event_at timestamp with time zone,
   scheduled_plan_key text,
   scheduled_change_at timestamp with time zone,
+  billing_provider text DEFAULT 'stripe'::text NOT NULL,
   CONSTRAINT user_billing_pkey PRIMARY KEY (user_id),
   CONSTRAINT user_billing_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -994,6 +1004,7 @@ CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING ((auth.uid() = id));
 CREATE POLICY "Users can manage their own push subscriptions" ON public.push_subscriptions FOR ALL USING ((auth.uid() = user_id));
+CREATE POLICY "revenuecat_events_service" ON public.revenuecat_webhook_events FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Users can create their own shared links" ON public.shared_links FOR INSERT WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "shared_links_owner_delete" ON public.shared_links FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "shared_links_owner_select" ON public.shared_links FOR SELECT TO authenticated USING ((auth.uid() = user_id));

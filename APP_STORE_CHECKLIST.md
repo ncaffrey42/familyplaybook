@@ -16,10 +16,11 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   "Sign in with Apple" capability in Xcode (see MOBILE_BUILD.md §2–3).
 - ✅ **No placeholder/dead features shown** — Host Mode hidden behind a flag;
   its misleading plan-card bullet replaced.
-- ⚠️ **In-App Purchase (guideline 3.1.1 / Play Billing)** — Stripe is NOT
-  allowed for in-app digital subscriptions. **Decision required (Prompt B):**
-  RevenueCat/native IAP (sell in-app) vs. web-only purchase + login-only app.
-  Until resolved, do not ship purchase UI in the native app.
+- ✅ **In-App Purchase (guideline 3.1.1 / Play Billing)** — native apps use
+  RevenueCat store billing (not Stripe); purchases reconcile into user_billing
+  via the revenuecat-webhook (verified live). Restore Purchases + store-native
+  management present. **Remaining: dashboard/product config** — follow
+  REVENUECAT_SETUP.md, then set `VITE_ENABLE_IAP=true` in the native build.
 - ☐ **Privacy policy URL** — required by both stores. Publish one at
   `<PRIVACY_POLICY_URL>` (must cover: account data, guides/media stored in
   Supabase, Stripe for payments, OpenAI for AI features, analytics).
