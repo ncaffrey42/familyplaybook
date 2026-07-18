@@ -15,26 +15,37 @@ them.
 
 ---
 
-## 0. One-time: generate the native projects
+## 0. Native projects — ALREADY GENERATED ✅
+
+`ios/` and `android/` are committed with the native config applied (Info.plist
+usage strings + OAuth scheme; AndroidManifest permissions + deep-link
+intent-filter). You do **not** need to run `npm run mobile:add` again. Just:
 
 ```bash
 npm install
-npm run mobile:add        # creates ios/ and android/ from capacitor.config.ts
-npm run mobile:assets     # generates app icons + splash from assets/icon.png
 ```
 
-> Replace `assets/icon.png` and `assets/splash.png` with **1024×1024** masters
-> before shipping — the committed ones are upscaled from the 512px web icon and
-> will look soft on device.
+> **One-time on your Mac:** point the toolchain at full Xcode (needs your
+> password), or `cap sync`/archiving will fail with
+> "xcodebuild requires Xcode":
+> ```bash
+> sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+> ```
+> And if you re-run CocoaPods yourself, prefix it with UTF-8 or it crashes:
+> `LANG=en_US.UTF-8 pod install`.
 
-### Apply the native config (once, after generating)
-- **iOS:** open `native-config/ios-Info.plist.additions.xml` and paste its
-  keys into `ios/App/App/Info.plist`.
-- **Android:** apply `native-config/android-AndroidManifest.additions.xml` to
-  `android/app/src/main/AndroidManifest.xml` (permissions + the deep-link
-  intent-filter).
+### App icons (do before store submission)
+The committed `public/icon-*.png` are text, not real PNGs, so the apps
+currently use Capacitor's **default launcher icon**. Drop a real **1024×1024**
+PNG at `assets/icon.png` (and `assets/splash.png`), then:
+```bash
+npm run mobile:assets && npx cap sync
+```
 
-Commit `ios/` and `android/` after this step so the native config is tracked.
+### If you ever regenerate from scratch
+`npm run mobile:add` recreates the folders; then re-apply the snippets in
+`native-config/` (they're kept as the source of truth for the manifest/plist
+additions).
 
 ---
 
