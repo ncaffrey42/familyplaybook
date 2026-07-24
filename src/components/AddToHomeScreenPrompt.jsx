@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share, PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { isNative } from '@/lib/native';
 
 const AddToHomeScreenPrompt = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -12,6 +13,9 @@ const AddToHomeScreenPrompt = () => {
   const deferredPromptRef = useRef(null);
 
   useEffect(() => {
+    // This is a PWA "add to home screen" prompt — meaningless inside the
+    // native app (they've already installed it), so never show it there.
+    if (isNative()) return;
     const showPrompt = (promptEvent = null) => {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
