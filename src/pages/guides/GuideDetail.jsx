@@ -28,6 +28,7 @@ import { logError } from '@/lib/errorLogger';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import GuideIcon from '@/components/GuideIcon';
+import HeartMark from '@/components/HeartMark';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
@@ -315,7 +316,7 @@ const GuideDetail = ({ guide: propGuide }) => {
           returnTo={readOnlyReturnTo}
         />
 
-        <header className="bg-gradient-to-br from-[#5CA9E9]/20 to-[#7BC47F]/20 dark:from-[#5CA9E9]/10 dark:to-[#7BC47F]/10 p-6 pb-8">
+        <header className="bg-cream dark:bg-background px-[22px] pt-6 pb-6">
           <PageHeader title="" onBack={() => navigate(-1)}>
             {isLibraryView ? (
               // Library View Actions
@@ -343,8 +344,13 @@ const GuideDetail = ({ guide: propGuide }) => {
                   <Button variant="ghost" size="icon" onClick={handleEdit} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Edit">
                     <Pencil size={20} className="text-gray-500 dark:text-gray-400" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={handleFavoriteClick} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Favorite">
-                      <Heart size={20} className={isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-500 dark:text-gray-400'} />
+                  {/* Pin toggle — the brand heart-route mark IS the pin control */}
+                  <Button variant="ghost" size="icon" onClick={handleFavoriteClick} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label={isFavorited ? 'Unpin' : 'Pin'}>
+                      <HeartMark
+                        size={20}
+                        stroke={isFavorited ? '#C25065' : '#D8B9C4'}
+                        fill={isFavorited ? 'rgba(194,80,101,.12)' : 'none'}
+                      />
                   </Button>
                   {isOwner && (
                     <Button variant="ghost" size="icon" onClick={handleShare} disabled={isSharing} className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm" aria-label="Share">
@@ -405,10 +411,14 @@ const GuideDetail = ({ guide: propGuide }) => {
           </PageHeader>
   
           <div className="flex items-center gap-4">
-            <GuideIcon iconName={guide.icon} category={guide.category} />
+            <GuideIcon category={guide.category} size={48} dot={17} />
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{guide.name}</h1>
-              {guide.category && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{guide.category}</p>}
+              <h1 className="font-display font-semibold text-[25px] leading-[1.2] text-mulberry dark:text-foreground truncate">{guide.name}</h1>
+              <p className="text-[13.5px] text-muted-copy mt-0.5">
+                {!isLibraryView && steps.length > 0
+                  ? `${checkedSteps.length} of ${steps.length} done`
+                  : guide.category}
+              </p>
               
               {!isLibraryView && (
                   <div
@@ -481,65 +491,99 @@ const GuideDetail = ({ guide: propGuide }) => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <main className="p-6 space-y-6">
-          {(guide.description || content?.description) && (
-             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{content?.intro || guide.description || content?.description}</p>
-            </motion.section>
+        <main className="px-[22px] py-5 space-y-5">
+          {/* Progress bar — 7px, meter track, raspberry fill */}
+          {!isLibraryView && steps.length > 0 && (
+            <div className="h-[7px] bg-meter-track rounded-full overflow-hidden">
+              <div
+                className="h-full bg-raspberry rounded-full"
+                style={{ width: `${(checkedSteps.length / steps.length) * 100}%`, transition: 'width .3s ease' }}
+              />
+            </div>
           )}
 
+          {/* Optional intro — blush block */}
+          {(guide.description || content?.description || content?.intro) && (
+            <section className="bg-blush rounded-lg p-4">
+              <p className="text-[14.5px] leading-[1.6] whitespace-pre-wrap" style={{ color: '#7A4A38' }}>
+                {content?.intro || guide.description || content?.description}
+              </p>
+            </section>
+          )}
+
+          {/* One card holds every step */}
           {steps.length > 0 && (
             <section>
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Instructions</h2>
-                  {!isLibraryView && <span className="text-sm font-semibold text-[#5CA9E9]">{checkedSteps.length}/{steps.length} completed</span>}
-                </div>
-                {!isLibraryView && (
-                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${(checkedSteps.length / steps.length) * 100}%` }} className="h-full bg-gradient-to-r from-[#7BC47F] to-[#5CA9E9]" />
-                  </div>
-                )}
-              </div>
-  
-              <div className="space-y-3">
+              <div className="bg-card rounded-lg border border-card-border shadow-card overflow-hidden">
                 {steps.map((step, index) => {
-                  const isChecked = checkedSteps.includes(step.id);
+                  const isChecked = checkedSteps.includes(step.id) && !isLibraryView;
                   return (
-                    <motion.div 
-                      key={step.id} 
-                      initial={{ opacity: 0, x: -20 }} 
-                      animate={{ opacity: 1, x: 0 }} 
-                      transition={{ delay: index * 0.1 }} 
-                      onClick={() => toggleStep(step.id)}
-                      className={`bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card ${!isLibraryView ? 'hover:shadow-soft cursor-pointer' : ''} transition-all duration-300 ${isChecked && !isLibraryView ? 'bg-gradient-to-r from-[#7BC47F]/10 to-[#5CA9E9]/10 dark:from-[#7BC47F]/5 dark:to-[#5CA9E9]/5' : ''}`}
+                    <div
+                      key={step.id}
+                      onClick={() => !isLibraryView && toggleStep(step.id)}
+                      role={isLibraryView ? undefined : 'button'}
+                      className={`flex items-start gap-3.5 px-4 py-4 ${index > 0 ? 'border-t border-row-divider' : ''} ${!isLibraryView ? 'cursor-pointer' : ''} ${isChecked ? 'bg-cream' : ''}`}
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0 mt-1">
-                          {isLibraryView ? (
-                             <span className="w-6 h-6 rounded-full bg-[#5CA9E9] text-white text-xs flex items-center justify-center font-semibold">{index + 1}</span>
-                          ) : (
-                             isChecked ? <CheckCircle2 size={24} className="text-[#7BC47F]" /> : <Circle size={24} className="text-gray-300 dark:text-gray-600" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-gray-800 dark:text-gray-100">{step.title}</h3>
-                          </div>
-                          <p className={`text-gray-700 dark:text-gray-300 ${!isLibraryView ? 'pl-0' : ''} ${isChecked && !isLibraryView ? 'line-through opacity-60' : ''}`}>{step.content}</p>
-                          <StepMedia url={step.mediaUrl} />
-                        </div>
+                      <div className="flex-shrink-0 mt-0.5">
+                        {isLibraryView ? (
+                          <span className="w-[26px] h-[26px] rounded-full bg-halo-raspberry text-raspberry text-[12px] flex items-center justify-center font-bold">{index + 1}</span>
+                        ) : (
+                          <span
+                            className={`w-[26px] h-[26px] rounded-full flex items-center justify-center transition-colors ${
+                              isChecked ? 'bg-raspberry' : 'border-2 border-checkbox-ring bg-transparent'
+                            }`}
+                          >
+                            {isChecked && <CheckCircle2 size={16} className="text-white" strokeWidth={3} />}
+                          </span>
+                        )}
                       </div>
-                    </motion.div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`font-bold text-[16px] ${isChecked ? 'text-muted-copy line-through' : 'text-mulberry dark:text-foreground'}`}>
+                          {step.title}
+                        </h3>
+                        {step.content && (
+                          <p className={`text-[14px] leading-[1.55] mt-0.5 ${isChecked ? 'text-muted-copy line-through' : ''}`} style={isChecked ? {} : { color: '#7A5A68' }}>
+                            {step.content}
+                          </p>
+                        )}
+                        <StepMedia url={step.mediaUrl} />
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-  
+
+              {/* Mark all done / Start over */}
+              {!isLibraryView && (
+                checkedSteps.length === steps.length ? (
+                  <button
+                    onClick={() => setCheckedSteps([])}
+                    className="mt-4 w-full h-11 rounded-full bg-blush text-blush-copy font-bold text-[15px]"
+                  >
+                    Start over
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setCheckedSteps(steps.map((s) => s.id))}
+                    className="mt-4 w-full h-11 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
+                  >
+                    Mark all done
+                  </button>
+                )
+              )}
+
+              {/* Completion block */}
               {checkedSteps.length === steps.length && steps.length > 0 && !isLibraryView && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="mt-6 bg-gradient-to-r from-[#7BC47F] to-[#5CA9E9] rounded-2xl p-6 text-center text-white">
-                  <div className="text-4xl mb-2">🎉</div>
-                  <h3 className="text-xl font-bold mb-1">Great Job!</h3>
-                  <p className="text-sm opacity-90">You've completed all steps!</p>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-4 bg-blush rounded-lg p-5 text-center"
+                >
+                  <h3 className="font-display font-semibold text-[19px] text-mulberry">All done.</h3>
+                  <p className="text-[14px] mt-1 text-blush-copy">
+                    Anyone you share this with sees the same steps, checked off fresh.
+                  </p>
                 </motion.div>
               )}
             </section>
