@@ -33,7 +33,7 @@ const AccountPlans = () => {
       <div className="space-y-8 max-w-5xl mx-auto pb-10">
         
         {/* Current Plan Summary Card */}
-        <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 border-l-4 border-l-[#5CA9E9] shadow-md">
+        <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 border-l-4 border-l-raspberry shadow-md">
           <CardHeader className="pb-2">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
               <div>
