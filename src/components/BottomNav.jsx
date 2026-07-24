@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Library, Heart, User, CreditCard, FolderOpen } from 'lucide-react';
+import { Home, Library, Heart, User, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
@@ -14,7 +14,6 @@ const BottomNav = () => {
     { id: 'guides', path: '/library', icon: Library, label: 'Guides' }, // Changed label to "Guides"
     { id: 'bundles', path: '/bundles', icon: FolderOpen, label: 'Bundles' },
     { id: 'favorites', path: '/favorites', icon: Heart, label: 'Favorites' },
-    { id: 'plans', path: '/plans', icon: CreditCard, label: 'Plans' },
     { id: 'account', path: '/account', icon: User, label: 'Account' },
   ];
 
@@ -25,7 +24,6 @@ const BottomNav = () => {
       guides: () => import('@/pages/guides/GuidesLibrary'),
       bundles: () => import('@/pages/bundles/MyBundlesScreen'),
       favorites: () => import('@/pages/FavoritesScreen'),
-      plans: () => import('@/pages/account/PlansPage'),
       account: () => import('@/pages/account/MyAccount'),
     };
 
@@ -42,10 +40,8 @@ const BottomNav = () => {
           let isActive = false;
           
           // Updated active state logic
-          if (item.id === 'plans') {
-             isActive = currentPath.startsWith('/plans') || currentPath.startsWith('/account/plans');
-          } else if (item.id === 'account') {
-             isActive = currentPath.startsWith('/account') && !currentPath.startsWith('/account/plans');
+          if (item.id === 'account') {
+             isActive = currentPath.startsWith('/account');
           } else if (item.id === 'home') {
              isActive = currentPath === '/home' || currentPath === '/';
           } else if (item.id === 'guides') { // Updated to 'guides'
