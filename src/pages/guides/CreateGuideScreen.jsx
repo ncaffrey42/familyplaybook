@@ -244,10 +244,11 @@ const CreateGuideScreen = ({ pack: propPack }) => {
     );
   }
 
+  // Brand v1: selected = raspberry fill / white; unselected = blush / muted
   const categoryOptions = [
-    { id: 'How To', label: 'How To', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200', activeColor: 'bg-blue-500 text-white border-blue-600' },
-    { id: 'Find It', label: 'Find It', color: 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200', activeColor: 'bg-green-500 text-white border-green-600' },
-    { id: 'Reference', label: 'Reference', color: 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200', activeColor: 'bg-purple-500 text-white border-purple-600' },
+    { id: 'How To', label: 'How To' },
+    { id: 'Find It', label: 'Find It' },
+    { id: 'Reference', label: 'Reference' },
   ];
 
   return (
@@ -275,16 +276,23 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             </Button>
             <h1 className="text-2xl font-bold text-gray-800">{guideId ? 'Edit Guide' : 'Create Guide'}</h1>
           </div>
-          {AI_GENERATION_ENABLED && !guideId && (
-            <Button
-              variant="outline"
-              onClick={() => setIsAiOpen(true)}
-              className="rounded-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300"
-            >
-              <Sparkles size={16} /> Create with AI
-            </Button>
-          )}
         </div>
+
+        {/* AI helper — one quiet row, not a hero (brand v1) */}
+        {AI_GENERATION_ENABLED && !guideId && (
+          <button
+            onClick={() => setIsAiOpen(true)}
+            className="w-full mb-5 bg-card rounded-lg border border-card-border shadow-card px-4 py-3.5 flex items-center gap-3.5 text-left transition-all hover:border-hover-border hover:-translate-y-px"
+          >
+            <span className="w-[34px] h-[34px] rounded-full bg-halo-apricot flex items-center justify-center flex-shrink-0">
+              <span className="w-3 h-3 rounded-full bg-apricot" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold text-[15px] text-mulberry">Say it, I’ll write the steps</span>
+              <span className="block text-[13px] text-muted-copy">Talk it through or type a sentence</span>
+            </span>
+          </button>
+        )}
 
         {/* This screen is light-only (hardcoded bg), so the banner uses fixed
             high-contrast colors rather than theme-aware ones. */}
@@ -329,27 +337,28 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                   />
                 </div>
                 <div className="flex-grow">
-                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wide">Guide Name</label>
+                  <label className="block text-[10.5px] font-bold text-raspberry mb-1 uppercase tracking-[0.13em]">Guide Name</label>
                   <input
                     type="text"
                     value={guideName}
                     onChange={(e) => setGuideName(e.target.value)}
                     placeholder="e.g., Bedtime Routine"
-                    className="w-full h-10 bg-transparent text-lg font-bold text-gray-800 placeholder-gray-300 focus:outline-none border-b-2 border-transparent focus:border-[#5CA9E9] transition-colors"
+                    className="w-full h-11 bg-transparent font-display font-semibold text-[26px] text-mulberry placeholder:text-placeholder-copy placeholder:font-sans placeholder:text-lg focus:outline-none transition-colors"
+                    style={{ borderBottom: '1.5px solid #EFDDD2' }}
                   />
                 </div>
              </div>
 
              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Guide Type</label>
+                <label className="block text-[10.5px] font-bold text-raspberry mb-2 uppercase tracking-[0.13em]">Kind of guide</label>
                 <div className="grid grid-cols-3 gap-2">
                   {categoryOptions.map((opt) => (
                     <button
                       key={opt.id}
                       onClick={() => setCategory(opt.id)}
                       className={cn(
-                        "py-2 px-1 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1",
-                        category === opt.id ? opt.activeColor : `${opt.color} border-transparent bg-opacity-50`
+                        "py-2 px-1 rounded-full text-sm font-bold transition-all flex items-center justify-center gap-1",
+                        category === opt.id ? "bg-raspberry text-cream" : "bg-blush text-muted-copy"
                       )}
                     >
                       {category === opt.id && <Check size={14} />}
@@ -539,12 +548,12 @@ const CreateGuideScreen = ({ pack: propPack }) => {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full h-14 text-lg font-semibold rounded-2xl bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full h-12 text-[15.5px] font-bold rounded-full bg-raspberry hover:bg-raspberry-hover text-cream transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                guideId ? 'Update Guide' : 'Save Guide'
+                guideId ? 'Save changes' : 'Save guide'
               )}
             </Button>
           </EntitlementGuard>
