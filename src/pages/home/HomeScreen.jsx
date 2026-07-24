@@ -31,7 +31,7 @@ const GuideRow = ({ guide, onClick }) => (
       </div>
       <div className="text-[13.5px] text-muted-copy truncate">
         {guide.category || 'Guide'}
-        {Array.isArray(guide.steps) && guide.steps.length > 0 && ` · ${guide.steps.length} steps`}
+        {Array.isArray(guide.steps) && guide.steps.length > 0 && ` · ${guide.steps.length} ${guide.steps.length === 1 ? 'step' : 'steps'}`}
       </div>
     </div>
   </button>
