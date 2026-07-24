@@ -1,45 +1,41 @@
-import React, { useMemo } from 'react';
-import * as LucideIcons from 'lucide-react';
+import React from 'react';
 import { cn } from '@/lib/utils';
 
-const categoryColors = {
-  'How To': 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400',
-  'Find It': 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400',
-  'Reference': 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400', // Updated to purple as requested
-  'Default': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+/**
+ * Brand v1 guide icon: a solid colour dot inside a tinted circular halo,
+ * keyed by guide category (replacing the previous lucide-glyph tiles).
+ *
+ *   How To    → raspberry dot in a raspberry halo
+ *   Find It   → apricot dot in an apricot halo
+ *   Reference → mulberry dot in a mulberry halo
+ *   Emergency → coral dot in a coral halo
+ *
+ * `iconName` is accepted for backwards compatibility but no longer rendered —
+ * the category drives the visual. Sizes: halo defaults to 42px with a 15px dot
+ * (Home/Guides rows); helper mode uses size={48} dot={17}.
+ */
+const CATEGORY_STYLES = {
+  'How To':    { halo: 'bg-halo-raspberry', dot: 'bg-raspberry' },
+  'Find It':   { halo: 'bg-halo-apricot',   dot: 'bg-apricot' },
+  'Reference': { halo: 'bg-halo-mulberry',  dot: 'bg-mulberry' },
+  'Emergency': { halo: 'bg-halo-coral',     dot: 'bg-coral' },
 };
+const DEFAULT_STYLE = { halo: 'bg-halo-raspberry', dot: 'bg-raspberry' };
 
-// Helper to convert various string formats to PascalCase (e.g., 'file-text' -> 'FileText')
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2') // split camelCase
-    .replace(/[\s_]+/g, '-') // replace spaces and underscores with hyphens
-    .replace(/(^\w|-\w)/g, (clear) => clear.replace('-', '').toUpperCase());
-};
-
-const GuideIcon = ({ iconName, category, className, size = 24 }) => {
-  const colorClass = categoryColors[category] || categoryColors['Default'];
-  
-  const IconComponent = useMemo(() => {
-    if (!iconName) return LucideIcons.FileText;
-
-    // 1. Try exact match (e.g. "FileText")
-    // eslint-disable-next-line import/namespace
-    if (LucideIcons[iconName]) return LucideIcons[iconName];
-
-    // 2. Try PascalCase conversion (fixes "file-text" -> "FileText")
-    const pascalName = toPascalCase(iconName);
-    // eslint-disable-next-line import/namespace
-    if (LucideIcons[pascalName]) return LucideIcons[pascalName];
-
-    // 3. Fallback to default
-    return LucideIcons.FileText;
-  }, [iconName]);
-
+const GuideIcon = ({ category, size = 42, dot, className, iconName: _iconName, ...props }) => {
+  const s = CATEGORY_STYLES[category] || DEFAULT_STYLE;
+  // Legacy call sites size the container via className (w-10 h-10 …); only
+  // apply the inline halo size when the className doesn't set its own width.
+  const classSized = /(^|\s)(w-|h-)/.test(className || '');
+  const haloStyle = classSized ? undefined : { width: size, height: size };
+  const dotPx = dot ?? Math.round((classSized ? 40 : size) * 0.36);
   return (
-    <div className={cn(`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-200 overflow-hidden flex-shrink-0`, colorClass, className)}>
-      <IconComponent size={size} />
+    <div
+      className={cn('rounded-full flex items-center justify-center flex-shrink-0', s.halo, className)}
+      style={haloStyle}
+      {...props}
+    >
+      <div className={cn('rounded-full', s.dot)} style={{ width: dotPx, height: dotPx }} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* Brand v1: Fraunces (headings) + Nunito Sans (everything else). */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,65 +7,68 @@
 
 @layer base {
   :root {
-    --background: 38 50% 98%; /* warm-neutral-50 */
-    --foreground: 20 14.3% 4.1%; /* warm-neutral-950 */
+    /* Brand v1 palette — see design/redesign-v1/brand-guide.html */
+    --background: 27 60% 97%;      /* #FDF8F3 cream */
+    --foreground: 333 38% 26%;     /* #5C2A3E mulberry */
 
-    --card: 38 50% 98%;
-    --card-foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 333 38% 26%;
 
-    --popover: 38 50% 98%;
-    --popover-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 333 38% 26%;
 
-    --primary: 205 60% 55%; /* soft-blue */
-    --primary-foreground: 210 40% 98%;
+    --primary: 348 46% 54%;        /* #C25065 raspberry — the one action colour */
+    --primary-foreground: 27 60% 97%;
 
-    --secondary: 38 10% 95%; /* warm-neutral-100 */
-    --secondary-foreground: 20 14.3% 4.1%;
+    --secondary: 21 55% 90%;       /* #F6DFD3 blush */
+    --secondary-foreground: 22 33% 41%;
 
-    --muted: 38 10% 95%;
-    --muted-foreground: 20 8% 40%;
+    --muted: 21 55% 90%;
+    --muted-foreground: 337 18% 57%; /* #A9798A */
 
-    --accent: 145 40% 70%; /* soft-green */
-    --accent-foreground: 20 14.3% 4.1%;
+    --accent: 30 86% 65%;          /* #F4A259 apricot — the player dot */
+    --accent-foreground: 30 63% 22%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 9 82% 65%;      /* #F0705A coral — urgent/emergency only */
+    --destructive-foreground: 27 60% 97%;
 
-    --border: 38 10% 90%;
-    --input: 38 10% 90%;
-    --ring: 205 60% 55%;
+    --border: 24 45% 90%;          /* #F0E2D8 */
+    --input: 24 45% 90%;
+    --ring: 348 46% 54%;
 
-    --radius: 1rem;
+    --radius: 1.125rem;            /* 18px */
   }
 
   .dark {
-    --background: 20 14.3% 4.1%;
-    --foreground: 38 50% 98%;
+    /* Dark mode derived from the brand's Ink/Mulberry end of the palette.
+       (The v1 brand guide specifies light mode only; these keep the same hues.) */
+    --background: 333 25% 10%;     /* deep ink-mulberry */
+    --foreground: 27 60% 97%;      /* cream */
 
-    --card: 20 14.3% 4.1%;
-    --card-foreground: 38 50% 98%;
+    --card: 333 25% 14%;
+    --card-foreground: 27 60% 97%;
 
-    --popover: 20 14.3% 4.1%;
-    --popover-foreground: 38 50% 98%;
+    --popover: 333 25% 14%;
+    --popover-foreground: 27 60% 97%;
 
-    --primary: 205 60% 55%;
-    --primary-foreground: 20 14.3% 4.1%;
+    --primary: 348 46% 54%;        /* raspberry stays the action colour */
+    --primary-foreground: 27 60% 97%;
 
-    --secondary: 20 10% 10%;
-    --secondary-foreground: 38 50% 98%;
+    --secondary: 333 20% 20%;
+    --secondary-foreground: 21 55% 90%;
 
-    --muted: 20 10% 10%;
-    --muted-foreground: 38 10% 60%;
+    --muted: 333 20% 20%;
+    --muted-foreground: 337 18% 65%;
 
-    --accent: 145 40% 70%;
-    --accent-foreground: 38 50% 98%;
+    --accent: 30 86% 65%;
+    --accent-foreground: 30 63% 22%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 38 50% 98%;
+    --destructive: 9 82% 65%;
+    --destructive-foreground: 27 60% 97%;
 
-    --border: 20 10% 15%;
-    --input: 20 10% 15%;
-    --ring: 205 60% 55%;
+    --border: 333 20% 22%;
+    --input: 333 20% 22%;
+    --ring: 348 46% 54%;
   }
 }
 
@@ -79,7 +83,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Nunito Sans', sans-serif;
+    text-wrap: pretty;
     -webkit-tap-highlight-color: transparent;
     padding-top: env(safe-area-inset-top);
     padding-right: env(safe-area-inset-right);
