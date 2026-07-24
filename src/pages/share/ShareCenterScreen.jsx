@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
 import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
@@ -31,9 +32,13 @@ const ShareCenterScreen = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { allGuides, allBundles } = useData();
   const [members, setMembers] = useState([]);
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null); // invitation id
+  const [grants, setGrants] = useState([]);           // selected member's grants
+  const [grantsLoading, setGrantsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +70,65 @@ const ShareCenterScreen = () => {
     load();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  const selectedMember = useMemo(
+    () => members.find((m) => m.id === selectedId) || null,
+    [members, selectedId]
+  );
+
+  // Load the selected member's grants
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedId) { setGrants([]); return; }
+    setGrantsLoading(true);
+    supabase
+      .from('share_grants')
+      .select('id, guide_id, bundle_id')
+      .eq('invitation_id', selectedId)
+      .then(({ data }) => {
+        if (!cancelled) { setGrants(data || []); setGrantsLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
+  const myGuides = useMemo(() => (allGuides || []).filter((g) => !g.is_shared_with_me), [allGuides]);
+  const myBundles = useMemo(() => (allBundles || []).filter((b) => !b.is_shared_with_me), [allBundles]);
+
+  const grantedGuideIds = useMemo(() => new Set(grants.filter((g) => g.guide_id).map((g) => g.guide_id)), [grants]);
+  const grantedBundleIds = useMemo(() => new Set(grants.filter((g) => g.bundle_id).map((g) => g.bundle_id)), [grants]);
+
+  const toggleGrant = async (kind, itemId) => {
+    if (!selectedMember) return;
+    const isGranted = kind === 'guide' ? grantedGuideIds.has(itemId) : grantedBundleIds.has(itemId);
+    if (isGranted) {
+      const existing = grants.find((g) => (kind === 'guide' ? g.guide_id === itemId : g.bundle_id === itemId));
+      setGrants((prev) => prev.filter((g) => g.id !== existing.id)); // optimistic
+      const { error } = await supabase.from('share_grants').delete().eq('id', existing.id);
+      if (error) {
+        setGrants((prev) => [...prev, existing]);
+        toast({ title: 'Could not update', description: 'Please try again.', variant: 'destructive' });
+      }
+    } else {
+      const optimistic = { id: `tmp-${itemId}`, guide_id: kind === 'guide' ? itemId : null, bundle_id: kind === 'bundle' ? itemId : null };
+      setGrants((prev) => [...prev, optimistic]); // optimistic
+      const { data, error } = await supabase
+        .from('share_grants')
+        .insert({
+          owner_user_id: user.id,
+          invitation_id: selectedMember.id,
+          guide_id: kind === 'guide' ? itemId : null,
+          bundle_id: kind === 'bundle' ? itemId : null,
+        })
+        .select('id, guide_id, bundle_id')
+        .single();
+      if (error) {
+        setGrants((prev) => prev.filter((g) => g.id !== optimistic.id));
+        toast({ title: 'Could not update', description: 'Please try again.', variant: 'destructive' });
+      } else {
+        setGrants((prev) => prev.map((g) => (g.id === optimistic.id ? data : g)));
+      }
+    }
+  };
 
   const liveLinks = useMemo(
     () => links.map((l) => ({
@@ -109,9 +173,14 @@ const ShareCenterScreen = () => {
             <SectionLabel>Family & helpers</SectionLabel>
             <div className="-mx-[22px] px-[22px] flex gap-[18px] overflow-x-auto scrollbar-hide items-start">
               {members.map((m, i) => (
-                <div key={m.id} className="flex flex-col items-center flex-shrink-0 w-[64px]">
+                <button
+                  key={m.id}
+                  onClick={() => m.status === 'accepted' && setSelectedId(selectedId === m.id ? null : m.id)}
+                  className="flex flex-col items-center flex-shrink-0 w-[64px]"
+                >
                   <div
                     className={`w-[56px] h-[56px] rounded-full ${AVATAR_COLORS[i % AVATAR_COLORS.length]} text-cream flex items-center justify-center font-bold text-[20px] ${m.status === 'pending' ? 'opacity-50' : ''}`}
+                    style={selectedId === m.id ? { boxShadow: '0 0 0 3px #FDF8F3, 0 0 0 5px #C25065' } : undefined}
                   >
                     {((m.invited_name || m.invited_email || '?')[0]).toUpperCase()}
                   </div>
@@ -121,7 +190,7 @@ const ShareCenterScreen = () => {
                   <div className="text-[10.5px] text-muted-copy capitalize">
                     {m.status === 'pending' ? 'invited' : m.role}
                   </div>
-                </div>
+                </button>
               ))}
               <button
                 onClick={() => navigate('/account/family')}
@@ -133,6 +202,67 @@ const ShareCenterScreen = () => {
                 <div className="mt-1.5 text-[12.5px] font-semibold text-raspberry">Invite</div>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Selected person: what they can see */}
+        {selectedMember && (
+          <div className="mt-6 bg-card rounded-lg border border-card-border shadow-card p-5">
+            <div className="font-bold text-[16px] text-mulberry dark:text-foreground mb-1">
+              {(selectedMember.invited_name || selectedMember.invited_email)} can see
+            </div>
+            {selectedMember.role === 'editor' ? (
+              <p className="text-[14px] text-body-copy dark:text-muted-foreground">
+                Everything — {(selectedMember.invited_name || 'they').split(' ')[0]} is an editor and can
+                also help write guides. To change that, remove them and re-invite as a viewer.
+              </p>
+            ) : grantsLoading ? (
+              <div className="space-y-2 mt-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-9 rounded-lg bg-blush/60 animate-pulse" />)}
+              </div>
+            ) : (
+              <>
+                <p className="text-[13px] text-muted-copy mb-3">
+                  Tick what they should see. Bundles include their guides.
+                </p>
+                {myBundles.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-1.5">Bundles</div>
+                    {myBundles.map((b) => (
+                      <label key={b.id} className="flex items-center gap-3 py-2 border-b border-row-divider last:border-0 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={grantedBundleIds.has(b.id)}
+                          onChange={() => toggleGrant('bundle', b.id)}
+                          className="w-5 h-5 accent-[#C25065] rounded"
+                        />
+                        <span className="text-[14.5px] font-semibold text-mulberry dark:text-foreground truncate">{b.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div>
+                  <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-1.5">Guides</div>
+                  {myGuides.map((g) => (
+                    <label key={g.id} className="flex items-center gap-3 py-2 border-b border-row-divider last:border-0 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={grantedGuideIds.has(g.id)}
+                        onChange={() => toggleGrant('guide', g.id)}
+                        className="w-5 h-5 accent-[#C25065] rounded"
+                      />
+                      <span className="text-[14.5px] font-semibold text-mulberry dark:text-foreground truncate">{g.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+            <button
+              onClick={() => navigate('/account/family')}
+              className="mt-4 text-[13.5px] font-bold text-coral"
+            >
+              Remove {(selectedMember.invited_name || 'this person').split(' ')[0]}…
+            </button>
           </div>
         )}
 
