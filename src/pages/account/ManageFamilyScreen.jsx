@@ -4,6 +4,7 @@ import { UserPlus, Copy, Trash2, X, Clock, CheckCircle } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +34,7 @@ const ManageFamilyScreen = () => {
   const [loading, setLoading]           = useState(true);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [email, setEmail]               = useState('');
+  const [phone, setPhone]               = useState('');
   const [sending, setSending]           = useState(false);
   const [inviteUrl, setInviteUrl]       = useState('');
   const [loadingLink, setLoadingLink]   = useState(false);
@@ -41,19 +43,31 @@ const ManageFamilyScreen = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Load invitations this user owns, with accepted members' profile data
+      // Load invitations this user owns. NOTE: invited_user_id has no FK to
+      // profiles (only to auth.users), so a PostgREST embed fails with
+      // PGRST200 — fetch member profiles in a second query instead.
       const { data, error } = await supabase
         .from('family_invitations')
-        .select(`
-          id, invited_email, role, status, created_at, accepted_at, token,
-          invited_profile:invited_user_id ( full_name, avatar_url )
-        `)
+        .select('id, invited_email, invited_user_id, role, status, created_at, accepted_at, token')
         .eq('owner_user_id', user.id)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInvitations(data ?? []);
+
+      const memberIds = (data ?? []).map((i) => i.invited_user_id).filter(Boolean);
+      let profileMap = {};
+      if (memberIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', memberIds);
+        profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
+      }
+      setInvitations((data ?? []).map((i) => ({
+        ...i,
+        invited_profile: i.invited_user_id ? profileMap[i.invited_user_id] ?? null : null,
+      })));
     } catch (err) {
       console.error('[ManageFamilyScreen] fetch error:', err);
       toast({ title: 'Could not load members', variant: 'destructive' });
@@ -86,19 +100,32 @@ const ManageFamilyScreen = () => {
 
   const handleSendInvite = async () => {
     if (!email.trim()) {
-      toast({ title: 'Please enter an email address.', variant: 'destructive' });
+      toast({ title: 'Please enter an email address.', description: 'The invite is tied to their email so only they can accept it.', variant: 'destructive' });
       return;
     }
     setSending(true);
     try {
       const result = await callEdgeFunction(SEND_INVITE_FN, { email: email.trim(), role: 'editor' });
+
+      // Optional phone: open the user's texting app with the invite link
+      // prefilled. The invite stays keyed to the email (acceptance requires
+      // signing in with it) — SMS is just a delivery channel.
+      const phoneDigits = phone.replace(/[^\d+]/g, '');
+      if (phoneDigits && result.invite_url) {
+        const smsBody = encodeURIComponent(
+          `You're invited to our Family Playbook! Open this link and sign in with ${email.trim()} to join: ${result.invite_url}`
+        );
+        window.location.href = `sms:${phoneDigits}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${smsBody}`;
+      }
+
       toast({
         title: 'Invitation sent!',
         description: result.email_sent
-          ? `An invite email was sent to ${email}.`
+          ? `An invite email was sent to ${email}.${phoneDigits ? ' Your texting app is opening with the link too.' : ''}`
           : `Share this link with ${email}: ${result.invite_url}`,
       });
       setEmail('');
+      setPhone('');
       setInviteModalOpen(false);
       fetchInvitations();
     } catch (err) {
@@ -184,10 +211,25 @@ const ManageFamilyScreen = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5CA9E9]" />
             </div>
           ) : invitations.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <UserPlus size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-sm">No family members yet.</p>
-              <p className="text-xs mt-1">Tap the + button to send an invite.</p>
+            <div className="bg-card rounded-lg border border-card-border shadow-card p-8 text-center mt-4">
+              <div className="w-[56px] h-[56px] rounded-full border-2 border-dashed border-raspberry text-raspberry flex items-center justify-center mx-auto mb-4">
+                <UserPlus size={24} />
+              </div>
+              <p className="font-display font-semibold text-[19px] text-mulberry dark:text-foreground">
+                Nobody on your team yet.
+              </p>
+              <p className="mt-1 text-[14px] text-muted-copy max-w-xs mx-auto">
+                Invite a partner, grandparent, or sitter — editors can help
+                write guides, viewers just see what you share.
+              </p>
+              <EntitlementGuard action="EDITOR_INVITE">
+                <Button
+                  onClick={() => { setInviteUrl(''); setInviteModalOpen(true); }}
+                  className="mt-5 h-12 px-8 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px]"
+                >
+                  <UserPlus size={18} className="mr-2" /> Invite someone
+                </Button>
+              </EntitlementGuard>
             </div>
           ) : (
             <motion.div
@@ -218,7 +260,7 @@ const ManageFamilyScreen = () => {
                           className="w-12 h-12 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#A5D6FF] to-[#D6A5FF] flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 rounded-full bg-mulberry flex items-center justify-center text-white font-bold text-lg">
                           {initials}
                         </div>
                       )}
@@ -285,18 +327,31 @@ const ManageFamilyScreen = () => {
 
               <TabsContent value="email" className="p-6">
                 <div className="space-y-4">
-                  <Input
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendInvite()}
-                    className="h-12 dark:bg-gray-800"
-                  />
+                  <div>
+                    <Label className="text-[12px] font-bold text-body-copy dark:text-gray-300">Email (required)</Label>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendInvite()}
+                      className="h-12 mt-1 dark:bg-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[12px] font-bold text-body-copy dark:text-gray-300">Phone (optional — we'll open a text with the link)</Label>
+                    <Input
+                      type="tel"
+                      placeholder="(555) 555-0100"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="h-12 mt-1 dark:bg-gray-800"
+                    />
+                  </div>
                   <Button
                     onClick={handleSendInvite}
                     disabled={sending}
-                    className="w-full h-12 bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F]"
+                    className="w-full h-12 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold"
                   >
                     {sending ? 'Sending…' : 'Send Invite'}
                   </Button>
