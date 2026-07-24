@@ -44,7 +44,7 @@ const ShareCenterScreen = () => {
           FAMILY_SHARING_ENABLED
             ? supabase
                 .from('family_invitations')
-                .select('id, invited_email, role, status')
+                .select('id, invited_email, invited_name, role, status')
                 .eq('owner_user_id', user.id)
                 .in('status', ['pending', 'accepted'])
             : Promise.resolve({ data: [] }),
@@ -113,10 +113,10 @@ const ShareCenterScreen = () => {
                   <div
                     className={`w-[56px] h-[56px] rounded-full ${AVATAR_COLORS[i % AVATAR_COLORS.length]} text-cream flex items-center justify-center font-bold text-[20px] ${m.status === 'pending' ? 'opacity-50' : ''}`}
                   >
-                    {(m.invited_email || '?')[0].toUpperCase()}
+                    {((m.invited_name || m.invited_email || '?')[0]).toUpperCase()}
                   </div>
                   <div className="mt-1.5 text-[12.5px] font-semibold text-body-copy truncate w-full text-center">
-                    {(m.invited_email || '').split('@')[0]}
+                    {m.invited_name || (m.invited_email || '').split('@')[0]}
                   </div>
                   <div className="text-[10.5px] text-muted-copy capitalize">
                     {m.status === 'pending' ? 'invited' : m.role}

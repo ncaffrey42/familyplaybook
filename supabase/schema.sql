@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.family_invitations (
   token uuid DEFAULT gen_random_uuid() NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   accepted_at timestamp with time zone,
+  invited_name text,
   CONSTRAINT family_invitations_owner_user_id_invited_email_key UNIQUE (owner_user_id, invited_email),
   CONSTRAINT family_invitations_token_key UNIQUE (token),
   CONSTRAINT family_invitations_pkey PRIMARY KEY (id),
