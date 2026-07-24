@@ -49,6 +49,7 @@ const UpgradeFlow = lazy(() => import('./pages/account/UpgradeFlow'));
 
 // Share
 const ShareCenterScreen = lazy(() => import('./pages/share/ShareCenterScreen'));
+const ShareScreen = lazy(() => import('./pages/share/ShareScreen'));
 const PublicSharePage = lazy(() => import('./pages/share/PublicSharePage'));
 
 // Invite
@@ -146,6 +147,7 @@ const AppContent = () => {
           <Route path="/library/bundle/:id" element={<PrivateRoute><LazyRoute><BundleDetail /></LazyRoute></PrivateRoute>} />
 
           {/* Share tab (owner's team surface) */}
+          <Route path="/share-manage/:shareId" element={<PrivateRoute><LazyRoute><ShareScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/share-center" element={<PrivateRoute><LazyRoute><ShareCenterScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Search */}

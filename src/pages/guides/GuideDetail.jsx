@@ -164,7 +164,7 @@ const GuideDetail = ({ guide: propGuide }) => {
             shareId = shareData.id;
         }
         await fetchData();
-        navigate(`/share/${shareId}`, { state: { fromGuideId: guide.id, fromBundleId: bundleId } });
+        navigate(`/share-manage/${shareId}`, { state: { fromGuideId: guide.id, fromBundleId: bundleId } });
 
     } catch (error) {
         logError(error, { context: 'Guide Sharing V2' });

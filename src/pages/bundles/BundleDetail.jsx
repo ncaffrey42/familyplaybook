@@ -186,7 +186,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
       if (shareError) throw shareError;
       
       const shareId = shareData.id;
-      navigate(`/share/${shareId}`, { state: { fromBundleId: bundle.id } });
+      navigate(`/share-manage/${shareId}`, { state: { fromBundleId: bundle.id } });
 
     } catch (error) {
       logError(error, { context: 'Bundle Sharing' });

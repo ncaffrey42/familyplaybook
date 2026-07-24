@@ -3,12 +3,10 @@ import { useParams, useLocation } from 'react-router-dom'; // Import useLocation
 import QRCode from 'qrcode.react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Download, Copy, Sparkles, Share2, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { logError } from '@/lib/errorLogger';
 import { useNavigation } from '@/hooks/useNavigation';
-import PageHeader from '@/components/PageHeader';
+import HeartMark from '@/components/HeartMark';
 import { Helmet } from 'react-helmet';
 
 const ShareScreen = () => {
@@ -109,83 +107,84 @@ const ShareScreen = () => {
     return (
         <>
             <Helmet>
-                <title>Share {content?.type || 'Item'} - Family Playbook</title>
-                <meta name="description" content={`Share this ${content?.type || 'item'} with anyone using a link or QR code.`} />
+                <title>Link ready - Family Playbook</title>
+                <meta name="description" content="Share this link or QR code — no app or account needed on their end." />
             </Helmet>
-            <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-28">
-                <div className="p-6">
-                    <PageHeader onBack={goBack} />
+            <div className="min-h-screen bg-cream dark:bg-background pb-28">
+                <div className="px-[22px] pt-6">
+                    <div className="flex justify-start">
+                        <button onClick={goBack} className="text-[15px] font-bold text-muted-copy">Done</button>
+                    </div>
 
-                    <div className="text-center pt-4">
-                        <motion.div
-                            className="w-24 h-24 bg-gradient-to-br from-primary to-accent mx-auto rounded-3xl flex items-center justify-center text-white mb-6 shadow-lg"
-                            animate={{ rotate: [0, 15, -10, 5, 0], scale: [1, 1.1, 1]}}
-                            transition={{ repeat: Infinity, repeatDelay: 3, duration: 1 }}
-                        >
-                            <Share2 size={48} />
-                        </motion.div>
-
+                    <div className="text-center pt-6">
                         {isLoading ? (
-                             <div className="space-y-4 animate-pulse">
-                                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-lg w-3/4 mx-auto"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-lg w-full mx-auto"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-lg w-1/2 mx-auto"></div>
-                                <div className="pt-6">
-                                    <div className="bg-gray-200 dark:bg-gray-700 rounded-2xl p-6 space-y-6">
-                                        <div className="h-12 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
-                                        <div className="flex justify-center">
-                                            <div className="w-40 h-40 bg-gray-300 dark:bg-gray-600 rounded-xl"></div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="space-y-4">
+                                <div className="w-[52px] h-[52px] rounded-full bg-blush/60 animate-pulse mx-auto" />
+                                <div className="h-7 bg-blush/60 animate-pulse rounded-lg w-3/4 mx-auto" />
+                                <div className="h-[220px] bg-blush/60 animate-pulse rounded-2xl mt-6" />
                             </div>
                         ) : (
                             <>
-                                <h1 className="text-3xl font-bold text-foreground">Share this {content?.type}</h1>
-                                <p className="text-muted-foreground mt-2 mb-6 max-w-sm mx-auto">Anyone with this link will be able to view "{content?.name}".</p>
-                                
+                                <div className="flex justify-center mb-4">
+                                    <HeartMark size={52} stroke="#C25065" />
+                                </div>
+                                <h1 className="font-display font-semibold text-[25px] text-mulberry dark:text-foreground">
+                                    {content?.name ? `“${content.name}” is ready` : 'Link ready'}
+                                </h1>
+                                <p className="text-[13.5px] text-muted-copy mt-1">
+                                    Anyone with the link can view it — share carefully.
+                                </p>
+
                                 <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 space-y-6 shadow-card"
+                                    transition={{ duration: 0.3 }}
+                                    className="bg-card rounded-2xl border border-card-border shadow-card p-6 mt-6 space-y-5"
                                 >
-                                    <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-900/50 p-2 rounded-full border border-gray-200 dark:border-gray-700">
-                                        <LinkIcon className="text-muted-foreground ml-2" size={16} />
-                                        <input
-                                            type="text"
-                                            value={shareUrl}
-                                            readOnly
-                                            className="w-full bg-transparent text-sm truncate focus:outline-none"
-                                        />
-                                        <Button onClick={handleCopyLink} size="sm" className="rounded-full flex-shrink-0">
-                                            <Copy size={14} className="mr-2"/>
-                                            Copy
-                                        </Button>
+                                    <div className="flex justify-center">
+                                        <div className="p-3 bg-white rounded-xl">
+                                            <QRCode id="qr-code" value={qrCodeData} size={148} level={'H'} includeMargin={false} fgColor="#5C2A3E" />
+                                        </div>
                                     </div>
-                                    
-                                    <div className="flex justify-center p-4 bg-white rounded-xl">
-                                        <QRCode id="qr-code" value={qrCodeData} size={160} level={'H'} includeMargin={true} />
-                                    </div>
+                                    <div className="text-[13px] text-muted-copy break-all px-2">{shareUrl}</div>
                                 </motion.div>
+
+                                <div className="flex gap-2.5 mt-5">
+                                    <button
+                                        onClick={handleShare}
+                                        className="flex-1 h-12 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
+                                    >
+                                        Send the link
+                                    </button>
+                                    <button
+                                        onClick={handleCopyLink}
+                                        className="h-12 px-6 rounded-full bg-blush text-blush-copy font-bold text-[15px]"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={() => window.open(shareUrl, '_blank')}
+                                    className="mt-4 w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-3.5 flex items-center justify-between text-left transition-all hover:border-hover-border"
+                                >
+                                    <span>
+                                        <span className="block font-bold text-[15px] text-mulberry dark:text-foreground">See what they see</span>
+                                        <span className="block text-[13px] text-muted-copy">Opens the shared view</span>
+                                    </span>
+                                    <span className="text-chevron">›</span>
+                                </button>
+
+                                <button
+                                    onClick={downloadQRCode}
+                                    className="mt-3 text-[13.5px] font-bold text-muted-copy"
+                                >
+                                    Save the QR code
+                                </button>
                             </>
                         )}
                     </div>
                 </div>
-
-                 {!isLoading && (
-                    <div className="fixed bottom-0 left-0 right-0 p-4 pb-safe bg-[#FAF9F6]/80 dark:bg-gray-950/80 backdrop-blur-sm border-t border-border z-10">
-                        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-                            <Button variant="outline" onClick={downloadQRCode} className="w-full h-12 text-base">
-                                <Download size={18} className="mr-2" />
-                                QR Code
-                            </Button>
-                            <Button onClick={handleShare} className="w-full h-12 text-base">
-                                <Sparkles size={18} className="mr-2" />
-                                Share
-                            </Button>
-                        </div>
-                    </div>
-                )}
             </div>
         </>
     );
