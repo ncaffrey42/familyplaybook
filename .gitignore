@@ -46,3 +46,14 @@ android/.gradle/
 android/app/build/
 android/build/
 *.xcuserstate
+
+# Fastlane secrets + artifacts
+.env.fastlane
+fastlane/*.p8
+fastlane/*.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
+build/ios/
+*.ipa
+*.dSYM.zip

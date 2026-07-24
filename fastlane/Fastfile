@@ -1,0 +1,83 @@
+# Fastlane release automation for the Capacitor app.
+#
+# One command builds the web bundle, syncs it into the native shell, compiles a
+# signed binary, and uploads it to TestFlight (iOS) / Play internal testing
+# (Android). Secrets are read from the environment — never hardcoded.
+#
+# Usage (after filling in .env.fastlane — see FASTLANE_SETUP.md):
+#   iOS      → fastlane ios beta
+#   Android  → fastlane android beta
+#
+# The build number is derived from the git commit count, so every push gets a
+# unique, monotonically increasing build number with no manual bumping.
+
+WORKSPACE = "ios/App/App.xcworkspace"
+SCHEME    = "App"
+
+default_platform(:ios)
+
+# ── iOS ───────────────────────────────────────────────────────────────────────
+platform :ios do
+  desc "Rebuild the web bundle and copy it into the iOS project"
+  private_lane :prepare_web do
+    Dir.chdir("..") { sh("npm run build && npx cap sync ios") }
+  end
+
+  desc "Build and upload a new build to TestFlight"
+  lane :beta do
+    prepare_web
+
+    # App Store Connect API key auth — sidesteps 2FA on every upload.
+    api_key = app_store_connect_api_key(
+      key_id:        ENV["ASC_KEY_ID"],
+      issuer_id:     ENV["ASC_ISSUER_ID"],
+      key_filepath:  ENV["ASC_KEY_PATH"],   # path to the AuthKey_XXXX.p8
+      in_house:      false,
+    )
+
+    increment_build_number(
+      xcodeproj:    "ios/App/App.xcodeproj",
+      build_number: number_of_commits(all: true),
+    )
+
+    build_app(
+      workspace:      WORKSPACE,
+      scheme:         SCHEME,
+      export_method:  "app-store",
+      # Let Xcode create/download the provisioning profile automatically.
+      # (Once you outgrow this, switch to `match` for shared, versioned certs.)
+      xcargs:         "-allowProvisioningUpdates",
+      output_directory: "build/ios",
+      clean:          true,
+    )
+
+    upload_to_testflight(
+      api_key:                          api_key,
+      skip_waiting_for_build_processing: true,
+    )
+  end
+end
+
+# ── Android ──────────────────────────────────────────────────────────────────
+platform :android do
+  desc "Rebuild the web bundle and copy it into the Android project"
+  private_lane :prepare_web do
+    Dir.chdir("..") { sh("npm run build && npx cap sync android") }
+  end
+
+  desc "Build an AAB and upload to Play internal testing"
+  lane :beta do
+    prepare_web
+
+    gradle(
+      project_dir: "android",
+      task:        "bundle",
+      build_type:  "Release",
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      aab:   "android/app/build/outputs/bundle/release/app-release.aab",
+    )
+  end
+end
