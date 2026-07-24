@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LimitNotificationModal from './components/LimitNotificationModal';
 import BottomNav from './components/BottomNav';
+import CreateFab from './components/CreateFab';
 import PrivateRoute from './components/PrivateRoute';
 import LazyRoute from './components/LazyRoute';
 import useScrollToTop from '@/hooks/useScrollToTop';
@@ -32,14 +33,10 @@ const CreateGuideScreen = lazy(() => import('./pages/guides/CreateGuideScreen'))
 const GuideDetail = lazy(() => import('./pages/guides/GuideDetail'));
 
 // Bundles
-const MyBundlesScreen = lazy(() => import('./pages/bundles/MyBundlesScreen'));
 const CreateBundleScreen = lazy(() => import('./pages/bundles/CreateBundleScreen'));
 const BundleDetail = lazy(() => import('./pages/bundles/BundleDetail'));
-const BundlesLibrary = lazy(() => import('./pages/library/BundlesLibrary'));
 
 // Packs (legacy naming — kept for backward-compat routes, same concept as bundles)
-const MyPacksScreen = lazy(() => import('./pages/packs/MyPacksScreen'));
-const CreatePackScreen = lazy(() => import('./pages/packs/CreatePackScreen'));
 const PackDetail = lazy(() => import('./pages/packs/PackDetail'));
 // Account
 const MyAccount = lazy(() => import('./pages/account/MyAccount'));
@@ -51,6 +48,7 @@ const SettingsScreen = lazy(() => import('./pages/account/SettingsScreen'));
 const UpgradeFlow = lazy(() => import('./pages/account/UpgradeFlow'));
 
 // Share
+const ShareCenterScreen = lazy(() => import('./pages/share/ShareCenterScreen'));
 const PublicSharePage = lazy(() => import('./pages/share/PublicSharePage'));
 
 // Invite
@@ -58,7 +56,6 @@ const AcceptInviteScreen = lazy(() => import('./pages/invite/AcceptInviteScreen'
 
 // Other pages
 const SearchScreen = lazy(() => import('./pages/SearchScreen'));
-const FavoritesScreen = lazy(() => import('./pages/FavoritesScreen'));
 const HostMode = lazy(() => import('./pages/HostMode'));
 const NotFoundScreen = lazy(() => import('./pages/NotFoundScreen'));
 
@@ -121,30 +118,35 @@ const AppContent = () => {
           <Route path="/" element={<PrivateRoute><LazyRoute><HomeScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/home" element={<PrivateRoute><LazyRoute><HomeScreen /></LazyRoute></PrivateRoute>} />
 
-          {/* Packs routes (legacy naming) */}
-          <Route path="/packs" element={<PrivateRoute><LazyRoute><MyPacksScreen /></LazyRoute></PrivateRoute>} />
-          <Route path="/packs/create" element={<PrivateRoute><LazyRoute><CreatePackScreen /></LazyRoute></PrivateRoute>} />
+          {/* Guides — the one destination for guides / bundles / library.
+              Retired routes redirect into the right segment so old links
+              (and the legacy pack family) keep working. */}
+          <Route path="/guides" element={<PrivateRoute><LazyRoute><GuidesLibrary /></LazyRoute></PrivateRoute>} />
+          <Route path="/library" element={<Navigate to="/guides?segment=library" replace />} />
+          <Route path="/bundles" element={<Navigate to="/guides?segment=bundles" replace />} />
+          <Route path="/favorites" element={<Navigate to="/guides?chip=pinned" replace />} />
+          <Route path="/packs" element={<Navigate to="/guides?segment=bundles" replace />} />
+          <Route path="/packs/create" element={<Navigate to="/bundles/create" replace />} />
           <Route path="/pack/:id" element={<PrivateRoute><LazyRoute><PackDetail /></LazyRoute></PrivateRoute>} />
 
-          {/* Guides */}
-          <Route path="/guides" element={<PrivateRoute><LazyRoute><GuidesLibrary /></LazyRoute></PrivateRoute>} />
-          <Route path="/library" element={<PrivateRoute><LazyRoute><GuidesLibrary /></LazyRoute></PrivateRoute>} />
           <Route path="/guides/create" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/guide/new" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/guide/:id" element={<PrivateRoute><LazyRoute><GuideDetail /></LazyRoute></PrivateRoute>} />
           <Route path="/guide/:id/edit" element={<PrivateRoute><LazyRoute><CreateGuideScreen /></LazyRoute></PrivateRoute>} />
 
-          {/* Bundles */}
-          <Route path="/bundles" element={<PrivateRoute><LazyRoute><MyBundlesScreen /></LazyRoute></PrivateRoute>} />
+          {/* Bundles (details/creation keep their routes) */}
           <Route path="/bundles/create" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/createBundle" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
           <Route path="/bundle/:id" element={<PrivateRoute><LazyRoute><BundleDetail /></LazyRoute></PrivateRoute>} />
           <Route path="/bundle/:id/edit" element={<PrivateRoute><LazyRoute><CreateBundleScreen /></LazyRoute></PrivateRoute>} />
 
-          {/* Library */}
+          {/* Library detail views */}
           <Route path="/library/guide/:id" element={<PrivateRoute><LazyRoute><GuideDetail /></LazyRoute></PrivateRoute>} />
-          <Route path="/library/bundles" element={<PrivateRoute><LazyRoute><BundlesLibrary /></LazyRoute></PrivateRoute>} />
+          <Route path="/library/bundles" element={<Navigate to="/guides?segment=bundles" replace />} />
           <Route path="/library/bundle/:id" element={<PrivateRoute><LazyRoute><BundleDetail /></LazyRoute></PrivateRoute>} />
+
+          {/* Share tab (owner's team surface) */}
+          <Route path="/share-center" element={<PrivateRoute><LazyRoute><ShareCenterScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Search */}
           <Route path="/search" element={<PrivateRoute><LazyRoute><SearchScreen /></LazyRoute></PrivateRoute>} />
@@ -161,7 +163,6 @@ const AppContent = () => {
 
           {/* Other */}
           <Route path="/host-mode" element={HOST_MODE_ENABLED ? <PrivateRoute><LazyRoute><HostMode /></LazyRoute></PrivateRoute> : <Navigate to="/account" replace />} />
-          <Route path="/favorites" element={<PrivateRoute><LazyRoute><FavoritesScreen /></LazyRoute></PrivateRoute>} />
 
           {/* Admin */}
           <Route path="/admin/errors" element={<PrivateRoute><LazyRoute><ErrorLogScreen /></LazyRoute></PrivateRoute>} />
@@ -176,6 +177,7 @@ const AppContent = () => {
         </Routes>
 
         {user && !shouldHideNav && <BottomNav />}
+        {user && !shouldHideNav && <CreateFab />}
         <LimitNotificationModal />
         <AddToHomeScreenPrompt />
         <Toaster />
