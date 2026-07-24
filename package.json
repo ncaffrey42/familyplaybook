@@ -13,7 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "mobile:add": "cap add ios && cap add android",
     "mobile:sync": "npm run build && cap sync",
-    "mobile:assets": "capacitor-assets generate --iconBackgroundColor '#FAF9F6' --splashBackgroundColor '#FAF9F6'",
+    "mobile:assets": "capacitor-assets generate --iconBackgroundColor '#FDF8F3' --splashBackgroundColor '#FDF8F3'",
     "mobile:ios": "npm run mobile:sync && cap open ios",
     "mobile:android": "npm run mobile:sync && cap open android"
   },
