@@ -1,37 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Helmet } from 'react-helmet';
 import { logError } from '@/lib/errorLogger';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Lock, FileText, ShieldOff, Link as LinkIcon } from 'lucide-react';
+import { Lock, ShieldOff } from 'lucide-react';
 import { motion } from 'framer-motion';
-import BundleImage from '@/components/BundleImage';
+import HeartMark from '@/components/HeartMark';
 import GuideIcon from '@/components/GuideIcon';
 import { isVideoUrl } from '@/lib/utils';
 
+/**
+ * Helper mode — the read-only guest view of a shared guide or bundle.
+ * A deliberately different surface: no tab bar, no FAB, nothing editable.
+ * Check state is ephemeral (local only) and never writes to the owner's data.
+ * Content resolves through the get_shared_content SECURITY DEFINER RPC.
+ */
+
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
-    <div className="w-20 h-20 border-4 border-dashed rounded-full animate-spin border-purple-500"></div>
+  <div className="flex items-center justify-center h-screen bg-cream">
+    <HeartMark size={56} stroke="#D8B9C4" className="animate-pulse" />
   </div>
 );
 
 const ErrorDisplay = ({ icon: Icon, title, message }) => (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-gray-950 text-center p-6">
-        <Icon size={64} className="text-red-500 mb-4" />
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">{title}</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-        <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white rounded-full">
-            <Link to="/">Go to Homepage</Link>
-        </Button>
-    </div>
+  <div className="flex flex-col items-center justify-center h-screen bg-cream text-center p-6">
+    <Icon size={56} className="text-raspberry mb-4" />
+    <h1 className="font-display font-semibold text-[27px] text-mulberry mb-2">{title}</h1>
+    <p className="text-[15px] text-body-copy mb-6 max-w-sm">{message}</p>
+    <Button asChild className="bg-raspberry hover:bg-raspberry-hover text-cream rounded-full font-bold">
+      <Link to="/">Go to Homepage</Link>
+    </Button>
+  </div>
 );
 
 const StepMedia = ({ url }) => {
   if (!url) return null;
   const isVideo = isVideoUrl(url);
   return (
-    <div className="mt-4 rounded-lg overflow-hidden shadow-sm">
+    <div className="mt-4 rounded-lg overflow-hidden">
       {isVideo ? (
         <video src={url} controls className="w-full h-auto" />
       ) : (
@@ -41,172 +48,242 @@ const StepMedia = ({ url }) => {
   );
 };
 
+const HelperHeader = ({ title, subtitle }) => (
+  <header className="bg-mulberry px-6 pt-14 pb-8">
+    <div className="max-w-2xl mx-auto">
+      <HeartMark size={34} stroke="#FDF8F3" />
+      <div className="mt-4 text-[10.5px] font-bold uppercase tracking-[0.13em] text-apricot">
+        Shared with you
+      </div>
+      <h1 className="font-display font-semibold text-[30px] leading-[1.15] text-cream mt-1">
+        {title}
+      </h1>
+      {subtitle && (
+        <p className="text-[14.5px] mt-1.5" style={{ color: 'rgba(253,248,243,.7)' }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  </header>
+);
+
 const PublicSharePage = () => {
-    const { shareId } = useParams();
-    const [guide, setGuide] = useState(null);
-    const [bundle, setBundle] = useState(null);
-    const [bundleGuides, setBundleGuides] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const { shareId } = useParams();
+  const [guide, setGuide] = useState(null);
+  const [bundle, setBundle] = useState(null);
+  const [bundleGuides, setBundleGuides] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // Helper-mode check state: local only, never persisted.
+  const [checked, setChecked] = useState([]);
 
-    useEffect(() => {
-        const fetchSharedContent = async () => {
-            if (!shareId) {
-                setError({ type: 'not_found' });
-                setLoading(false);
-                return;
-            }
+  useEffect(() => {
+    const fetchSharedContent = async () => {
+      if (!shareId) {
+        setError({ type: 'not_found' });
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data, error: rpcError } = await supabase
+          .rpc('get_shared_content', { p_share_id: shareId });
+        if (rpcError) throw rpcError;
+        if (!data) throw new Error('Share link not found');
+        if (data.type === 'private') {
+          setError({ type: 'not_shareable' });
+          setLoading(false);
+          return;
+        }
+        if (data.type === 'guide') {
+          setGuide(data.guide);
+          if (data.bundle) setBundle(data.bundle);
+        } else if (data.type === 'bundle') {
+          setBundle(data.bundle);
+          setBundleGuides(data.bundle_guides || []);
+        } else {
+          throw new Error('Empty share link');
+        }
+      } catch (err) {
+        logError(err, { context: 'PublicSharePage', shareId });
+        setError({ type: 'not_found' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSharedContent();
+  }, [shareId]);
 
-            try {
-                // Shared content is resolved through a single SECURITY DEFINER
-                // RPC keyed by the exact (unguessable) share link id. RLS gives
-                // anonymous visitors no direct read access to shared_links /
-                // guides / packs, so this is the only door in.
-                const { data, error: rpcError } = await supabase
-                    .rpc('get_shared_content', { p_share_id: shareId });
+  // Emergency-category guides lead the list; everything else keeps its order.
+  const orderedBundleGuides = useMemo(() => {
+    const list = bundleGuides.filter((g) => g.id !== guide?.id);
+    return [
+      ...list.filter((g) => g.category === 'Emergency'),
+      ...list.filter((g) => g.category !== 'Emergency'),
+    ];
+  }, [bundleGuides, guide]);
 
-                if (rpcError) throw rpcError;
-                if (!data) throw new Error("Share link not found");
+  if (loading) return <LoadingSpinner />;
+  if (error?.type === 'not_found')
+    return <ErrorDisplay icon={Lock} title="Link not found" message="This share link is either invalid or has been turned off." />;
+  if (error?.type === 'not_shareable')
+    return <ErrorDisplay icon={ShieldOff} title="This guide is private" message="The owner hasn't made this guide shareable." />;
+  if (!guide && !bundle)
+    return <ErrorDisplay icon={Lock} title="Link not found" message="This share link is either invalid or has been turned off." />;
 
-                if (data.type === 'private') {
-                    setError({ type: 'not_shareable' });
-                    setLoading(false);
-                    return;
-                }
+  const displayItem = guide || bundle;
+  const pageTitle = displayItem.name;
+  const ogDescription = displayItem.description || 'View the shared content.';
+  const steps = Array.isArray(guide?.steps) ? guide.steps : [];
+  const doneCount = steps.filter((_, i) => checked.includes(i)).length;
 
-                if (data.type === 'guide') {
-                    setGuide(data.guide);
-                    if (data.bundle) setBundle(data.bundle);
-                } else if (data.type === 'bundle') {
-                    setBundle(data.bundle);
-                    setBundleGuides(data.bundle_guides || []);
-                } else {
-                    throw new Error("Empty share link");
-                }
+  const toggle = (i) =>
+    setChecked((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
 
-            } catch (err) {
-                logError(err, { context: 'PublicSharePage', shareId });
-                setError({ type: 'not_found' });
-            } finally {
-                setLoading(false);
-            }
-        };
+  return (
+    <>
+      <Helmet>
+        <title>{`Shared: ${pageTitle}`}</title>
+        <meta name="description" content={ogDescription} />
+        <meta property="og:title" content={`Shared: ${pageTitle}`} />
+        <meta property="og:description" content={ogDescription} />
+      </Helmet>
+      <div className="min-h-screen bg-cream font-sans">
+        <HelperHeader
+          title={pageTitle}
+          subtitle={guide && bundle ? `From the bundle: ${bundle.name}` : bundle?.description || guide?.category}
+        />
 
-        fetchSharedContent();
-    }, [shareId]);
-    
-    if (loading) return <LoadingSpinner />;
-    if (error?.type === 'not_found') return <ErrorDisplay icon={Lock} title="Link Not Found" message="This share link is either invalid or has been disabled." />;
-    if (error?.type === 'not_shareable') return <ErrorDisplay icon={ShieldOff} title="Guide Is Private" message="The owner has not made this guide public." />;
-    if (!guide && !bundle) return <ErrorDisplay icon={Lock} title="Link Not Found" message="This share link is either invalid or has been disabled." />;
-    
-    const displayItem = guide || bundle;
-    const pageTitle = displayItem.name;
-    const ogDescription = displayItem.description || `View the shared content.`;
+        <main className="px-6 py-6 max-w-2xl mx-auto">
+          {/* Guide view: intro + big step cards + progress */}
+          {guide && (
+            <>
+              {steps.length > 0 && (
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="flex-1 h-2 bg-meter-track rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-raspberry rounded-full"
+                      style={{ width: `${steps.length ? (doneCount / steps.length) * 100 : 0}%`, transition: 'width .3s ease' }}
+                    />
+                  </div>
+                  <span className="text-[14px] font-bold text-muted-copy flex-shrink-0">
+                    {doneCount} of {steps.length}
+                  </span>
+                </div>
+              )}
 
-    return (
-        <>
-            <Helmet>
-                <title>{`Shared: ${pageTitle}`}</title>
-                <meta name="description" content={ogDescription} />
-                <meta property="og:title" content={`Shared: ${pageTitle}`} />
-                <meta property="og:description" content={ogDescription} />
-            </Helmet>
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans">
-                <header className="p-6 bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
-                    <div className="max-w-4xl mx-auto">
-                        {guide && bundle && (
-                            <p className="text-sm opacity-80 mb-2">From the bundle: {bundle.name}</p>
-                        )}
-                        <div className="flex items-center gap-4">
-                            {/* guide.icon stores a lucide icon NAME (e.g. "Utensils") —
-                                render it through GuideIcon, never as raw text. */}
-                            {guide ? (
-                                <GuideIcon iconName={guide.icon} category={guide.category} size={32} className="w-16 h-16 bg-white/20 text-white shadow-soft" />
-                            ) : (
-                                <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shadow-soft">
-                                    <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} className="w-full h-full object-cover rounded-2xl" />
-                                </div>
+              {displayItem.description && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-blush rounded-lg p-5 mb-5"
+                >
+                  <p className="text-[17px] leading-[1.6] whitespace-pre-wrap" style={{ color: '#7A4A38' }}>
+                    {displayItem.description}
+                  </p>
+                </motion.div>
+              )}
+
+              {steps.length > 0 && (
+                <div className="space-y-3">
+                  {steps.map((step, index) => {
+                    const isDone = checked.includes(index);
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => toggle(index)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && toggle(index)}
+                        className={`bg-card rounded-2xl border border-card-border shadow-card p-5 min-h-[68px] cursor-pointer transition-colors ${isDone ? 'bg-cream' : ''}`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <span
+                            className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 transition-colors ${
+                              isDone ? 'bg-raspberry' : 'border-2 border-checkbox-ring'
+                            }`}
+                          >
+                            {isDone && (
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M3 8.5L6.5 12L13 5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
                             )}
-                            <h1 className="text-3xl font-bold">{pageTitle}</h1>
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-display font-semibold text-[20px] leading-[1.25] ${isDone ? 'text-muted-copy line-through' : 'text-mulberry'}`}>
+                              {step.title}
+                            </h3>
+                            {step.content && (
+                              <p className={`text-[16.5px] leading-[1.6] mt-1 ${isDone ? 'text-muted-copy' : ''}`} style={isDone ? {} : { color: '#5E3D4C' }}>
+                                {step.content}
+                              </p>
+                            )}
+                            <StepMedia url={step.mediaUrl} />
+                          </div>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {steps.length > 0 && doneCount === steps.length && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-5 bg-blush rounded-lg p-6 text-center"
+                >
+                  <h3 className="font-display font-semibold text-[21px] text-mulberry">All done.</h3>
+                  <p className="text-[14.5px] mt-1 text-blush-copy">Nice work — that's everything on this one.</p>
+                </motion.div>
+              )}
+            </>
+          )}
+
+          {/* Bundle view: big rows, emergency first */}
+          {bundle && orderedBundleGuides.length > 0 && (
+            <div className="mt-1">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-3">
+                In order
+              </div>
+              <div className="flex flex-col gap-3">
+                {orderedBundleGuides.map((g) => (
+                  <Link to={`/share/${g.shareId}`} key={g.id}>
+                    <div
+                      className={`bg-card rounded-2xl border shadow-card p-4 min-h-[68px] flex items-center gap-4 transition-all hover:border-hover-border hover:-translate-y-px ${
+                        g.category === 'Emergency' ? 'bg-emergency-bg border-coral/30' : 'border-card-border'
+                      }`}
+                    >
+                      <GuideIcon category={g.category} size={48} dot={17} />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display font-semibold text-[19px] text-mulberry truncate">{g.name}</h3>
+                        <p className="text-[14.5px] text-muted-copy">{g.category}</p>
+                      </div>
+                      <span className="text-chevron text-xl">›</span>
                     </div>
-                </header>
+                  </Link>
+                ))}
+              </div>
 
-                <main className="p-6 max-w-4xl mx-auto">
-                    {displayItem.description && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md mb-8"
-                        >
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{displayItem.description}</p>
-                        </motion.div>
-                    )}
-
-                    {guide && guide.steps && guide.steps.length > 0 && (
-                        <div className="space-y-4">
-                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Steps</h2>
-                            {guide.steps.map((step, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                    className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-md"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-8 h-8 flex-shrink-0 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold mt-1">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{step.title}</h3>
-                                            <p className="text-gray-600 dark:text-gray-300">{step.content}</p>
-                                            <StepMedia url={step.mediaUrl} />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
-
-                    {bundle && bundleGuides.length > 0 && (
-                        <div className="mt-8">
-                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Guides in this Bundle</h2>
-                            <div className="flex flex-col gap-3">
-                                {bundleGuides.filter(g => g.id !== guide?.id).map((g, index) => (
-                                    <Link to={`/share/${g.shareId}`} key={g.id}>
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.1 }}
-                                            className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md flex items-center gap-4 hover:shadow-lg transition-shadow duration-300"
-                                        >
-                                            <GuideIcon iconName={g.icon} category={g.category} className="w-14 h-14 rounded-xl" />
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-800 dark:text-gray-200">{g.name}</h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{g.category}</p>
-                                            </div>
-                                            <LinkIcon className="text-gray-400 dark:text-gray-500" size={20} />
-                                        </motion.div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </main>
-                
-                <footer className="mt-12 p-6 text-center">
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">Want to create your own family playbook?</p>
-                     <Button asChild size="lg" className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-8 py-3 transition-transform hover:scale-105">
-                        <Link to="/">
-                            Get Started Free <ArrowRight className="ml-2" size={20} />
-                        </Link>
-                    </Button>
-                </footer>
+              <div className="mt-6 bg-blush rounded-lg p-5">
+                <p className="text-[14.5px] leading-[1.6] text-blush-copy">
+                  You can't change anything in here, so tap freely. If this link
+                  stops working, the family turned it off.
+                </p>
+              </div>
             </div>
-        </>
-    );
+          )}
+        </main>
+
+        <footer className="mt-8 pb-12 px-6 text-center">
+          <p className="text-[14px] text-muted-copy mb-4">Want to create your own family playbook?</p>
+          <Button asChild className="bg-raspberry hover:bg-raspberry-hover text-cream rounded-full px-8 h-12 font-bold text-[15px]">
+            <Link to="/">Get Started Free</Link>
+          </Button>
+        </footer>
+      </div>
+    </>
+  );
 };
 
 export default PublicSharePage;
