@@ -98,6 +98,12 @@ const AccountPlans = () => {
           <PlanComparisonTable />
         </section>
 
+        {/* Read-only reassurance — must stay true to the tier enforcement:
+            over-limit guides become read-only, never deleted or hidden. */}
+        <p className="text-center text-[13.5px] text-muted-copy px-6 pb-4">
+          Guides you’ve already written stay readable forever, even back on Free.
+        </p>
+
       </div>
     </AccountLayout>
   );
