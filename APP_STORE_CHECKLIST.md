@@ -22,9 +22,9 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   management present. **Remaining: dashboard/product config** — follow
   REVENUECAT_SETUP.md, then set `VITE_ENABLE_IAP=true` in the native build.
 - ☐ **Privacy policy URL** — required by both stores. Publish one at
-  `<PRIVACY_POLICY_URL>` (must cover: account data, guides/media stored in
+  https://famplaybook.com/privacy-policy/ (must cover: account data, guides/media stored in
   Supabase, Stripe for payments, OpenAI for AI features, analytics).
-- ☐ **Support URL / contact** — `<SUPPORT_URL>` and `<SUPPORT_EMAIL>`.
+- ☐ **Support URL / contact** — https://famplaybook.com/support/ (support email as needed).
 - ☐ **Permission usage strings** applied from `native-config/` (mic, camera,
   photos) — Apple auto-rejects missing ones.
 
@@ -52,7 +52,7 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 - ☐ Category: `<CATEGORY>` · Content rating questionnaire (IARC)
 - ☐ **Data safety form** — mirror the iOS nutrition labels (data collected,
   purpose, encryption in transit, deletion available = yes → link the in-app
-  delete + `<PRIVACY_POLICY_URL>`)
+  delete + https://famplaybook.com/privacy-policy/)
 - ☐ Feature graphic (1024×500) + phone screenshots (min 2)
 - ☐ Target API level current enough for the current Play requirement
 - ☐ App signing: enroll in Play App Signing; keep `<KEYSTORE_PATH>` safe
