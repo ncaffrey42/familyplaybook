@@ -1,319 +1,223 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Package, FileText, Library, Frown, Plus } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
-import SearchInput from '@/components/ui/SearchInput';
-import { useNavigation } from '@/hooks/useNavigation';
-import BundleImage from '@/components/BundleImage';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import GuideIcon from '@/components/GuideIcon';
-import { useLocation } from 'react-router-dom';
-import { searchGuides, searchBundles } from '@/lib/searchUtils';
 
-const HomeScreen = () => {
-  const location = useLocation();
-  const handleNavigate = useNavigation();
-  const { allBundles, allGuides, availableLibraryBundles, favorites, toggleFavorite, isDataLoaded } = useData();
-  const searchRef = useRef(null);
+/**
+ * Brand v1 Home: answer "what do I need right now" in one screen.
+ * Greeting + avatar → share card → pinned guides → bundles carousel →
+ * usage nudge (only past 50% of the plan cap).
+ */
 
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Initialize tab from location state (priority) or localStorage (persistence) or default
-  const [activeTab, setActiveTab] = useState(() => {
-    if (location.state?.tab) return location.state.tab;
-    return localStorage.getItem('homeScreenActiveTab') || 'bundles';
-  });
+const SectionLabel = ({ children }) => (
+  <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry">
+    {children}
+  </div>
+);
 
-  // Persist active tab to localStorage
-  useEffect(() => {
-    localStorage.setItem('homeScreenActiveTab', activeTab);
-  }, [activeTab]);
-
-  const myBundles = allBundles;
-  const myGuides = allGuides;
-
-  // Get top 4 favorites (assuming favorites are already sorted by creation date from context)
-  const recentFavorites = useMemo(() => (favorites || []).slice(0, 4), [favorites]);
-
-  const libraryBundlesWithGuides = useMemo(() => {
-    return availableLibraryBundles.filter(bundle => bundle.guides && bundle.guides.length > 0);
-  }, [availableLibraryBundles]);
-
-  const searchResults = useMemo(() => {
-    if (searchQuery.length < 2) return [];
-    
-    const filteredGuides = searchGuides(myGuides, searchQuery).map(g => ({ ...g, type: 'guide' }));
-    const filteredBundles = searchBundles(myBundles, searchQuery).map(b => ({ ...b, type: 'bundle' }));
-
-    return [...filteredBundles, ...filteredGuides];
-  }, [searchQuery, myGuides, myBundles]);
-
-  useEffect(() => {
-    const handleClickOutside = event => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) setSearchQuery('');
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleResultClick = item => {
-    handleNavigate(item.type === 'guide' ? 'guideDetail' : 'bundleDetail', {
-      [item.type === 'guide' ? 'guideId' : 'bundleId']: item.id
-    });
-    setSearchQuery('');
-  };
-
-  const renderGuideBundleInfo = guide => {
-    const bundleNames = guide.bundleNames;
-    if (!bundleNames || bundleNames.length === 0) return 'Uncategorized';
-    return bundleNames.join(', ');
-  };
-
-  const LoadingSkeleton = () => (
-    <div className="space-y-6">
-      <div className="flex gap-4 overflow-hidden">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex-shrink-0 w-40 h-48 bg-gray-200 dark:bg-gray-800 rounded-3xl animate-pulse" />
-        ))}
+const GuideRow = ({ guide, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-[15px] flex items-center gap-3.5 text-left transition-all hover:border-hover-border hover:-translate-y-px"
+  >
+    <GuideIcon category={guide.category} size={42} dot={15} />
+    <div className="flex-1 min-w-0">
+      <div className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">
+        {guide.name}
       </div>
-      <div className="space-y-3">
-        <div className="h-8 w-40 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
-        {[1, 2].map((i) => (
-          <div key={i} className="h-20 w-full bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
-        ))}
+      <div className="text-[13.5px] text-muted-copy truncate">
+        {guide.category || 'Guide'}
+        {Array.isArray(guide.steps) && guide.steps.length > 0 && ` · ${guide.steps.length} ${guide.steps.length === 1 ? 'step' : 'steps'}`}
       </div>
     </div>
-  );
+  </button>
+);
+
+const HomeScreen = () => {
+  const navigate = useNavigate();
+  const { user, profile, planKey } = useAuth();
+  const { allGuides, allBundles, favorites, isDataLoaded } = useData();
+  const limits = usePlanLimits();
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
+  const familyName = profile?.full_name || user?.email?.split('@')[0] || 'your family';
+  const initial = (profile?.full_name || user?.email || 'F')[0].toUpperCase();
+
+  // Pinned first, most recently updated after — max 4 rows.
+  const pinnedIds = useMemo(() => new Set((favorites || []).map((f) => f.id)), [favorites]);
+  const homeGuides = useMemo(() => {
+    const mine = (allGuides || []).filter((g) => !g.is_shared_with_me);
+    const ranked = [...mine].sort((a, b) => {
+      const pin = (pinnedIds.has(b.id) ? 1 : 0) - (pinnedIds.has(a.id) ? 1 : 0);
+      if (pin !== 0) return pin;
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+    });
+    return ranked.slice(0, 4);
+  }, [allGuides, pinnedIds]);
+
+  const guideCount = (allGuides || []).filter((g) => !g.is_shared_with_me).length;
+  const bundles = (allBundles || []).slice(0, 8);
+
+  // Usage nudge only past 50% of the cap (and only when the plan has a cap).
+  const guideCap = limits?.active_guides ?? null;
+  const showNudge = guideCap != null && guideCount / guideCap >= 0.5;
+  const nearCap = guideCap != null && guideCount / guideCap >= 0.9;
+  const planName = planKey ? planKey.charAt(0).toUpperCase() + planKey.slice(1) : 'Free';
 
   return (
     <>
       <Helmet>
         <title>Home - Family Playbook</title>
-        <meta name="description" content="Welcome back! Access your guides, bundles, and family organization tools." />
       </Helmet>
-      
-      <div className="min-h-screen bg-background pb-24">
-        <div className="p-6">
-          <motion.header 
-            initial={{ opacity: 0, y: -20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="mb-8"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="min-h-screen bg-cream dark:bg-background px-[22px] pt-[58px] pb-32"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-[26px]">
+          <div>
+            <div className="text-[16px] text-muted-copy">{greeting}</div>
+            <h1 className="font-display font-semibold text-[30px] leading-[1.15] text-mulberry dark:text-foreground">
+              {familyName}
+            </h1>
+          </div>
+          <button
+            onClick={() => navigate('/account')}
+            className="w-[38px] h-[38px] rounded-full bg-mulberry text-cream flex items-center justify-center font-bold text-[15px] mt-1"
+            aria-label="Account"
           >
-            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back! 👋</h1>
-            <p className="text-muted-foreground">Let's keep your family organized</p>
-          </motion.header>
-  
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: 0.1 }} 
-            className="mb-8 relative" 
-            ref={searchRef}
-          >
-            <SearchInput 
-              searchTerm={searchQuery} 
-              setSearchTerm={setSearchQuery} 
-              placeholder="Find a guide or bundle..." 
-            />
-            <AnimatePresence>
-              {searchResults.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -10 }} 
-                  className="absolute top-full mt-2 w-full bg-card rounded-2xl shadow-lg border z-10 overflow-hidden max-h-80 overflow-y-auto"
-                >
-                  <ul className="divide-y divide-border">
-                    {searchResults.map(item => (
-                      <li 
-                        key={`${item.type}-${item.id}`} 
-                        onClick={() => handleResultClick(item)} 
-                        className="p-4 hover:bg-secondary cursor-pointer flex items-center gap-4"
-                      >
-                        {item.type === 'guide' ? (
-                          <GuideIcon iconName={item.icon} category={item.category} className="w-10 h-10" size={20} /> 
-                        ) : (
-                          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-                            <Package size={20} />
-                          </div>
-                        )}
-                        <div className="flex-grow">
-                          <p className="font-semibold text-foreground">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.type === 'guide' ? renderGuideBundleInfo(item) : `${item.guide_count || 0} guides`}
-                          </p>
-                        </div>
-                        {item.type === 'bundle' ? <Package className="text-muted-foreground" size={18} /> : <FileText className="text-muted-foreground" size={18} />}
-                      </li>
-                    ))}
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary rounded-2xl p-1">
-              <TabsTrigger value="bundles" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft">
-                <Package size={20} />
-                <span className="text-sm font-semibold">My Bundles</span>
-              </TabsTrigger>
-              <TabsTrigger value="explore" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft">
-                <Library size={20} />
-                <span className="text-sm font-semibold">Library</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="bundles" className="mt-6">
-              {!isDataLoaded ? (
-                <LoadingSkeleton />
-              ) : myBundles.length > 0 ? (
-                <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 scrollbar-hide">
-                  {myBundles.map((bundle, index) => (
-                    <motion.div 
-                      key={bundle.id} 
-                      initial={{ opacity: 0, x: 20 }} 
-                      animate={{ opacity: 1, x: 0 }} 
-                      transition={{ delay: 0.1 + index * 0.1 }} 
-                      onClick={() => handleNavigate('bundleDetail', { bundleId: bundle.id })} 
-                      className="flex-shrink-0 w-40 cursor-pointer group"
-                    >
-                      <div className="bg-card rounded-3xl shadow-card hover:shadow-soft transition-all duration-300 transform group-hover:-translate-y-1 h-48 flex flex-col overflow-hidden">
-                        <div className="w-full h-28 relative flex items-center justify-center overflow-hidden">
-                          <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} />
-                        </div>
-                        <div className="p-3 flex flex-col justify-center flex-1">
-                          <h3 className="font-bold text-foreground text-sm line-clamp-2">{bundle.name}</h3>
-                          <p className="text-xs text-muted-foreground">{bundle.guide_count || 0} guides</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  className="text-center mt-12 mb-8"
-                >
-                  <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Frown size={32} className="text-muted-foreground" />
-                  </div>
-                  <h2 className="text-xl font-bold text-foreground mb-2">No Bundles Yet</h2>
-                  <p className="text-muted-foreground mb-6 max-w-xs mx-auto">Create a bundle to organize your guides or explore the library.</p>
-                  <Button onClick={() => handleNavigate('createBundle')} className="rounded-full">
-                    <Plus size={16} className="mr-2" />
-                    Create Bundle
-                  </Button>
-                </motion.div>
-              )}
-            </TabsContent>
+            {initial}
+          </button>
+        </div>
 
-            <TabsContent value="explore" className="mt-6">
-              {!isDataLoaded ? (
-                <LoadingSkeleton />
-              ) : libraryBundlesWithGuides.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {libraryBundlesWithGuides.map((bundle, index) => (
-                    <motion.div 
-                      key={bundle.id} 
-                      initial={{ opacity: 0, y: 20 }} 
-                      animate={{ opacity: 1, y: 0 }} 
-                      transition={{ delay: 0.1 + index * 0.05 }} 
-                      onClick={() => handleNavigate('viewLibraryBundle', { bundleId: bundle.id })} 
-                      className="flex flex-col text-center cursor-pointer group"
-                    >
-                      <div className="w-full aspect-video rounded-2xl flex items-center justify-center mb-2 shadow-soft-press transition-all duration-300 group-hover:shadow-soft group-hover:-translate-y-1 overflow-hidden">
-                        <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} />
-                      </div>
-                      <h3 className="font-semibold text-foreground text-sm">{bundle.name}</h3>
-                      <p className="text-xs text-muted-foreground">{bundle.guides?.length || 0} guides</p>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  className="text-center mt-12 mb-8"
-                >
-                  <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Library size={32} className="text-muted-foreground" />
-                  </div>
-                  <h2 className="text-xl font-bold text-foreground mb-2">Library Empty</h2>
-                  <p className="text-muted-foreground mb-6">Check back later for new templates!</p>
-                </motion.div>
-              )}
-            </TabsContent>
-          </Tabs>
-
-          {/* Favorites Section - Updated Layout */}
-          {isDataLoaded && recentFavorites.length > 0 && (
-            <motion.section 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              transition={{ delay: 0.2 }} 
-              className="mt-8"
+        {/* Share card (generic variant — no scheduled-handoff source yet) */}
+        <div className="relative overflow-hidden bg-mulberry rounded-2xl p-5 mb-7">
+          <div
+            className="absolute -top-8 -right-8 w-[110px] h-[110px] rounded-full"
+            style={{ background: 'rgba(253,248,243,.06)' }}
+          />
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-apricot">
+            One link, everything they need
+          </div>
+          <div className="font-display font-semibold text-[20px] leading-[1.25] text-cream mt-1.5">
+            Share your playbook
+          </div>
+          <p className="text-[14px] leading-[1.55] mt-1" style={{ color: 'rgba(253,248,243,.72)' }}>
+            A sitter, a grandparent, a house-guest — send one link and they see
+            exactly what you choose. No app on their end.
+          </p>
+          <div className="flex gap-2.5 mt-4">
+            <button
+              onClick={() => navigate('/share-center')}
+              className="flex-1 h-11 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
             >
-              <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2">
-                    <Heart size={20} className="text-red-500 fill-red-500" />
-                    <h2 className="text-xl font-bold text-foreground">Your Favorites</h2>
-                 </div>
-                 {/* Only show View All if there are more than 4 favorites */}
-                 {(favorites || []).length > 4 && (
-                    <Button variant="ghost" size="sm" onClick={() => handleNavigate('favorites')} className="text-primary hover:text-primary/80 h-8 px-2">View All</Button>
-                 )}
-              </div>
-              
-              <div className="grid gap-3">
-                {recentFavorites.map((item, index) => (
-                  <motion.div 
-                    key={item.id} 
-                    initial={{ opacity: 0, x: -20 }} 
-                    animate={{ opacity: 1, x: 0 }} 
-                    transition={{ delay: 0.3 + index * 0.1 }} 
-                    onClick={() => handleNavigate('guideDetail', { guideId: item.id })} 
-                    className="bg-card rounded-2xl p-4 shadow-card hover:shadow-soft transition-all duration-300 cursor-pointer group border border-transparent hover:border-primary/10"
-                  >
-                    <div className="flex items-start gap-4">
-                        {/* Left: Icon */}
-                        <div className="flex-shrink-0 pt-1">
-                             <GuideIcon iconName={item.icon} category={item.category} className="w-12 h-12 rounded-2xl" size={24} />
-                        </div>
-                        
-                        {/* Middle: Content */}
-                        <div className="flex-grow min-w-0 pr-2"> 
-                            <h3 className="font-bold text-foreground truncate text-base mb-0.5">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-1 mb-1.5 h-5">{item.description || 'No description'}</p>
-                            <p className="text-xs text-muted-foreground/70">
-                                {new Date(item.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                            </p>
-                        </div>
+              Share a link
+            </button>
+            <button
+              onClick={() => navigate('/guides?segment=bundles')}
+              className="h-11 px-5 rounded-full font-bold text-[15px] text-cream transition-colors"
+              style={{ background: 'rgba(253,248,243,.12)' }}
+            >
+              Review
+            </button>
+          </div>
+        </div>
 
-                        {/* Right: Heart */}
-                        <div className="flex-shrink-0 pt-1">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleFavorite(item);
-                                }}
-                                className="w-10 h-10 flex items-center justify-center hover:bg-red-50 rounded-full transition-colors focus:outline-none"
-                                aria-label="Remove from favorites"
-                            >
-                                <Heart size={22} className="text-red-500 fill-red-500" />
-                            </button>
-                        </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
+        {/* Your guides */}
+        <div className="flex items-center justify-between mb-3">
+          <SectionLabel>Your guides</SectionLabel>
+          <button
+            onClick={() => navigate('/guides')}
+            className="text-[13px] font-bold text-raspberry"
+          >
+            All {guideCount}
+          </button>
+        </div>
+        <div className="space-y-2.5 mb-7">
+          {!isDataLoaded && (allGuides || []).length === 0 ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="h-[70px] rounded-lg bg-blush/60 animate-pulse" />
+            ))
+          ) : homeGuides.length > 0 ? (
+            homeGuides.map((g) => (
+              <GuideRow key={g.id} guide={g} onClick={() => navigate(`/guide/${g.id}`)} />
+            ))
+          ) : (
+            <div className="bg-card rounded-lg border border-card-border p-6 text-center">
+              <p className="font-display font-semibold text-[17px] text-mulberry dark:text-foreground">
+                Write your first guide.
+              </p>
+              <button
+                onClick={() => navigate('/guide/new')}
+                className="mt-3 h-10 px-5 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[14px]"
+              >
+                Start with one thing
+              </button>
+            </div>
           )}
         </div>
-      </div>
+
+        {/* Bundles carousel */}
+        {bundles.length > 0 && (
+          <>
+            <div className="mb-3">
+              <SectionLabel>Bundles</SectionLabel>
+            </div>
+            <div className="-mx-[22px] px-[22px] flex gap-3 overflow-x-auto scrollbar-hide mb-7">
+              {bundles.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => navigate(`/bundle/${b.id}`)}
+                  className="flex-shrink-0 w-[158px] bg-card rounded-lg border border-card-border shadow-card overflow-hidden text-left transition-all hover:border-hover-border hover:-translate-y-px"
+                >
+                  <div className="h-[30px]" style={{ background: b.color || '#C25065' }} />
+                  <div className="p-3.5">
+                    <div className="font-bold text-[15px] text-mulberry dark:text-foreground truncate">
+                      {b.name}
+                    </div>
+                    <div className="text-[12.5px] text-muted-copy mt-0.5">
+                      {b.guide_count ?? 0} {b.guide_count === 1 ? 'guide' : 'guides'}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Usage nudge */}
+        {showNudge && (
+          <div className="bg-blush rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] font-bold text-blush-copy">
+                {guideCount} of {guideCap} guides on {planName}
+              </div>
+              <button
+                onClick={() => navigate('/plans')}
+                className="text-[13.5px] font-bold text-raspberry"
+              >
+                See plans
+              </button>
+            </div>
+            <div
+              className="h-1.5 rounded-full mt-2.5 overflow-hidden"
+              style={{ background: 'rgba(138,90,69,.18)' }}
+            >
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${nearCap ? 'bg-coral' : 'bg-raspberry'}`}
+                style={{ width: `${Math.min((guideCount / guideCap) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </motion.div>
     </>
   );
 };

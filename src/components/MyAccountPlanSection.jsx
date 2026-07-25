@@ -11,9 +11,9 @@ const UsageMeter = ({ label, current, limit, icon: Icon }) => {
   const isUnlimited = !limit || limit > 999999 || limit === -1;
   const percentage = isUnlimited ? 0 : Math.min((current / limit) * 100, 100);
   
-  let colorClass = "bg-green-500";
-  if (percentage > 80) colorClass = "bg-red-500";
-  else if (percentage > 50) colorClass = "bg-yellow-500";
+  // Brand: raspberry fill; coral only when near the cap
+  let colorClass = "bg-raspberry";
+  if (percentage > 80) colorClass = "bg-coral";
 
   return (
     <div className="space-y-2">
@@ -26,7 +26,7 @@ const UsageMeter = ({ label, current, limit, icon: Icon }) => {
           {current} / {isUnlimited ? '∞' : limit}
         </span>
       </div>
-      <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="h-1.5 w-full bg-meter-track dark:bg-gray-700 rounded-full overflow-hidden">
         <div 
           className={cn("h-full transition-all duration-500", colorClass)} 
           style={{ width: isUnlimited ? '100%' : `${percentage}%` }}
@@ -79,8 +79,8 @@ const MyAccountPlanSection = () => {
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            Current Plan: <span className="text-[#5CA9E9]">{plan_name}</span>
+          <h2 className="font-display font-semibold text-[19px] text-mulberry dark:text-white flex items-center gap-2">
+            {plan_name} plan
           </h2>
           <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
               <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium capitalize", 
@@ -149,7 +149,7 @@ const MyAccountPlanSection = () => {
                 {formatBytes(storageUsed)} / {storageLimit === -1 ? '∞' : formatBytes(storageLimit)}
               </span>
             </div>
-            <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-meter-track dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className={cn("h-full bg-blue-500 transition-all duration-500")} 
                 style={{ width: storageLimit === -1 ? '1%' : `${Math.min((storageUsed / storageLimit) * 100, 100)}%` }}

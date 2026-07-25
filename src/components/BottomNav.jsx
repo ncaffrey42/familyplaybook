@@ -1,9 +1,15 @@
 import React from 'react';
-import { Home, Library, Heart, User, FolderOpen } from 'lucide-react';
+import { Home, BookOpen, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 
+/**
+ * Brand v1 navigation: 3 tabs — Home / Guides / Share.
+ * Favorites is retired as a destination (it became "Pinned" on Home + a chip
+ * on Guides); Account moved to the Home-header avatar; create lives on the
+ * FAB. Active state is colour alone: raspberry active, #C9A6B2 inactive.
+ */
 const BottomNav = () => {
   const location = useLocation();
   const handleNavigate = useNavigation();
@@ -11,80 +17,61 @@ const BottomNav = () => {
 
   const navItems = [
     { id: 'home', path: '/home', icon: Home, label: 'Home' },
-    { id: 'guides', path: '/library', icon: Library, label: 'Guides' }, // Changed label to "Guides"
-    { id: 'bundles', path: '/bundles', icon: FolderOpen, label: 'Bundles' },
-    { id: 'favorites', path: '/favorites', icon: Heart, label: 'Favorites' },
-    { id: 'account', path: '/account', icon: User, label: 'Account' },
+    { id: 'guides', path: '/guides', icon: BookOpen, label: 'Guides' },
+    { id: 'share', path: '/share-center', icon: Share2, label: 'Share' },
   ];
 
+  const isActiveFor = (id) => {
+    if (id === 'home') return currentPath === '/home' || currentPath === '/';
+    if (id === 'guides')
+      return (
+        currentPath.startsWith('/guides') ||
+        currentPath.startsWith('/library') ||
+        currentPath.startsWith('/bundles') ||
+        currentPath.startsWith('/bundle/') ||
+        currentPath.startsWith('/guide/')
+      );
+    if (id === 'share') return currentPath.startsWith('/share-center');
+    return false;
+  };
+
   const handlePrefetch = (screenId) => {
-    // Corrected prefetch logic
     const componentMap = {
       home: () => import('@/pages/home/HomeScreen'),
       guides: () => import('@/pages/guides/GuidesLibrary'),
-      bundles: () => import('@/pages/bundles/MyBundlesScreen'),
-      favorites: () => import('@/pages/FavoritesScreen'),
-      account: () => import('@/pages/account/MyAccount'),
+      share: () => import('@/pages/share/ShareCenterScreen'),
     };
-
-    const prefetcher = componentMap[screenId];
-    if (prefetcher) {
-      prefetcher();
-    }
+    componentMap[screenId]?.();
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-border shadow-lg z-50 pb-safe">
-      <div className="flex items-center justify-around max-w-md mx-auto px-1 py-3">
+    <div className="fixed bottom-0 left-0 right-0 bg-cream/95 dark:bg-background/95 backdrop-blur-xl border-t border-card-border dark:border-border z-50 pb-safe">
+      <div className="flex items-center justify-around max-w-md mx-auto px-1 pt-3 pb-4">
         {navItems.map((item) => {
-          let isActive = false;
-          
-          // Updated active state logic
-          if (item.id === 'account') {
-             isActive = currentPath.startsWith('/account');
-          } else if (item.id === 'home') {
-             isActive = currentPath === '/home' || currentPath === '/';
-          } else if (item.id === 'guides') { // Updated to 'guides'
-             // Guides tab is active for /library, /guides and /library/guide paths
-             isActive = currentPath.startsWith('/library') || currentPath.startsWith('/guides');
-          } else if (item.id === 'bundles') {
-             isActive = currentPath.startsWith('/bundles') || currentPath.startsWith('/library/bundle');
-          } else {
-             isActive = currentPath.startsWith(item.path);
-          }
-
+          const isActive = isActiveFor(item.id);
           const Icon = item.icon;
-
           return (
             <motion.button
               key={item.id}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => handleNavigate(item.id)}
               onMouseEnter={() => handlePrefetch(item.id)}
-              className="relative flex flex-col items-center justify-center w-16 group"
+              className="relative flex flex-col items-center justify-center w-20 min-h-[44px]"
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
             >
-              <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10' : 'bg-transparent'}`}>
-                <Icon
-                  className={`transition-colors duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                  fill={isActive && item.id === 'favorites' ? 'currentColor' : 'none'}
-                  size={22}
-                />
-              </div>
+              <Icon
+                size={22}
+                strokeWidth={isActive ? 2.4 : 2}
+                className={isActive ? 'text-raspberry' : 'text-placeholder-copy'}
+              />
               <span
-                className={`text-[10px] mt-1 font-medium text-center transition-colors duration-300 ${
-                  isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                className={`text-[10.5px] mt-1 font-bold ${
+                  isActive ? 'text-raspberry' : 'text-placeholder-copy'
                 }`}
               >
                 {item.label}
               </span>
-              {isActive && (
-                 <motion.div
-                    layoutId="active-nav-indicator"
-                    className="absolute -bottom-3 h-1 w-8 rounded-t-full bg-primary"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                 />
-              )}
             </motion.button>
           );
         })}

@@ -51,22 +51,42 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom colors for the soft, human-centered design
-        'brand-blue': '#A7C7E7', // Soft blue
-        'brand-green': '#B2D8B2', // Gentle green
-        'brand-peach': '#FFDAB9', // Warm peach
-        'brand-yellow': '#FFD700', // Gold/yellow for accents
-        'brand-pink': '#FF6B6B', // A lovely red for hearts
-        'neutral-light': '#F5F5DC', // Light neutral
-        'neutral-medium': '#D3D3C9', // Medium neutral
-        'neutral-dark': '#A9A9A1', // Dark neutral
+        // Brand v1 palette (design/redesign-v1/brand-guide.html)
+        mulberry: { DEFAULT: '#5C2A3E', hover: '#47202F' },
+        raspberry: { DEFAULT: '#C25065', hover: '#A83E53' },
+        coral: { DEFAULT: '#F0705A', hover: '#DC5A44' },
+        apricot: { DEFAULT: '#F4A259' },
+        blush: { DEFAULT: '#F6DFD3' },
+        cream: { DEFAULT: '#FDF8F3' },
+        ink: { DEFAULT: '#3D2530' },
+        // Derived values, sampled from the kit
+        'body-copy': '#5E3D4C',
+        'muted-copy': '#A9798A',
+        'placeholder-copy': '#C9A6B2',
+        chevron: '#D8B9C4',
+        'card-border': '#F0E2D8',
+        'row-divider': '#F6EBE3',
+        'checkbox-ring': '#E3CFC4',
+        'meter-track': '#F1E0D6',
+        'blush-copy': '#8A5A45',
+        'row-hover': '#FEFAF7',
+        'hover-border': '#E0C6B8',
+        'halo-apricot': '#FDEEE0',
+        'halo-raspberry': '#F7DEE3',
+        'halo-mulberry': '#EEE0E5',
+        'halo-coral': '#FBE0DA',
+        'emergency-bg': '#FDEEE9',
+      },
+      fontFamily: {
+        sans: ['"Nunito Sans"', 'sans-serif'],
+        display: ['Fraunces', 'serif'],
       },
       borderRadius: {
-        lg: "var(--radius)",
+        lg: "var(--radius)",           // 18px — cards and rows
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        "2xl": "1.5rem", // More rounded corners
-        "3xl": "2rem", // Even more rounded corners
+        "2xl": "1.375rem",             // 22px — larger containers
+        "3xl": "2rem",
       },
       keyframes: {
         "accordion-down": {
@@ -83,8 +103,10 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       boxShadow: {
-        soft: '0 4px 10px rgba(0, 0, 0, 0.08)', // Softer shadow
-        card: '0 6px 15px rgba(0, 0, 0, 0.1)', // Slightly more pronounced for cards
+        // One card shadow only, per the brand guide
+        soft: '0 1px 2px rgba(92,42,62,.04)',
+        card: '0 1px 2px rgba(92,42,62,.04)',
+        fab: '0 8px 20px -6px rgba(194,80,101,.7)',
       },
     },
   },

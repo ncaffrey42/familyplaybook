@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.family_invitations (
   token uuid DEFAULT gen_random_uuid() NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   accepted_at timestamp with time zone,
+  invited_name text,
   CONSTRAINT family_invitations_owner_user_id_invited_email_key UNIQUE (owner_user_id, invited_email),
   CONSTRAINT family_invitations_token_key UNIQUE (token),
   CONSTRAINT family_invitations_pkey PRIMARY KEY (id),
@@ -198,6 +199,22 @@ CREATE TABLE IF NOT EXISTS public.revenuecat_webhook_events (
 );
 ALTER TABLE public.revenuecat_webhook_events ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.share_grants (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  owner_user_id uuid NOT NULL,
+  invitation_id uuid NOT NULL,
+  guide_id uuid,
+  bundle_id uuid,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT share_grants_pkey PRIMARY KEY (id),
+  CONSTRAINT share_grants_bundle_id_fkey FOREIGN KEY (bundle_id) REFERENCES packs(id) ON DELETE CASCADE,
+  CONSTRAINT share_grants_guide_id_fkey FOREIGN KEY (guide_id) REFERENCES guides(id) ON DELETE CASCADE,
+  CONSTRAINT share_grants_invitation_id_fkey FOREIGN KEY (invitation_id) REFERENCES family_invitations(id) ON DELETE CASCADE,
+  CONSTRAINT share_grants_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT share_grants_one_target CHECK ((((guide_id IS NOT NULL) AND (bundle_id IS NULL)) OR ((guide_id IS NULL) AND (bundle_id IS NOT NULL))))
+);
+ALTER TABLE public.share_grants ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE IF NOT EXISTS public.shared_links (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   user_id uuid,
@@ -330,6 +347,9 @@ CREATE INDEX IF NOT EXISTS idx_packs_is_archived ON public.packs USING btree (is
 CREATE INDEX IF NOT EXISTS idx_packs_user_id ON public.packs USING btree (user_id);
 CREATE INDEX IF NOT EXISTS packs_user_updated_idx ON public.packs USING btree (user_id, updated_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS plans_plan_key_idx ON public.plans USING btree (plan_key);
+CREATE UNIQUE INDEX IF NOT EXISTS share_grants_bundle_uniq ON public.share_grants USING btree (invitation_id, bundle_id) WHERE (bundle_id IS NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS share_grants_guide_uniq ON public.share_grants USING btree (invitation_id, guide_id) WHERE (guide_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS share_grants_invitation_idx ON public.share_grants USING btree (invitation_id);
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user_guide ON public.user_favorites USING btree (user_id, guide_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_event_id ON public.webhook_events USING btree (event_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_user_id ON public.webhook_events USING btree (user_id);
@@ -940,6 +960,43 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.viewer_can_see_bundle(p_bundle_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+      FROM share_grants sg
+      JOIN family_invitations fi ON fi.id = sg.invitation_id
+     WHERE fi.invited_user_id = auth.uid()
+       AND fi.status = 'accepted'
+       AND sg.bundle_id = p_bundle_id
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.viewer_can_see_guide(p_guide_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+      FROM share_grants sg
+      JOIN family_invitations fi ON fi.id = sg.invitation_id
+     WHERE fi.invited_user_id = auth.uid()
+       AND fi.status = 'accepted'
+       AND (
+         sg.guide_id = p_guide_id
+         OR (sg.bundle_id IS NOT NULL AND EXISTS (
+              SELECT 1 FROM pack_guides pg
+               WHERE pg.pack_id = sg.bundle_id AND pg.guide_id = p_guide_id))
+       )
+  );
+$function$;
+
 -- ── Triggers ─────────────────────────────────────────────────
 CREATE TRIGGER guides_bump_updated_at BEFORE UPDATE ON public.guides FOR EACH ROW EXECUTE FUNCTION bump_updated_at();
 CREATE TRIGGER packs_bump_updated_at BEFORE UPDATE ON public.packs FOR EACH ROW EXECUTE FUNCTION bump_updated_at();
@@ -960,7 +1017,7 @@ CREATE POLICY "Users can insert their own guides." ON public.guides FOR INSERT W
 CREATE POLICY "Users can update their own guides." ON public.guides FOR UPDATE USING ((auth.uid() = user_id));
 CREATE POLICY "guides_block_readonly_update" ON public.guides AS RESTRICTIVE FOR UPDATE USING (is_guide_editable(id)) WITH CHECK (is_guide_editable(id));
 CREATE POLICY "guides_editor_update" ON public.guides FOR UPDATE TO authenticated USING (is_accepted_family_member(user_id, 'editor'::text)) WITH CHECK (is_accepted_family_member(user_id, 'editor'::text));
-CREATE POLICY "guides_member_select" ON public.guides FOR SELECT TO authenticated USING (is_accepted_family_member(user_id));
+CREATE POLICY "guides_member_select" ON public.guides FOR SELECT TO authenticated USING ((is_accepted_family_member(user_id, 'editor'::text) OR viewer_can_see_guide(id)));
 CREATE POLICY "guides_owner_delete" ON public.guides FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "guides_owner_select" ON public.guides FOR SELECT TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "Allow public read access to library guides" ON public.library_guides FOR SELECT USING (true);
@@ -977,9 +1034,7 @@ CREATE POLICY "Allow owners to manage pack_guides" ON public.pack_guides FOR ALL
 CREATE POLICY "pack_guides_block_readonly_insert" ON public.pack_guides AS RESTRICTIVE FOR INSERT WITH CHECK (is_pack_editable(pack_id));
 CREATE POLICY "pack_guides_member_select" ON public.pack_guides FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
    FROM packs p
-  WHERE ((p.id = pack_guides.pack_id) AND is_accepted_family_member(p.user_id)))) OR (EXISTS ( SELECT 1
-   FROM guides g
-  WHERE ((g.id = pack_guides.guide_id) AND is_accepted_family_member(g.user_id))))));
+  WHERE ((p.id = pack_guides.pack_id) AND is_accepted_family_member(p.user_id, 'editor'::text)))) OR viewer_can_see_bundle(pack_id)));
 CREATE POLICY "pack_guides_owner_delete" ON public.pack_guides FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
    FROM packs p
   WHERE ((p.id = pack_guides.pack_id) AND (p.user_id = auth.uid())))));
@@ -995,7 +1050,7 @@ CREATE POLICY "Users can update their own packs." ON public.packs FOR UPDATE USI
 CREATE POLICY "Users can view their own archived packs" ON public.packs FOR SELECT USING (((auth.uid() = user_id) AND (is_archived = true)));
 CREATE POLICY "packs_block_readonly_update" ON public.packs AS RESTRICTIVE FOR UPDATE USING (is_pack_editable(id)) WITH CHECK (is_pack_editable(id));
 CREATE POLICY "packs_editor_update" ON public.packs FOR UPDATE TO authenticated USING (is_accepted_family_member(user_id, 'editor'::text)) WITH CHECK (is_accepted_family_member(user_id, 'editor'::text));
-CREATE POLICY "packs_member_select" ON public.packs FOR SELECT TO authenticated USING (is_accepted_family_member(user_id));
+CREATE POLICY "packs_member_select" ON public.packs FOR SELECT TO authenticated USING ((is_accepted_family_member(user_id, 'editor'::text) OR viewer_can_see_bundle(id)));
 CREATE POLICY "packs_owner_delete" ON public.packs FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "packs_owner_select" ON public.packs FOR SELECT TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "Public read access to entitlements" ON public.plan_entitlements FOR SELECT USING (true);
@@ -1005,6 +1060,10 @@ CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING ((auth.uid() = id));
 CREATE POLICY "Users can manage their own push subscriptions" ON public.push_subscriptions FOR ALL USING ((auth.uid() = user_id));
 CREATE POLICY "revenuecat_events_service" ON public.revenuecat_webhook_events FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "share_grants_member_select" ON public.share_grants FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM family_invitations fi
+  WHERE ((fi.id = share_grants.invitation_id) AND (fi.invited_user_id = auth.uid()) AND (fi.status = 'accepted'::text)))));
+CREATE POLICY "share_grants_owner_all" ON public.share_grants FOR ALL TO authenticated USING ((auth.uid() = owner_user_id)) WITH CHECK ((auth.uid() = owner_user_id));
 CREATE POLICY "Users can create their own shared links" ON public.shared_links FOR INSERT WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "shared_links_owner_delete" ON public.shared_links FOR DELETE TO authenticated USING ((auth.uid() = user_id));
 CREATE POLICY "shared_links_owner_select" ON public.shared_links FOR SELECT TO authenticated USING ((auth.uid() = user_id));

@@ -186,7 +186,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
       if (shareError) throw shareError;
       
       const shareId = shareData.id;
-      navigate(`/share/${shareId}`, { state: { fromBundleId: bundle.id } });
+      navigate(`/share-manage/${shareId}`, { state: { fromBundleId: bundle.id } });
 
     } catch (error) {
       logError(error, { context: 'Bundle Sharing' });
@@ -241,8 +241,11 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
           returnTo={readOnlyReturnTo}
         />
         
-        <header className="p-6">
-          <PageHeader title="" onBack={() => navigate('/bundles')}>
+        <header
+          className="px-[22px] pt-6 pb-6 text-white"
+          style={{ background: bundle.color || '#C25065' }}
+        >
+          <PageHeader title="" onBack={() => navigate('/guides?segment=bundles')}>
             {isLibraryView ? (
               // Library Actions
                <Button 
@@ -292,26 +295,43 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
             )}
           </PageHeader>
   
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center text-center mb-8">
-            <div className="w-48 h-32 rounded-3xl mb-4 overflow-hidden shadow-soft bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-              <BundleImage imageUrl={bundle.image} bundleName={bundle.name} bundleColor={bundle.color} className="w-full h-full object-cover"/>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{bundle.name}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 max-w-md">{bundle.description}</p>
-            <div className="flex items-center gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center gap-1.5"><FileText size={16} /><span>{guides.length} guides</span></div>
-            </div>
-            
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-3">
+            <h1 className="font-display font-semibold text-[27px] leading-[1.2] text-white">{bundle.name}</h1>
+            <p className="text-[14.5px] mt-1" style={{ color: 'rgba(255,255,255,.8)' }}>
+              {guides.length} {guides.length === 1 ? 'guide' : 'guides'}
+              {bundle.description ? ` · ${bundle.description}` : ''}
+            </p>
+
             {isLibraryView && (
-              <Button 
+              <Button
                 onClick={() => handleAddBundleFromLibrary(bundle)}
-                className="mt-6 bg-gradient-to-r from-brand-blue to-brand-green text-white shadow-lg"
+                className="mt-4 rounded-full bg-white text-mulberry font-bold hover:bg-white/90"
               >
-                <Download size={18} className="mr-2" /> Add to My Bundles
+                <Download size={16} className="mr-2" /> Add to My Bundles
               </Button>
             )}
           </motion.div>
         </header>
+
+        {/* Actions row */}
+        {!isLibraryView && (
+          <div className="px-[22px] mt-4 mb-2 flex gap-2.5">
+            {isOwner && (
+              <button
+                onClick={handleShare}
+                className="flex-1 h-11 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
+              >
+                Share with a helper
+              </button>
+            )}
+            <button
+              onClick={() => { if (!gateReadOnly(`/bundle/${bundle.id}/edit`)) navigate(`/bundle/${bundle.id}/edit`); }}
+              className={`h-11 px-6 rounded-full bg-blush text-blush-copy font-bold text-[15px] ${isOwner ? '' : 'flex-1'}`}
+            >
+              Edit
+            </button>
+          </div>
+        )}
 
         {isReadOnly && isOwner && (
           <div className="mx-6 mb-6 -mt-2 flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
@@ -383,16 +403,22 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <main className="px-6">
+        <main className="px-[22px]">
           {guides.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mt-3 mb-1">
+                In order
+              </div>
               {guides.map((guide, index) => (
-                <motion.div key={guide.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card hover:shadow-soft transition-all duration-300 flex items-center gap-4">
-                  <div onClick={() => handleGuideClick(guide)} className="flex-1 flex items-center gap-4 cursor-pointer">
-                    <GuideIcon iconName={guide.icon} category={guide.category} />
-                    <div>
-                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">{guide.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{guide.category}</p>
+                <div key={guide.id} className="bg-card rounded-lg border border-card-border shadow-card px-4 py-[15px] transition-all hover:border-hover-border hover:-translate-y-px flex items-center gap-3">
+                  <span className="w-4 flex-shrink-0 text-[13px] font-bold text-chevron">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div onClick={() => handleGuideClick(guide)} className="flex-1 flex items-center gap-3.5 cursor-pointer min-w-0">
+                    <GuideIcon category={guide.category} size={42} dot={15} />
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">{guide.name}</h3>
+                      <p className="text-[13.5px] text-muted-copy">{guide.category}</p>
                     </div>
                   </div>
                   {!isLibraryView && (
@@ -424,25 +450,21 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                       </AlertDialog>
                     )
                   )}
-                </motion.div>
+                </div>
               ))}
             </div>
           ) : (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mt-20">
-              <Frown size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
-              <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">No Guides in this Bundle</h2>
+            <div className="bg-card rounded-lg border border-card-border p-8 text-center mt-6">
+              <h2 className="font-display font-semibold text-[18px] text-mulberry dark:text-foreground mb-1">Nothing in this bundle yet.</h2>
               {!isLibraryView && (
-                <>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6">Add a guide to get started!</p>
-                  <Button
-                    onClick={() => { if (!gateReadOnly()) setIsModalOpen(true); }}
-                    className="bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] text-white"
-                  >
-                    Add Guides
-                  </Button>
-                </>
+                <Button
+                  onClick={() => { if (!gateReadOnly()) setIsModalOpen(true); }}
+                  className="mt-3 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold"
+                >
+                  Add guides
+                </Button>
               )}
-            </motion.div>
+            </div>
           )}
         </main>
         

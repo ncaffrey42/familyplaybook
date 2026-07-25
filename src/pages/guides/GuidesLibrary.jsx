@@ -1,188 +1,280 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Frown, Pencil, Library, Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useData } from '@/contexts/DataContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import SearchInput from '@/components/ui/SearchInput';
-import GuideCard from '@/components/GuideCard';
-import { Button } from '@/components/ui/button';
-import { searchGuides } from '@/lib/searchUtils';
-import UsageBadge from '@/components/UsageBadge';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import GuideIcon from '@/components/GuideIcon';
+import HeartMark from '@/components/HeartMark';
+import { searchGuides, searchBundles } from '@/lib/searchUtils';
 
-const GuideList = ({ guides, toggleFavorite, favorites, isLibrary = false, onTabChange, searchTerm }) => {
-  const navigate = useNavigate();
-  
-  if (guides.length === 0) {
-    let message = { title: "", description: "" };
-    
-    if (isLibrary) {
-         if (searchTerm) {
-             message = { title: "No matches found", description: `We couldn't find any guides matching "${searchTerm}" in the library.` };
-         } else {
-             message = { title: "Library Empty", description: "You've added all available guides! Check back later for more." };
-         }
-    } else {
-        if (searchTerm) {
-            message = { title: "No matches found", description: `You don't have any guides matching "${searchTerm}".` };
-        } else {
-            message = { title: "A Fresh Start!", description: "Your guides will live here. Create a new guide or find one in the library." };
-        }
-    }
+/**
+ * Brand v1 Guides screen — one place for everything the family has written.
+ * Segmented control: Guides / Bundles / Library. Reads ?segment= and ?chip=
+ * so the retired /library, /bundles and /favorites routes land in the right
+ * view.
+ */
 
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mt-20 px-6"
-      >
-        {searchTerm ? <Search size={48} className="mx-auto text-muted-foreground/30 mb-4" /> : <Frown size={48} className="mx-auto text-muted-foreground/30 mb-4" />}
-        <h2 className="text-xl font-bold text-foreground mb-2">{message.title}</h2>
-        <p className="text-muted-foreground mb-6 max-w-xs mx-auto">{message.description}</p>
-        {!isLibrary && (
-           <Button onClick={() => onTabChange('library')} className="shadow-md bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] text-white border-0">
-              <Library size={16} className="mr-2" />
-              {searchTerm ? "Search Library Instead" : "Explore Library"}
-           </Button>
-        )}
-      </motion.div>
-    );
-  }
+const SEGMENTS = ['guides', 'bundles', 'library'];
+const CHIPS = ['All', 'How To', 'Find It', 'Reference', 'Pinned'];
 
-  const handleCardClick = (guide) => {
-    // Verified: Navigates to correct library route
-    if (isLibrary) {
-      navigate(`/library/guide/${guide.id}`);
-    } else {
-      navigate(`/guide/${guide.id}`);
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {guides.map((guide, index) => (
-        <motion.div
-          key={guide.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
-          className="relative group"
-        >
-          <GuideCard
-            guide={guide}
-            isFavorited={!isLibrary && Array.isArray(favorites) && favorites.some(fav => fav.id === guide.id)}
-            onToggleFavorite={() => !isLibrary && toggleFavorite(guide)}
-            onClick={() => handleCardClick(guide)}
-            isLibrary={isLibrary}
-          />
-          {!isLibrary && (
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/guide/${guide.id}/edit`); }}
-              className="absolute top-1/2 -translate-y-1/2 right-20 bg-background/70 dark:bg-background/50 p-1.5 rounded-full backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100 hover:bg-primary/80 hover:text-white"
-              aria-label="Edit guide"
-            >
-              <Pencil size={16} />
-            </button>
-          )}
-        </motion.div>
-      ))}
-    </div>
-  );
+const HEADERS = {
+  guides: (n) => ({ title: 'Guides', sub: `${n} ${n === 1 ? 'guide' : 'guides'} · newest first` }),
+  bundles: () => ({ title: 'Bundles', sub: 'Group guides for a sitter, a season, a trip.' }),
+  library: () => ({ title: 'Library', sub: 'Ready-made guides you can copy and edit.' }),
 };
 
-const GuidesLibrary = ({ favorites, toggleFavorite }) => {
-  const location = useLocation();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeMainTab, setActiveMainTab] = useState(location.state?.tab || 'my-guides');
-  const [activeCategoryTab, setActiveCategoryTab] = useState('all');
-  const { allGuides, guideLibrary } = useData();
+const GuideRow = ({ guide, onClick, right }) => (
+  <div
+    onClick={onClick}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => e.key === 'Enter' && onClick()}
+    className="w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-[15px] flex items-center gap-3.5 text-left cursor-pointer transition-all hover:border-hover-border hover:-translate-y-px"
+  >
+    <GuideIcon category={guide.category} size={42} dot={15} />
+    <div className="flex-1 min-w-0">
+      <div className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">
+        {guide.name}
+      </div>
+      <div className="text-[13.5px] text-muted-copy truncate">
+        {guide.category || 'Guide'}
+        {Array.isArray(guide.steps) && guide.steps.length > 0 && ` · ${guide.steps.length} ${guide.steps.length === 1 ? 'step' : 'steps'}`}
+        {guide.is_shared_with_me && ' · Shared with you'}
+      </div>
+    </div>
+    {right}
+  </div>
+);
+
+const EmptyState = ({ line, actionLabel, onAction }) => (
+  <div className="bg-card rounded-lg border border-card-border p-8 text-center">
+    <div className="flex justify-center mb-3">
+      <HeartMark size={44} stroke="#D8B9C4" />
+    </div>
+    <p className="font-display font-semibold text-[18px] text-mulberry dark:text-foreground">{line}</p>
+    {actionLabel && (
+      <button
+        onClick={onAction}
+        className="mt-4 h-10 px-5 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[14px]"
+      >
+        {actionLabel}
+      </button>
+    )}
+  </div>
+);
+
+const GuidesLibrary = () => {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const {
+    allGuides, allBundles, guideLibrary, favorites,
+    handleAddGuideFromLibrary, isDataLoaded,
+  } = useData();
 
-  const filteredGuides = useMemo(() => {
-    let sourceGuides;
-    if (activeMainTab === 'library') {
-      const userGuideTemplateIds = new Set(allGuides.map(g => g.template_id).filter(Boolean));
-      sourceGuides = guideLibrary.filter(lg => !userGuideTemplateIds.has(lg.id));
-    } else {
-      sourceGuides = allGuides;
-    }
-    
-    const searched = searchGuides(sourceGuides, searchTerm);
+  const segment = SEGMENTS.includes(params.get('segment')) ? params.get('segment') : 'guides';
+  const chipParam = (params.get('chip') || '').toLowerCase();
+  const initialChip = chipParam === 'pinned' ? 'Pinned' : 'All';
+  const [chip, setChip] = useState(initialChip);
+  const [searchTerm, setSearchTerm] = useState('');
 
-    if (activeCategoryTab === 'all') {
-      return searched;
-    }
-    return searched.filter(guide => guide.category === activeCategoryTab);
-  }, [allGuides, guideLibrary, searchTerm, activeMainTab, activeCategoryTab]);
+  // Keep chip in sync when arriving via /favorites redirect after mount.
+  useEffect(() => {
+    if (chipParam === 'pinned') setChip('Pinned');
+  }, [chipParam]);
 
-  const siteUrl = "https://familyplaybook.app";
-  const defaultImage = "/icon-192x192.png";
+  const setSegment = (s) => {
+    const next = new URLSearchParams(params);
+    if (s === 'guides') next.delete('segment');
+    else next.set('segment', s);
+    setParams(next, { replace: true });
+    setSearchTerm('');
+  };
+
+  const pinnedIds = useMemo(() => new Set((favorites || []).map((f) => f.id)), [favorites]);
+
+  const myGuides = useMemo(() => {
+    let list = allGuides || [];
+    if (chip === 'Pinned') list = list.filter((g) => pinnedIds.has(g.id));
+    else if (chip !== 'All') list = list.filter((g) => g.category === chip);
+    if (searchTerm) list = searchGuides(list, searchTerm);
+    return [...list].sort(
+      (a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)
+    );
+  }, [allGuides, chip, pinnedIds, searchTerm]);
+
+  const bundles = useMemo(() => {
+    let list = allBundles || [];
+    if (searchTerm) list = searchBundles(list, searchTerm);
+    return list;
+  }, [allBundles, searchTerm]);
+
+  const libraryGuides = useMemo(() => {
+    let list = guideLibrary || [];
+    if (searchTerm) list = searchGuides(list, searchTerm);
+    return list;
+  }, [guideLibrary, searchTerm]);
+
+  const header = HEADERS[segment]((allGuides || []).length);
 
   return (
     <>
       <Helmet>
         <title>Guides - Family Playbook</title>
-        <meta name="description" content="Browse and manage your collection of guides. Create new guides for any situation." />
-        <meta property="og:title" content="Guides - Family Playbook" />
-        <meta property="og:description" content="Browse and manage your collection of guides. Create new guides for any situation." />
-        <meta property="og:image" content={defaultImage} />
-        <meta property="og:url" content={`${siteUrl}/guides`} />
       </Helmet>
-      <div className="min-h-screen bg-background pb-28">
-        <main className="p-6">
-          <header className="flex items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-bold text-foreground">Guides</h1>
-            {activeMainTab === 'my-guides' && (
-              <UsageBadge resourceType="guide" current={allGuides.length} />
-            )}
-          </header>
-
-          <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full mb-6">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary rounded-2xl p-1">
-              <TabsTrigger value="my-guides" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">My Guides</TabsTrigger>
-              <TabsTrigger value="library" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold flex items-center gap-2">
-                <Library size={16} /> Library
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <SearchInput
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            placeholder={activeMainTab === 'library' ? "Search library templates..." : "Search my guides..."}
-            className="mb-6"
-          />
-
-          <Tabs value={activeCategoryTab} onValueChange={setActiveCategoryTab} className="w-full mb-6">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary rounded-2xl p-1">
-              <TabsTrigger value="all" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">All</TabsTrigger>
-              <TabsTrigger value="How To" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">How To</TabsTrigger>
-              <TabsTrigger value="Find It" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">Find It</TabsTrigger>
-              <TabsTrigger value="Reference" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-soft text-sm font-semibold">Reference</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <GuideList 
-            guides={filteredGuides} 
-            toggleFavorite={toggleFavorite} 
-            favorites={favorites}
-            isLibrary={activeMainTab === 'library'}
-            onTabChange={setActiveMainTab}
-            searchTerm={searchTerm}
-          />
-        </main>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/guide/new')}
-          className="fixed bottom-28 right-6 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-[#5CA9E9] to-[#7BC47F] text-white shadow-lg z-40"
-          aria-label="Create New Guide"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="min-h-screen bg-cream dark:bg-background pb-[100px]"
+      >
+        {/* Sticky header */}
+        <div
+          className="sticky top-0 z-30 px-[22px] pt-[56px] pb-3 border-b border-card-border"
+          style={{ background: 'rgba(253,248,243,.95)', backdropFilter: 'blur(12px)' }}
         >
-          <Plus size={28} />
-        </motion.button>
-      </div>
+          <h1 className="font-display font-semibold text-[29px] leading-[1.15] text-mulberry">
+            {header.title}
+          </h1>
+          <p className="text-[14.5px] text-muted-copy mt-0.5">{header.sub}</p>
+
+          {/* Segmented control */}
+          <div className="mt-4 bg-blush rounded-full p-1 flex">
+            {SEGMENTS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setSegment(s)}
+                className={`flex-1 h-9 rounded-full text-[14px] font-bold capitalize transition-colors ${
+                  segment === s ? 'bg-cream text-mulberry' : 'text-muted-copy'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative mt-3">
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-placeholder-copy" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={segment === 'library' ? 'Search the library' : 'Search your playbook'}
+              className="w-full h-11 pl-10 pr-4 rounded-full bg-card border border-card-border text-[14.5px] text-mulberry placeholder:text-placeholder-copy focus:outline-none focus:border-raspberry"
+            />
+          </div>
+
+          {/* Filter chips (guides segment only) */}
+          {segment === 'guides' && (
+            <div className="mt-3 -mx-[22px] px-[22px] flex gap-2 overflow-x-auto scrollbar-hide">
+              {CHIPS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setChip(c)}
+                  className={`flex-shrink-0 h-8 px-3.5 rounded-full text-[13px] font-bold transition-colors ${
+                    chip === c
+                      ? 'bg-mulberry text-cream'
+                      : 'bg-card border border-card-border text-body-copy'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="px-[22px] pt-4 space-y-2.5">
+          {segment === 'guides' && (
+            !isDataLoaded && myGuides.length === 0 ? (
+              [...Array(4)].map((_, i) => <div key={i} className="h-[70px] rounded-lg bg-blush/60 animate-pulse" />)
+            ) : myGuides.length === 0 ? (
+              <EmptyState
+                line={
+                  searchTerm
+                    ? `Nothing matches “${searchTerm}”.`
+                    : chip === 'Pinned'
+                      ? 'Nothing pinned yet.'
+                      : 'Write your first guide.'
+                }
+                actionLabel={searchTerm ? null : chip === 'Pinned' ? 'See all guides' : 'Start with one thing'}
+                onAction={() => (chip === 'Pinned' ? setChip('All') : navigate('/guide/new'))}
+              />
+            ) : (
+              myGuides.map((g) => (
+                <GuideRow key={g.id} guide={g} onClick={() => navigate(`/guide/${g.id}`)} />
+              ))
+            )
+          )}
+
+          {segment === 'bundles' && (
+            bundles.length === 0 ? (
+              <EmptyState
+                line={searchTerm ? `Nothing matches “${searchTerm}”.` : 'Group guides into a bundle.'}
+                actionLabel={searchTerm ? null : 'New bundle'}
+                onAction={() => navigate('/bundles/create')}
+              />
+            ) : (
+              <>
+                {bundles.map((b) => (
+                  <div
+                    key={b.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/bundle/${b.id}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/bundle/${b.id}`)}
+                    className="bg-card rounded-lg border border-card-border shadow-card overflow-hidden cursor-pointer transition-all hover:border-hover-border hover:-translate-y-px"
+                  >
+                    <div className="h-[34px]" style={{ background: b.color || '#C25065' }} />
+                    <div className="px-4 py-3.5">
+                      <div className="font-bold text-[17px] text-mulberry dark:text-foreground truncate">
+                        {b.name}
+                      </div>
+                      <div className="text-[13.5px] text-muted-copy mt-0.5">
+                        {b.guide_count ?? 0} {b.guide_count === 1 ? 'guide' : 'guides'}
+                        {b.is_shared_with_me && ' · Shared with you'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => navigate('/bundles/create')}
+                  className="w-full h-11 rounded-full border-[1.5px] border-raspberry text-raspberry font-bold text-[15px] flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={16} strokeWidth={2.6} /> New bundle
+                </button>
+              </>
+            )
+          )}
+
+          {segment === 'library' && (
+            libraryGuides.length === 0 ? (
+              <EmptyState line={searchTerm ? `Nothing matches “${searchTerm}”.` : 'You’ve added everything here.'} />
+            ) : (
+              libraryGuides.map((g) => (
+                <GuideRow
+                  key={g.id}
+                  guide={g}
+                  onClick={() => navigate(`/library/guide/${g.id}`)}
+                  right={
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddGuideFromLibrary(g);
+                      }}
+                      className="flex-shrink-0 h-9 px-4 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[13px]"
+                    >
+                      Add
+                    </button>
+                  }
+                />
+              ))
+            )
+          )}
+        </div>
+      </motion.div>
     </>
   );
 };

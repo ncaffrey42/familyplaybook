@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
 
   try {
     const owner = await requireUser(req);
-    const { email, role = 'editor' } = await req.json();
+    const { email, role = 'editor', name } = await req.json();
 
     if (!email || typeof email !== 'string') {
       return json({ error: 'email is required' }, 400);
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
         {
           owner_user_id: owner.id,
           invited_email: normalizedEmail,
+          invited_name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 80) : null,
           role,
           status: 'pending',
         },

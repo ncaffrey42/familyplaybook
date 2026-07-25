@@ -34,9 +34,12 @@ export const useNavigation = () => {
 
     const routeMap = {
       home: '/home',
-      bundles: '/bundles',
+      // Redesign: bundles/library/favorites collapsed into the Guides screen
+      bundles: '/guides?segment=bundles',
       guides: '/guides',
-      favorites: '/favorites',
+      library: '/guides?segment=library',
+      favorites: '/guides?chip=pinned',
+      share: '/share-center',
       createBundle: '/createBundle',
       bundleDetail: `/bundle/${data.bundleId}`,
       editBundle: `/bundle/${data.bundleId}/edit`,
