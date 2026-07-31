@@ -41,6 +41,8 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
   // Determine pack from props or location state
   const initialPack = propPack || location.state?.pack || location.state?.bundle;
+  // Gap-filler starter template: prefill the form once for a new guide.
+  const starterTemplate = location.state?.starterTemplate;
 
   const [guideName, setGuideName] = useState('');
   const [description, setDescription] = useState('');
@@ -59,6 +61,20 @@ const CreateGuideScreen = ({ pack: propPack }) => {
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiTranscript, setAiTranscript] = useState(null);
   const [aiSource, setAiSource] = useState(null); // 'voice' | 'text'
+
+  useEffect(() => {
+    if (starterTemplate && !guideId) {
+      setGuideName(starterTemplate.name || '');
+      setDescription(starterTemplate.description || '');
+      setCategory(starterTemplate.category || 'How To');
+      setSteps((starterTemplate.steps || []).map(st => ({
+        id: uuidv4(),
+        text: st.title && st.text ? `${st.title}: ${st.text}` : (st.text || st.title || ''),
+        image_url: '', video_url: '',
+      })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyAiDraft = (draft) => {
     setGuideName(draft.guideName);
