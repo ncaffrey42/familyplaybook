@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.guides (
   description text,
   template_id uuid,
   updated_at timestamp with time zone DEFAULT now(),
+  last_confirmed_at timestamp with time zone,
   CONSTRAINT guides_pkey PRIMARY KEY (id),
   CONSTRAINT guides_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -237,6 +238,7 @@ CREATE TABLE IF NOT EXISTS public.shared_links (
   guide_id uuid,
   bundle_id uuid,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  expires_at timestamp with time zone,
   CONSTRAINT shared_links_pkey PRIMARY KEY (id),
   CONSTRAINT shared_links_bundle_id_fkey FOREIGN KEY (bundle_id) REFERENCES packs(id) ON DELETE CASCADE,
   CONSTRAINT shared_links_guide_id_fkey FOREIGN KEY (guide_id) REFERENCES guides(id) ON DELETE CASCADE,
@@ -285,6 +287,18 @@ CREATE TABLE IF NOT EXISTS public.user_billing (
   CONSTRAINT user_billing_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 ALTER TABLE public.user_billing ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.user_dismissals (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  user_id uuid NOT NULL,
+  kind text NOT NULL,
+  key text NOT NULL,
+  dismissed_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT user_dismissals_uniq UNIQUE (user_id, kind, key),
+  CONSTRAINT user_dismissals_pkey PRIMARY KEY (id),
+  CONSTRAINT user_dismissals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+ALTER TABLE public.user_dismissals ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.user_favorites (
   user_id uuid NOT NULL,
@@ -483,11 +497,16 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  SELECT id, guide_id, bundle_id INTO v_link
+  SELECT id, guide_id, bundle_id, expires_at INTO v_link
     FROM shared_links
    WHERE id = p_share_id;
   IF NOT FOUND THEN
     RETURN NULL;
+  END IF;
+
+  -- A closed link is a feature, not an error.
+  IF v_link.expires_at IS NOT NULL AND v_link.expires_at < now() THEN
+    RETURN jsonb_build_object('type', 'expired');
   END IF;
 
   IF v_link.guide_id IS NOT NULL THEN
@@ -540,11 +559,11 @@ BEGIN
     END IF;
 
     -- Only shareable guides that have their own share link are listed —
-    -- same filter the client used to apply.
+    -- ordered by the bundle's curated position when present.
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
              'id', g.id, 'name', g.name, 'description', g.description,
              'icon', g.icon, 'category', g.category, 'shareId', sl.id
-           )), '[]'::jsonb)
+           ) ORDER BY pg.position NULLS LAST, g.name), '[]'::jsonb)
       INTO v_bundle_guides
       FROM pack_guides pg
       JOIN guides g
@@ -1088,6 +1107,7 @@ CREATE POLICY "shared_links_owner_select" ON public.shared_links FOR SELECT TO a
 CREATE POLICY "Allow public read access to active prices" ON public.stripe_price_map FOR SELECT USING ((active = true));
 CREATE POLICY "Users can update own billing" ON public.user_billing FOR UPDATE USING ((auth.uid() = user_id));
 CREATE POLICY "Users can view own billing" ON public.user_billing FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "user_dismissals_owner_all" ON public.user_dismissals FOR ALL TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "Users can manage their own favorites." ON public.user_favorites FOR ALL USING ((auth.uid() = user_id));
 CREATE POLICY "Users can manage their own secrets" ON public.user_secrets FOR ALL USING ((auth.uid() = user_id));
 CREATE POLICY "Users view own subscription" ON public.user_subscriptions FOR SELECT USING ((auth.uid() = user_id));
