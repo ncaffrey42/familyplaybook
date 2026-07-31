@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { FAMILY_SHARING_ENABLED, HOST_MODE_ENABLED } from '@/lib/featureFlags';
+import { FAMILY_SHARING_ENABLED, HOST_MODE_ENABLED, FEEDBACK_ENABLED } from '@/lib/featureFlags';
 import { Toaster } from "@/components/ui/toaster";
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { UsageTrackingProvider } from './contexts/UsageTrackingContext';
@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import LimitNotificationModal from './components/LimitNotificationModal';
 import BottomNav from './components/BottomNav';
 import CreateFab from './components/CreateFab';
+import FeedbackBubble from './components/FeedbackBubble';
 import PrivateRoute from './components/PrivateRoute';
 import LazyRoute from './components/LazyRoute';
 import useScrollToTop from '@/hooks/useScrollToTop';
@@ -179,6 +180,7 @@ const AppContent = () => {
         </Routes>
 
         {user && !shouldHideNav && <BottomNav />}
+        {user && !shouldHideNav && FEEDBACK_ENABLED && <FeedbackBubble />}
         {user && !shouldHideNav && <CreateFab />}
         <LimitNotificationModal />
         <AddToHomeScreenPrompt />

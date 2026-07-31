@@ -29,3 +29,10 @@ export const AI_GENERATION_ENABLED =
  */
 export const HOST_MODE_ENABLED =
   import.meta.env.VITE_ENABLE_HOST_MODE === 'true';
+
+/**
+ * FEEDBACK_ENABLED gates the in-app feedback bubble + checkpoint prompts.
+ * On unless explicitly disabled with VITE_ENABLE_FEEDBACK=false.
+ */
+export const FEEDBACK_ENABLED =
+  import.meta.env.VITE_ENABLE_FEEDBACK !== 'false';

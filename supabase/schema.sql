@@ -62,6 +62,22 @@ CREATE TABLE IF NOT EXISTS public.family_members (
 );
 ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.feedback (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  user_id uuid NOT NULL,
+  kind text NOT NULL,
+  rating text,
+  message text,
+  context jsonb DEFAULT '{}'::jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT feedback_pkey PRIMARY KEY (id),
+  CONSTRAINT feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT feedback_kind_check CHECK ((kind = ANY (ARRAY['bubble'::text, 'setup'::text, 'first_action'::text]))),
+  CONSTRAINT feedback_not_empty CHECK (((rating IS NOT NULL) OR (message IS NOT NULL))),
+  CONSTRAINT feedback_rating_check CHECK ((rating = ANY (ARRAY['up'::text, 'down'::text])))
+);
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE IF NOT EXISTS public.guides (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   user_id uuid,
@@ -335,6 +351,8 @@ ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- ── Indexes ──────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS ai_generations_user_created_idx ON public.ai_generations USING btree (user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS feedback_checkpoint_once ON public.feedback USING btree (user_id, kind) WHERE (kind <> 'bubble'::text);
+CREATE INDEX IF NOT EXISTS feedback_created_idx ON public.feedback USING btree (created_at DESC);
 CREATE INDEX IF NOT EXISTS guides_user_updated_idx ON public.guides USING btree (user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_guides_is_archived ON public.guides USING btree (is_archived);
 CREATE INDEX IF NOT EXISTS idx_guides_name_gin ON public.guides USING gin (to_tsvector('english'::regconfig, name));
