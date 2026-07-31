@@ -6,6 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import GuideIcon from '@/components/GuideIcon';
+import HomeNudge from '@/components/HomeNudge';
 
 /**
  * Brand v1 Home: answer "what do I need right now" in one screen.
@@ -129,6 +130,8 @@ const HomeScreen = () => {
             </button>
           </div>
         </div>
+
+        <HomeNudge />
 
         {/* Your guides */}
         <div className="flex items-center justify-between mb-3">
