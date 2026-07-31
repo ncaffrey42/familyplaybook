@@ -32,6 +32,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { logError } from '@/lib/errorLogger';
 import GuideIcon from '@/components/GuideIcon';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
+import { computeExpiry } from '@/lib/shareExpiry';
 
 const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const { id } = useParams();
@@ -182,7 +183,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
           if (createLinksError) throw createLinksError;
       }
 
-      const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, bundle_id: bundle.id, guide_id: null }).select().single();
+      const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, bundle_id: bundle.id, guide_id: null, expires_at: computeExpiry('tonight') }).select().single();
       if (shareError) throw shareError;
       
       const shareId = shareData.id;

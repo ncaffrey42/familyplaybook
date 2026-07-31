@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { logError } from '@/lib/errorLogger';
 import { useNavigation } from '@/hooks/useNavigation';
 import HeartMark from '@/components/HeartMark';
+import { EXPIRY_PRESETS, computeExpiry, presetFromExpiry, humanizeExpiry } from '@/lib/shareExpiry';
+import { SHARE_EXPIRY_ENABLED } from '@/lib/featureFlags';
 import { Helmet } from 'react-helmet';
 
 const ShareScreen = () => {
@@ -16,6 +18,8 @@ const ShareScreen = () => {
     const { toast } = useToast();
     const [shareUrl, setShareUrl] = useState('');
     const [qrCodeData, setQrCodeData] = useState('');
+    const [expiresAt, setExpiresAt] = useState(null);
+    const [savingExpiry, setSavingExpiry] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [content, setContent] = useState(null);
 
@@ -37,6 +41,7 @@ const ShareScreen = () => {
                 sharedItem = { type: 'Bundle', name: linkData.packs.name };
             }
             setContent(sharedItem);
+            setExpiresAt(linkData.expires_at || null);
 
             const url = `${window.location.origin}/share/${shareId}`;
             setShareUrl(url);
@@ -148,6 +153,42 @@ const ShareScreen = () => {
                                     </div>
                                     <div className="text-[13px] text-muted-copy break-all px-2">{shareUrl}</div>
                                 </motion.div>
+
+                                {SHARE_EXPIRY_ENABLED && (
+                                  <div className="mt-5 text-left">
+                                    <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-2">For how long</div>
+                                    <div className="space-y-2">
+                                      {EXPIRY_PRESETS.map((p) => {
+                                        const selected = presetFromExpiry(expiresAt) === p.key;
+                                        return (
+                                          <button
+                                            key={p.key}
+                                            disabled={savingExpiry}
+                                            onClick={async () => {
+                                              const next = computeExpiry(p.key);
+                                              setSavingExpiry(true);
+                                              const prev = expiresAt;
+                                              setExpiresAt(next); // optimistic
+                                              const { error } = await supabase.from('shared_links').update({ expires_at: next }).eq('id', shareId);
+                                              if (error) { setExpiresAt(prev); toast({ title: 'Could not update', variant: 'destructive' }); }
+                                              setSavingExpiry(false);
+                                            }}
+                                            className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                                              selected ? 'bg-[#FDF3F5] border-raspberry' : 'bg-card border-card-border hover:border-hover-border'
+                                            }`}
+                                            style={selected ? { borderWidth: '1.5px' } : undefined}
+                                          >
+                                            <span className="block font-bold text-[14.5px] text-mulberry dark:text-foreground">{p.label}</span>
+                                            <span className="block text-[12.5px] text-muted-copy">{p.detail}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="mt-2 text-[12.5px] text-muted-copy text-center">
+                                      This link {humanizeExpiry(expiresAt)}.
+                                    </div>
+                                  </div>
+                                )}
 
                                 <div className="flex gap-2.5 mt-5">
                                     <button

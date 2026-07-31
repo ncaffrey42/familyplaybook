@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
+import { humanizeExpiry, isExpired } from '@/lib/shareExpiry';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
 import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
@@ -55,7 +56,7 @@ const ShareCenterScreen = () => {
             : Promise.resolve({ data: [] }),
           supabase
             .from('shared_links')
-            .select('id, created_at, guide_id, bundle_id, guides(name), packs(name)')
+            .select('id, created_at, expires_at, guide_id, bundle_id, guides(name), packs(name)')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
         ]);
@@ -297,8 +298,10 @@ const ShareCenterScreen = () => {
                     className="flex-1 min-w-0 text-left"
                   >
                     <div className="font-bold text-[15.5px] text-mulberry dark:text-foreground truncate">{l.label}</div>
-                    <div className="text-[12.5px] text-muted-copy">
-                      {l.kind} · live since {new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    <div className={`text-[12.5px] ${isExpired(l.expires_at) ? 'text-chevron' : 'text-muted-copy'}`}>
+                      {l.kind} · {isExpired(l.expires_at)
+                        ? 'ended'
+                        : humanizeExpiry(l.expires_at)}
                     </div>
                   </button>
                   <button

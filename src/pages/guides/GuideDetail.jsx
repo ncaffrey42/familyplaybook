@@ -154,12 +154,17 @@ const GuideDetail = ({ guide: propGuide }) => {
         if (updateError) throw updateError;
       
         const { data: existingLink } = await supabase.from('shared_links').select('id').eq('guide_id', guide.id).maybeSingle();
+        if (existingLink) {
+            // Re-sharing re-arms the default window; the owner can widen it
+            // on the link-ready screen.
+            await supabase.from('shared_links').update({ expires_at: computeExpiry('tonight') }).eq('id', existingLink.id);
+        }
 
         let shareId;
         if (existingLink) {
             shareId = existingLink.id;
         } else {
-            const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, guide_id: guide.id, bundle_id: bundleId || null }).select().single();
+            const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, guide_id: guide.id, bundle_id: bundleId || null, expires_at: computeExpiry('tonight') }).select().single();
             if (shareError) throw shareError;
             shareId = shareData.id;
         }

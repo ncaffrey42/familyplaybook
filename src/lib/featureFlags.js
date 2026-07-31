@@ -36,3 +36,15 @@ export const HOST_MODE_ENABLED =
  */
 export const FEEDBACK_ENABLED =
   import.meta.env.VITE_ENABLE_FEEDBACK !== 'false';
+
+/**
+ * Re-engagement trio — each independently toggleable, all on unless
+ * explicitly disabled. These are in-app-only surfaces (no push/email):
+ * silence for a cold user is guaranteed by construction.
+ */
+export const SHARE_EXPIRY_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_EXPIRY !== 'false';
+export const FRESHNESS_ENABLED =
+  import.meta.env.VITE_ENABLE_FRESHNESS !== 'false';
+export const GAP_NUDGE_ENABLED =
+  import.meta.env.VITE_ENABLE_GAP_NUDGE !== 'false';
