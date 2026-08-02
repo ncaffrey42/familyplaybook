@@ -25,8 +25,14 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   https://famplaybook.com/privacy-policy/ (must cover: account data, guides/media stored in
   Supabase, Stripe for payments, OpenAI for AI features, analytics).
 - ☐ **Support URL / contact** — https://famplaybook.com/support/ (support email as needed).
-- ☐ **Permission usage strings** applied from `native-config/` (mic, camera,
-  photos) — Apple auto-rejects missing ones.
+- ✅ **Permission usage strings** applied from `native-config/` — mic, camera,
+  photo library and photo-add strings are in `ios/App/App/Info.plist`; the
+  matching Android permissions are in `android/app/src/main/AndroidManifest.xml`.
+- ⚠️ **Plan promise must match the marketing site** — the app is the source of
+  truth (Free 15 guides / Couple $6.99 / Family $13.99, per `src/lib/plans.js`
+  and `plan_entitlements`). The WordPress copy still promises *5 active guides*
+  and a single *Premium* tier and needs updating to match before submission —
+  reviewers compare store listing, site and IAP.
 
 ## B. App Store Connect (iOS) listing
 
@@ -60,9 +66,11 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 ## D. Assets & config
 
 - ✅ Capacitor config, icons/splash pipeline (`npm run mobile:assets`)
-- ☐ Replace `assets/icon.png` + `assets/splash.png` with **1024×1024** masters
-- ☐ App icon has no transparency (iOS requirement) and no rounded corners
-  (the OS rounds them)
+- ✅ `assets/icon.png` + `assets/splash.png` are **1024×1024** masters
+- ✅ App icon has no transparency — the master carries an alpha channel but
+  `capacitor-assets` flattens it, and the generated
+  `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` is RGB
+  with no alpha. Re-verify after any `npm run mobile:assets` run.
 
 ## E. Accounts & prerequisites
 
