@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "novamira-visual-famplaybo": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "novamira-visual-mcp@latest"],
+      "env": {
+        "NOVAMIRA_VISUAL_WORKSPACE_URL": "https://famplaybook.com/wp-admin/admin-post.php?action=novamira-visual"
+      }
+    }
+  }
+}
