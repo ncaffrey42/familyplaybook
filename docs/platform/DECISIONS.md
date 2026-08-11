@@ -142,3 +142,53 @@ text DEFAULT 'stripe' NOT NULL`); `supabase/migrations/20240113_iap_revenuecat.s
 `src/services/EntitlementService.js`.
 
 ---
+
+## 2026-08-11 — Tenancy layer added additively; `workspace_id` is a `text`+`CHECK` discriminator, not per-vertical tables
+
+**Why:** The platform needs an org/workspace/role layer above the
+single-user ownership model without breaking the live B2C app mid-flight.
+Three design choices make that possible: (1) `organizations` →
+`workspaces` (1:many) → `workspace_members` (user × workspace × role) are
+new tables, and `guides`/`packs`/`shared_links`/`share_grants` gain a
+nullable, backfilled `workspace_id` rather than being restructured — every
+existing user's content ends up in exactly one personal `family`
+workspace they exclusively own, which is a bijection with today's
+`user_id`-based ownership, so every existing RLS policy and edge-function
+`.eq('user_id', …)` filter remains correct unmodified. (2)
+`workspace_type` is `text` + `CHECK (... IN ('family', 'host'))`, matching
+the schema's existing convention for closed vocabularies (`plan_key`,
+`billing_provider`, `role`, `status`, `kind` are all `text`+`CHECK`, never
+a native `ENUM`) — so a new vertical (real-estate, schools, elder-care) is
+one `CHECK` constraint edit, not a schema restructure. (3)
+`family_invitations` keeps being the invitation *workflow* (pending
+token, decline history); a new `AFTER UPDATE OF status` trigger projects
+accepted/declined/removed rows into `workspace_members`, rather than
+migrating the invite flow itself — one write path, two read shapes during
+the transition.
+**Alternatives rejected:** A native Postgres `ENUM` for `workspace_type` —
+rejected because adding a value to a Postgres `ENUM` inside a transaction
+has historically required care (and pre-12 required avoiding the same
+transaction as its use), while a `CHECK` constraint edit is a trivial,
+uniformly-safe additive migration — and it breaks consistency with every
+other closed-vocabulary column in this schema. A `host_workspaces` /
+`family_workspaces` table-per-vertical design — rejected because it turns
+"add a vertical" into a schema migration and a full parallel set of
+RLS/query code per vertical, defeating the stated goal. Rewriting
+`family_invitations` directly into `workspace_members` (dropping the
+former) — rejected because `family_invitations` carries invitation-workflow
+state (pending token, invited-but-not-yet-a-user email, decline/removed
+history) that `workspace_members` (settled membership only) has no shape
+for, and the existing `send-family-invite`/`accept-family-invite` edge
+functions and UI would need to change in this same migration — a project
+this design deliberately keeps schema-only and code-free (see
+`ARCHITECTURE.md` §6). Rewriting existing RLS policies and edge-function
+`user_id` filters to `workspace_id` in this same migration — rejected as
+unnecessary risk for zero behavior change: the bijection in
+`ARCHITECTURE.md` §3.1 means the old policies stay correct, so the rewrite
+is deferred to Prompt 3 (RBAC unification), which needs to do it anyway
+to introduce real capability-based roles.
+**Evidence:** `docs/platform/ARCHITECTURE.md` (full design + migration
+plan); no schema or application changes shipped with this entry — design
+only, per the prompt that produced it.
+
+---

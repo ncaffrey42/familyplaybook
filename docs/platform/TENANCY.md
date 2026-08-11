@@ -45,25 +45,38 @@ constraint: the B2C family product keeps working unchanged.
   non-functional mockup (see `src/lib/featureFlags.js`) — no host-specific
   data model exists yet.
 
-## Target model (TBD — introduced by Prompt 1)
+## Target model (designed by Prompt 1 — not yet applied)
 
-Per `PLATFORM_PROMPTS.md` Prompt 1, the target shape is expected to be:
+Full design lives in [`ARCHITECTURE.md`](ARCHITECTURE.md); this section is
+the summary kept current as the model evolves. **Status: designed, zero
+migrations applied.** Nothing below is live yet.
 
-- `organizations` — the billing + identity boundary.
-- `workspaces` — the content boundary; one org has many. Carries a
-  `workspace_type` discriminator (`family`, `host`, and future verticals)
-  so a new vertical is a new type + role-set + app shell, not a schema
-  change.
-- `workspace_members` — user × workspace × role.
-- A migration path that gives every existing user a personal org + one
-  `family` workspace, with `guides` / `packs` / `shared_links` /
-  `share_grants` gaining a `workspace_id` additively, so the current
-  single-user-ownership reality above becomes "workspace of one" without
-  changing observable behavior.
-
-This section stays `TBD` — not filled in with invented detail — until
-Prompt 1 actually runs and records the real design in `DECISIONS.md`, then
-updates this section to match what was decided.
+- `organizations` — the billing + identity boundary. One per personal
+  account today (`is_personal = true`), created 1:1 alongside each user's
+  backfilled `family` workspace. Does not yet carry a billing relationship
+  — `user_billing` stays user-keyed until Prompt 17.
+- `workspaces` — the content boundary; one org has many. Carries
+  `workspace_type` (`text` + `CHECK`, values `family`/`host` today) so a
+  new vertical is a new allowed value + a role-set defined as data (Prompt
+  3) + a new app shell (Prompt 8-style), never a schema change.
+- `workspace_members` — user × workspace × role (`owner`/`editor`/`viewer`
+  for now — a value-preserving copy of `family_invitations.role`'s
+  vocabulary, not the final RBAC matrix). Represents **settled
+  membership** only; the invite *workflow* stays in `family_invitations`,
+  projected into `workspace_members` by a sync trigger.
+- Backfill: every existing user gets one personal `organizations` row +
+  one `family` `workspaces` row + one `owner` `workspace_members` row.
+  `guides`/`packs`/`shared_links`/`share_grants` gain a nullable,
+  backfilled `workspace_id` (NOT NULL deferred to a later, verified
+  migration — same pattern as the archive-retirement migration). Because
+  every backfilled workspace has exactly one member who is exactly that
+  content's existing owner, this is a bijection with today's `user_id`
+  ownership — existing RLS policies and edge-function `user_id` filters
+  stay correct unmodified. See `ARCHITECTURE.md` §3.1, §7 for the full
+  byte-identical argument.
+- **Not yet true:** no RLS policy has been rewritten to check workspace
+  membership, no edge function resolves a `workspace_id`, no UI reads or
+  writes a workspace. That's Prompts 2–3.
 
 ## Role matrix (TBD — introduced by Prompt 3)
 
@@ -77,8 +90,20 @@ manager, cleaner, guest). Empty until that prompt runs.
   Prompt 17.
 - Whether/when the two verticals split into two Capacitor app targets —
   see Prompt 12.
+- Whether `workspace_members` eventually absorbs `family_invitations`
+  entirely, or the two stay permanently distinct (durable membership vs.
+  invite workflow vs. a future anonymous guest-link concept) — Prompt 3's
+  call. See `ARCHITECTURE.md` §9.
+- Whether AI/entitlement quotas (`ai_generations`, `user_usage` — per-user
+  today, untouched by Prompt 1) pool per workspace or stay per-user — host
+  pricing's call, Prompt 17.
+- `family_members` (a second, orphaned invite-shaped table nothing in the
+  app queries — see `ARCHITECTURE.md` §3.3) needs a cleanup decision;
+  not migrated into the tenancy model.
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 0 — Platform Ledger creation). Next
-update owed by Prompt 1.*
+*Last updated: 2026-08-11 (Prompt 1 — tenancy design). Target model above
+is designed, not yet applied — see `ARCHITECTURE.md` for the full design
+and migration plan. Next update owed by Prompt 2 (auth flows & workspace
+switcher).*
