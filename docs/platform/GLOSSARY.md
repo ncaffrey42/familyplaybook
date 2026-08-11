@@ -1,0 +1,47 @@
+# Glossary
+
+Canonical product terms, cross-referenced against what the code actually
+calls them. Where they diverge, the divergence is recorded on purpose —
+this is the file that answers a diligence team's "why does the schema say
+one thing and the app say another" before they have to ask.
+
+Every architecture prompt should use the **Canonical term** column when
+writing docs, and add a row here the first time it introduces or renames a
+concept.
+
+## Core content model
+
+| Canonical term | What it means | Code / schema reality | Notes |
+|---|---|---|---|
+| **Playbook** | The whole collection of guides a family (or, later, a workspace) owns — the product's name for "everything I've documented." | Not a table — it's the sum of a user's `guides` + `packs`. `SupabaseAuthContext.jsx`, `DataContext.jsx`, and marketing copy use "playbook" for this aggregate. | Prompt 4 formalizes "playbook" as a workspace's content root once tenancy exists. |
+| **Guide** | One how-to: a named set of ordered steps (e.g. "How to turn off the water"). | Table `public.guides`. Steps live in a `steps jsonb` column. | Code and product agree here — no drift. |
+| **Bundle** | A named, ordered collection of guides (e.g. "New Babysitter" bundle). The product-facing name. | Table `public.packs`; join table `public.pack_guides`; functions `is_pack_editable()`, `get_pack_guide_counts()`. Some newer code paths (`viewer_can_see_bundle()`, RPC output field `'bundle'` in `get_shared_content`) already say "bundle." | **Known drift.** DB tables, several functions, some routes (`src/pages/packs/`, `AddGuidesToPackModal.jsx`) and the entitlement key `bundles_max` say `pack`/`bundles_max` interchangeably. The frontend has *both* `src/pages/packs/` and `src/pages/bundles/`, and both `AddGuidesToPackModal.jsx` and `AddGuidesToBundleModal.jsx` exist side by side. Do not rename the tables opportunistically — record any rename as a `DECISIONS.md` entry with a migration plan, since `packs`/`pack_id` is a foreign key target across `pack_guides`, `share_grants`, `shared_links`, and RLS functions. |
+| **Library** | Anthropic-curated (i.e. app-provided, not user-authored) starter guides/bundles a user can copy into their own playbook. | Tables `public.library_guides`, `public.library_packs`. | `library_pack_id` is text (a slug), not a UUID FK to `packs` — libraries are a separate, non-tenant-scoped catalog, not user content. |
+| **Handoff bundle** | An AI-assembled, purpose-built bundle generated on demand (e.g. "assemble everything a babysitter needs tonight"), distinct from a bundle a user builds by hand. | `src/components/HandoffAssembleSheet.jsx`; edge function `assemble-handoff-bundle`. | A *behavior* (AI assembly), not a separate schema entity — it produces an ordinary bundle. |
+
+## Sharing & access
+
+| Canonical term | What it means | Code / schema reality | Notes |
+|---|---|---|---|
+| **Share link** | An unguessable public URL to one guide or bundle, optionally with an expiry, requiring no login to view. | Table `public.shared_links`; resolved via the `get_shared_content()` `SECURITY DEFINER` RPC. | See `DECISIONS.md` for why resolution is RPC-only. |
+| **Share grant** | An owner giving one specific guide or bundle to one specific accepted family member — narrower than family sharing's "see everything." | Table `public.share_grants`, FK'd to `family_invitations`. | Distinct from a share link: a grant requires the recipient to already be an accepted family member; a share link requires nothing. |
+| **Helper** | The read-only role: a family member with `viewer` role, and — separately — the name for the public, unauthenticated experience of opening a share link at all. | `family_invitations.role = 'viewer'`, enforced via `is_accepted_family_member(owner_id, 'viewer')`. Also: `PublicSharePage.jsx` comment — *"Helper mode — the read-only guest view of a shared guide or bundle."* | **Two related but distinct uses of "Helper."** (1) A signed-in family member with viewer role. (2) The anonymous "Helper mode" UI shown on any opened share link (no tab bar, nothing editable), regardless of whether the visitor is a family member. Keep both senses when writing docs; disambiguate as "Helper (role)" vs "Helper mode (surface)" if a doc needs both in the same paragraph. |
+| **Guest** | The host-vertical visitor role — someone who opens a property's guest guide link with no account and no ongoing relationship to the owner, as opposed to a family "Helper" who has an accepted, durable invitation. | Not yet a schema role — referenced today only in host-mode UI copy (`HostMode.jsx`) and `PLATFORM_PROMPTS.md`'s planned role matrix (`owner, manager, cleaner, guest`). | **Planned**, not built. Prompt 3 formalizes this as an anonymous, link-scoped role parallel to how share links work for family content today. |
+| **Family** | The default, existing vertical/workspace type: a household sharing one playbook. | Implicit today (see `TENANCY.md` — there is no `workspace_type` column yet); the term appears throughout as the product name for the B2C audience. | Becomes `workspace_type = 'family'` once tenancy lands (Prompt 1). |
+
+## Billing & entitlements
+
+| Canonical term | What it means | Code / schema reality | Notes |
+|---|---|---|---|
+| **Plan** | What a user (or, later, an org) is subscribed to; drives feature limits. | Tables `public.plans`, `public.plan_entitlements`; `plan_key` column on `user_billing`. | |
+| **Entitlement** | A specific numeric or boolean capability tied to a plan (e.g. `active_guides_max`, `bundles_max`, `ai_generation`). | `public.plan_entitlements` rows, `feature_key` column; read via `get_user_numeric_limit()`. | Entitlement key `bundles_max` governs the `packs` table — see the Bundle/pack drift note above. |
+| **Read-only-over-limit** | When a downgrade puts a user over their plan's item limit, the oldest-by-`updated_at` excess items become RLS-enforced read-only — never deleted, never archived. | `is_guide_editable()`, `is_pack_editable()`; `supabase/migrations/20240103_readonly_tier_enforcement.sql`, `20240104_retire_archive.sql`. | The **archive** feature (`is_archived`/`archived_at` columns) is retired in favor of this model; the columns remain only for backward-compat reads. Don't reintroduce "archive" language in new UI — the canonical term is "read-only." |
+
+## Tenancy (planned — see `TENANCY.md`)
+
+| Canonical term | What it means | Code / schema reality | Notes |
+|---|---|---|---|
+| **Organization** | The billing + identity boundary above a user; can contain multiple workspaces. | Not built. Appears only as a generic variable/component name today (`HeartMark.jsx`), unrelated to this planned meaning. | Introduced by Prompt 1. |
+| **Workspace** | The content boundary; what a "playbook" belongs to going forward. One org has many. | Not built. `AuthCallback.jsx` uses "workspace" only as incidental wording today, not a schema concept. | Introduced by Prompt 1. Existing users get one personal org + one `family` workspace via backfill. |
+| **Property** | A host workspace's unit of guest-facing content — one short-term-rental listing, with its own guest guide bundle. | Not built as a table. "Property"/"properties" appears today only as descriptive UI copy (`HostMode.jsx`, onboarding, search) unrelated to a data model. | Introduced by Prompt 9. Convention: one bundle per property on the *existing* content engine — properties are not a new content type, they're a new owner-boundary for bundles. |
+| **Alfred** | The planned name for the AI concierge: guest-facing Q&A over a property's shared content, and the owner-facing digest of unanswered guest questions. | Not built. Named only in `PLATFORM_PROMPTS.md` (Prompts 7, 18). The family-vertical analog is "Ask the Playbook" — spec'd but unbuilt (tracked as PR #16; spec referenced as `SPEC_ASK_PLAYBOOK.md` in `PLATFORM_PROMPTS.md`, not present on this branch). | Prompt 7 unifies "Ask the Playbook" and "Alfred" as one retrieval surface scoped per-workspace; Alfred is the host-facing branding of the same capability. |
