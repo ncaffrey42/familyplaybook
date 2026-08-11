@@ -170,7 +170,12 @@ user-visible changes until a flag flips.
 > AI generation wholesale; host taxonomy from Prompt 4), per-property guest
 > link + printable QR sheet (reuse link-ready screen + expiry + the
 > existing QR), and check-in/check-out date-scoped links (Prompt 6's
-> arbitrary expiry). Deliverable: migrations + flagged UI + an E2E: create
+> arbitrary expiry). Seed a **host starter library** by reusing the existing
+> library infrastructure (library_packs/library_guides + the copy-to-mine
+> flow already built for families): ~10 ready-made host guides (wifi,
+> check-in, checkout, parking, appliances, house rules, local picks, trash,
+> emergencies, "ask Alfred" explainer) so a new owner reaches a complete
+> playbook in minutes. Deliverable: migrations + flagged UI + an E2E: create
 > property → build guide → generate dated guest link → guest view works,
 > expires. Update the Ledger.
 
@@ -184,6 +189,8 @@ user-visible changes until a flag flips.
 > privacy posture stays clean). Update the Ledger.
 
 ## Phase D — Platform maturity (Prompts 11–15)
+
+*(Phase E prompts 16–18 below interleave: 16 after 9, 17 before 15, 18 after 7+16.)*
 
 ### Prompt 11 — Search, notifications, messaging seams
 > Read docs/platform/. Global search across a workspace (extend the existing
@@ -229,6 +236,43 @@ user-visible changes until a flag flips.
 > "didn't break B2C" (existing E2E suites green, zero RLS regressions,
 > retention flat-or-up). Include the pricing question for hosts as an open
 > decision with a recommendation. Update the Ledger — final state.
+
+### Prompt 16 — Airbnb connect & listing import (run after Prompt 9)
+> Read docs/platform/. Design the "connect your listing" flow with honest
+> API constraints, recorded in the Ledger: Airbnb has no public content API
+> for third parties, so v1 is (a) paste-your-listing-URL import of the
+> owner's OWN listing (owner-consented fetch of public listing data: title,
+> photos, house rules, amenities, address entered/confirmed by owner) +
+> (b) iCal calendar sync (Airbnb officially exports this) so guest links
+> can auto-scope to stay dates, + (c) a structured import wizard that turns
+> amenities/house-rules text into draft guides via the existing AI
+> structuring path (owner reviews before anything saves — same rule as
+> voice-to-guide). Architect it as a provider interface (airbnb, vrbo,
+> direct) so deeper partnerships slot in without rework — that interface IS
+> the acquisition story. Update the Ledger.
+
+### Prompt 17 — Host pricing & metered entitlements (run before Prompt 15)
+> Read docs/platform/. Design host pricing on the EXISTING entitlement
+> system (plans → plan_entitlements feature_key/int/unlimited — already
+> enforced by RLS + EntitlementService): meter on **properties**, **team
+> seats**, **guides**, and **Alfred questions/month**, with the same
+> read-only-over-limit downgrade philosophy the family product uses (never
+> delete, never brick — content becomes read-only past the cap). Propose
+> 2–3 host tiers with the metering math, wire host products into the
+> existing Stripe (web) + RevenueCat (native) rails and the same
+> user_billing reconciliation, and define org-level billing (an org with
+> many workspaces pays once). Deliverable: PRICING.md + entitlement rows +
+> enforcement test list. Update the Ledger.
+
+### Prompt 18 — The Alfred owner loop (run after Prompts 7 + 16)
+> Read docs/platform/. Build the owner side of Alfred: a digest of
+> unanswered guest questions per property (from Prompt 7's capture), each
+> with one-tap "answer it" → prefilled guide/section via the existing AI
+> structuring + gap-filler starter pattern; coverage score per property
+> (gap-filler logic on the host taxonomy); and the freshness loop pointed
+> at host content (season-stale: "pool guide, last touched in winter").
+> This is the retention engine for hosts — quiet, in-app, opt-out
+> respected, same rules as the family nudges. Update the Ledger.
 
 ---
 
