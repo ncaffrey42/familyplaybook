@@ -87,10 +87,13 @@ Full design in [`AUTH_FLOWS.md`](AUTH_FLOWS.md). Summary:
   a member of it, else their personal workspace. Computes/persists which
   workspace is active; does **not** yet change what content loads (still
   `DataContext`'s `ownerIds` pattern until Prompt 3/4).
-- **Workspace switcher:** lives in `AccountLayout.jsx`'s header; renders
-  only when a user has >1 `workspace_members` row. Self-gating by data —
-  every account has exactly 1 workspace until a workspace-creating flow
-  ships (earliest: Prompt 8), so no feature flag is needed for it.
+- **Workspace switcher:** renders only when a user has >1
+  `workspace_members` row. Self-gating by data — every account has exactly
+  1 workspace until a workspace-creating flow ships (earliest: Prompt 8),
+  so no feature flag is needed for it. **Two mount points** (refined by
+  Prompt 5, `NAV.md` §4.2): the Home header's `<h1>`, which already
+  renders the workspace name, for *switching*; and `AccountLayout`'s
+  header for *managing*. One component, two placements, no 4th tab.
 - **Registration starting vertical:** `/login?vertical=host` entry point.
   Password/magic-link signup threads intent through `raw_user_meta_data`
   (existing precedent: OTP already passes custom `options.data`). OAuth
@@ -213,9 +216,11 @@ Full design in [`CONTENT_ENGINE.md`](CONTENT_ENGINE.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 4 — shared content engine v2).
-Everything above is designed, nothing is applied — see `ARCHITECTURE.md`
-(tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
-integration), `RBAC.md` (permission model), and `CONTENT_ENGINE.md`
-(content generalization + media debt). Next update owed by Prompt 5
-(consumer dashboard & navigation).*
+*Last updated: 2026-08-11 (Prompt 5 — consumer dashboard & navigation).
+The tenancy model above is designed, nothing is applied — see
+`ARCHITECTURE.md` (tenancy schema + migration plan), `AUTH_FLOWS.md`
+(auth/session integration), `RBAC.md` (permission model),
+`CONTENT_ENGINE.md` (content generalization + media debt), and `NAV.md`
+(navigation contract). Prompt 5 shipped the sequence's first code: one
+flagged, default-off UI affordance (`VITE_ENABLE_SHARE_TAB_MANAGE`). Next
+update owed by Prompt 6 (temporary sharing, unified).*

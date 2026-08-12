@@ -38,6 +38,19 @@ export const FEEDBACK_ENABLED =
   import.meta.env.VITE_ENABLE_FEEDBACK !== 'false';
 
 /**
+ * SHARE_TAB_MANAGE_ENABLED gates the "Manage" entry point in the Share
+ * tab's "Family & helpers" header, which opens the existing
+ * ManageFamilyScreen (/account/family — also reachable from Settings).
+ * The Share tab already lists members and manages what each can see; this
+ * is the labelled door to inviting and removing them. Default OFF: new
+ * user-visible surfaces ship dark (see docs/platform/NAV.md).
+ * Always rendered inside the FAMILY_SHARING_ENABLED block, so it can
+ * never appear when family sharing itself is off.
+ */
+export const SHARE_TAB_MANAGE_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_TAB_MANAGE === 'true';
+
+/**
  * Re-engagement trio — each independently toggleable, all on unless
  * explicitly disabled. These are in-app-only surfaces (no push/email):
  * silence for a cold user is guaranteed by construction.

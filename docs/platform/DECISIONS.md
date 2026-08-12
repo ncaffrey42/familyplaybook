@@ -383,3 +383,52 @@ cannot answer what protects `storage.objects`. No schema or application
 changes shipped with this entry — design only.
 
 ---
+
+## 2026-08-11 — The 3-tab nav is a fixed contract; the workspace switcher mounts on the Home header's workspace name, and Home cards follow one exclusive-nudge chain
+
+**Why:** Three separate nav questions, one constraint — no 4th tab, because
+three tabs is a shipped, deliberate IA and a fourth is the fastest way to
+make the family app feel like platform scaffolding leaked into it. (1)
+**"My Family" is already 80% surfaced in the Share tab** — the member
+avatar row, roles/pending state, and the entire per-person `share_grants`
+picker live in `ShareCenterScreen.jsx:171-268`. What is missing is only a
+*labelled* door: both existing paths to member management are incidental
+(a "+" avatar, and a "Remove …" link that only appears after selecting a
+member). So the fix is one text button in the section header — reusing the
+exact right-aligned-raspberry-button grammar Home already uses for
+"All {n}" — not relocating `ManageFamilyScreen`, which would drag its
+route, deep links, invite-accept `returnTo`, and Settings entry with it.
+(2) **The workspace switcher mounts on the Home header's `<h1>`**, which
+*already renders the workspace's name* (`HomeScreen.jsx:88-90`) — so for a
+multi-workspace user it costs zero new chrome, and for everyone else it
+stays the static heading it is today. This refines `AUTH_FLOWS.md` §3's
+`AccountLayout` placement into two complementary mounts sharing one
+component: Home header = *switch* (fast, every session), Account header =
+*manage* (occasional). The precedent is already in the codebase — Account
+itself is reached from the Home header avatar, not a tab. (3) **Home card
+priority is documented, not changed**: share card (always) → `HomeNudge`
+(at most one of gap → freshness) → guides → usage nudge. Completeness beats
+decay, and the code enforces it in the memo (`HomeNudge.jsx:49` returns
+`null` when a gap exists) rather than relying on render order; the
+freshness cadence stamp fires only when the card *actually renders*, so
+losing to a gap card doesn't burn the fortnight's budget.
+**Alternatives rejected:** A 4th "Family" or "Workspaces" tab — rejected
+per the constraint above. Moving `ManageFamilyScreen` into the Share tab —
+rejected as a large regression surface (invite-accept `returnTo`, deep
+links, Settings entry) for a discoverability problem solved by one button.
+Putting the switcher in `BottomNav` — rejected because a switcher is not a
+destination; it changes the lens on every destination. **Building the
+switcher now** — rejected: it reads `workspaces`/`workspace_members`, which
+do not exist, and its own visibility rule (`length > 1`) would render
+`null` for 100% of users indefinitely. That is dead code with no data
+source, not a feature shipping dark, so the prompt's second permitted UI
+change was deliberately left unused. Changing the usage nudge to suppress
+when a gap/freshness card shows — rejected as a revenue-adjacent product
+decision, not a nav cleanup (recorded as an open question instead).
+**Evidence:** `docs/platform/NAV.md`. **One** UI change shipped:
+`SHARE_TAB_MANAGE_ENABLED` (`VITE_ENABLE_SHARE_TAB_MANAGE`, default off,
+double-gated inside `FAMILY_SHARING_ENABLED`) adding a "Manage" button to
+the Share tab's Family & helpers header — flag-off renders the original
+line verbatim.
+
+---

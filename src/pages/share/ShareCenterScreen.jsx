@@ -8,7 +8,7 @@ import { useData } from '@/contexts/DataContext';
 import { humanizeExpiry, isExpired } from '@/lib/shareExpiry';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
-import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
+import { FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED } from '@/lib/featureFlags';
 
 /**
  * The Share tab — "Your team". Everyone sees only what you share.
@@ -171,7 +171,19 @@ const ShareCenterScreen = () => {
         {/* Family members (avatar row) */}
         {FAMILY_SHARING_ENABLED && (
           <div className="mt-7">
-            <SectionLabel>Family & helpers</SectionLabel>
+            {SHARE_TAB_MANAGE_ENABLED ? (
+              <div className="flex items-center justify-between">
+                <SectionLabel>Family & helpers</SectionLabel>
+                <button
+                  onClick={() => navigate('/account/family')}
+                  className="text-[13px] font-bold text-raspberry mb-3"
+                >
+                  Manage
+                </button>
+              </div>
+            ) : (
+              <SectionLabel>Family & helpers</SectionLabel>
+            )}
             <div className="-mx-[22px] px-[22px] flex gap-[18px] overflow-x-auto scrollbar-hide items-start">
               {members.map((m, i) => (
                 <button
