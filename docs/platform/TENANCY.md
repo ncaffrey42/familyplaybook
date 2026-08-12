@@ -105,11 +105,42 @@ Full design in [`AUTH_FLOWS.md`](AUTH_FLOWS.md). Summary:
   the *only* relevant one for single-workspace orgs (i.e., every family
   account, and every host account until they have a second property).
 
-## Role matrix (TBD — introduced by Prompt 3)
+## Role matrix (designed by Prompt 3 — not yet applied)
 
-Owned by Prompt 3 (RBAC unification). Will express both verticals' roles
-as data: family (owner, adult/editor, helper/viewer) and host (owner,
-manager, cleaner, guest). Empty until that prompt runs.
+Full matrix, RLS pattern, migration plan and adversarial test list in
+[`RBAC.md`](RBAC.md). Summary:
+
+- **Permissions are data.** Three new tables — `capabilities` (catalog),
+  `workspace_roles` (`workspace_type` → role-set, with the UI label), and
+  `workspace_role_capabilities` (the matrix, as rows). Adding a vertical,
+  or changing what a role may do, is an `INSERT` — not a migration and
+  not a code fork. All three are read-only to `authenticated` with **no
+  write policy**, since write access to the matrix means self-granting
+  any capability.
+- **Stored role values are unchanged** (`owner`/`editor`/`viewer`, plus
+  `manager`/`cleaner` for host). The product labels Adult and Helper live
+  in `workspace_roles.label`, so `ARCHITECTURE.md` §3.3's
+  `family_invitations` sync trigger keeps working untouched.
+- **One helper:** `has_capability(workspace_id, capability)`
+  (`SECURITY DEFINER`, `STABLE`, `search_path` pinned, fail-closed)
+  replaces per-table role checks — additively, with legacy policies kept
+  until parity is proven.
+- **Capabilities and grants are different axes.** Capabilities are
+  workspace-wide and coarse; `share_grants` narrows per-person, per-item.
+  A granted-scope role's SELECT policy is
+  `has_capability(…, 'content.view.granted') AND viewer_can_see_guide(id)`
+  — the existing function reused verbatim. Family **Helper** and host
+  **Cleaner** are therefore the same capability row, which is what
+  Prompt 10 needs.
+- **Guest is not a role in any enforceable sense** — never a
+  `workspace_members` row, never an RLS subject, never an anon policy.
+  Guest access is exclusively `get_shared_content()`. This is what keeps
+  "a guest must never enumerate" structurally true rather than
+  policy-dependent.
+- **The read-only-over-limit `AS RESTRICTIVE` policies are untouched** —
+  plan-tier limits stay an orthogonal axis to identity.
+- **Not yet true:** no capability policy exists, nothing calls
+  `has_capability()`, no client code reads capabilities.
 
 ## Open questions
 
@@ -117,13 +148,21 @@ manager, cleaner, guest). Empty until that prompt runs.
   Prompt 17.
 - Whether/when the two verticals split into two Capacitor app targets —
   see Prompt 12.
-- Whether `workspace_members` eventually absorbs `family_invitations`
-  entirely, or the two stay permanently distinct (durable membership vs.
-  invite workflow vs. a future anonymous guest-link concept) — Prompt 3's
-  call. See `ARCHITECTURE.md` §9.
+- ~~Whether `workspace_members` eventually absorbs `family_invitations`~~
+  **Resolved by Prompt 3** (`RBAC.md` §9): the three stay permanently
+  distinct. `family_invitations` = invite workflow → projected into
+  `workspace_members` = settled membership; guests are neither, and are
+  never RLS subjects at all.
 - Whether AI/entitlement quotas (`ai_generations`, `user_usage` — per-user
   today, untouched by Prompt 1) pool per workspace or stay per-user — host
   pricing's call, Prompt 17.
+- Whether family:editor (Adult) should gain `content.create` — withheld
+  in `RBAC.md` §3 to preserve parity with today's INSERT policy; now a
+  one-row product decision rather than a migration.
+- Whether the viewer/Helper invite path should be surfaced in the UI at
+  all — the entire backend exists but is unreachable (`RBAC.md` §7).
+- Whether host:manager should hold `member.remove` — withheld as the
+  conservative default; revisit in Prompt 10 with real host workflows.
 - `family_members` (a second, orphaned invite-shaped table nothing in the
   app queries — see `ARCHITECTURE.md` §3.3) needs a cleanup decision;
   not migrated into the tenancy model.
@@ -136,8 +175,8 @@ manager, cleaner, guest). Empty until that prompt runs.
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 2 — auth flows & workspace resolution
-design). Target model above is designed, not yet applied — see
-`ARCHITECTURE.md` for the tenancy design/migration plan and
-`AUTH_FLOWS.md` for the auth/session integration design. Next update owed
-by Prompt 3 (RBAC unification).*
+*Last updated: 2026-08-11 (Prompt 3 — RBAC unification). Everything above
+is designed, nothing is applied — see `ARCHITECTURE.md` (tenancy schema +
+migration plan), `AUTH_FLOWS.md` (auth/session integration), and
+`RBAC.md` (permission model). Next update owed by Prompt 4 (shared
+content engine v2).*

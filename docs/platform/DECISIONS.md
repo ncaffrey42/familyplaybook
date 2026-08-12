@@ -237,3 +237,59 @@ diagrams, test matrix); no schema or application changes shipped with
 this entry — design only.
 
 ---
+
+## 2026-08-11 — Permissions are rows, not code: `(workspace_type, role) → capability` tables behind one `has_capability()` helper; guest is never an RLS subject
+
+**Why:** Both verticals need roles (family: owner/adult/helper; host:
+owner/manager/cleaner/guest) without forking policy code per vertical.
+Four choices make that work. (1) The matrix lives in
+`workspace_role_capabilities (workspace_type, role, capability)` rows,
+FK'd to a `workspace_roles` role-set table and a `capabilities` catalog,
+so adding a vertical — or changing what a role may do — is an `INSERT`,
+not a migration and not a code branch. Those tables get RLS with `SELECT`
+for `authenticated` and **no write policy at all**, because write access
+to the matrix is equivalent to granting yourself every capability. (2)
+One `has_capability(workspace_id, capability)` `SECURITY DEFINER` helper
+(`STABLE`, `SET search_path TO 'public'`, fail-closed on NULL workspace,
+NULL `auth.uid()`, or unknown capability) replaces per-table role checks,
+matching the conventions the existing `is_accepted_family_member()` /
+`viewer_can_see_*()` helpers already established. (3) `share_grants`
+composes with capabilities on a different axis rather than being
+rewritten: capabilities are workspace-wide and coarse, grants are
+per-row and narrowing, so a `content.view.granted` role's SELECT policy
+is `has_capability(...) AND viewer_can_see_guide(id)` with that existing
+function called verbatim. This makes family:Helper and host:Cleaner the
+same capability row, which is exactly what Prompt 10 needs ("cleaners get
+task-relevant guides only, grants model reused") — the payoff of not
+forking. (4) **Guest is never a `workspace_members` row, never a role
+value, never granted an RLS policy** — it exists in the matrix as
+documentation of what `get_shared_content()` exposes. The schema today has
+zero `TO anon` policies, so "guest must never enumerate" is already
+structurally true; the only way to keep it true is to never introduce an
+anon-role policy.
+**Alternatives rejected:** Encoding the matrix as a CASE/IF ladder in SQL
+or TypeScript — rejected as the literal "code fork" the design is meant
+to avoid; a new vertical would touch every policy. A native `ENUM` or
+per-vertical role tables — rejected for the same reasons `workspace_type`
+rejected them (`ARCHITECTURE.md`). Folding the read-only-over-limit
+`AS RESTRICTIVE` policies into the capability model — rejected because
+plan-tier limits and identity are orthogonal axes: unifying them would
+make a billing bug present as a permissions bug, and put `user_billing`
+in the path of every permission check. Modeling guest as a real role with
+an anon RLS policy — rejected as the single highest-risk change available
+here; it would trade a structurally-guaranteed property for one enforced
+by policy predicates. Granting family:editor (Adult) `content.create` —
+rejected *for now* purely to preserve parity: today's
+`WITH CHECK (auth.uid() = user_id)` INSERT policy means an editor cannot
+create content in the owner's collection, so granting it would be a
+day-one behavior change; because the matrix is data, granting it later is
+one row. **Proving parity after adding the new policies** — rejected as
+too late to be a gate: permissive RLS policies OR together, so the moment
+a new policy exists, effective access is `old ∪ new` and a too-broad new
+predicate is already a live escalation. Parity is therefore proven in
+shadow *before* any policy is created (migration M3 precedes M4).
+**Evidence:** `docs/platform/RBAC.md` (matrix, RLS pattern, 5-phase
+migration plan, 35 adversarial tests); no schema or application changes
+shipped with this entry — design only.
+
+---

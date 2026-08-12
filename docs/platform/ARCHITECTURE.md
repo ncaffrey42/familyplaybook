@@ -411,13 +411,17 @@ beyond the backfilled rows themselves.
 
 ## 9. Open questions for later prompts (recorded, not resolved here)
 
-- Should `workspace_members` eventually absorb `family_invitations`
-  entirely (one invite/membership model for both verticals), or do
-  `family_invitations` (durable, relationship-based) and a future
-  guest-link concept (host, anonymous, link-scoped — see `GLOSSARY.md`'s
-  Helper-vs-Guest distinction) stay permanently distinct, with only the
-  former ever projecting into `workspace_members`? Not decided here —
-  this is squarely Prompt 3's (RBAC unification) call to make explicitly.
+- ~~Should `workspace_members` eventually absorb `family_invitations`
+  entirely, or do the two stay distinct?~~ **Resolved by Prompt 3** —
+  see [`RBAC.md`](RBAC.md) §9. They stay permanently distinct, and so
+  does a third concept: `family_invitations` is the invitation
+  *workflow*, `workspace_members` is *settled membership* (projected from
+  it by the §3.3 trigger), and a **guest is neither** — never a
+  membership row, never a role value, never the subject of an RLS policy.
+  Guest access stays exclusively `get_shared_content()`-mediated, because
+  making a guest a member row would require an anon-role RLS policy —
+  which is precisely what would turn "a guest must never enumerate" from
+  a structural guarantee into a policy-predicate promise.
 - `ai_generations`/`user_usage` are per-user today (§3.4); host pricing
   (Prompt 17) will need to decide whether AI/entitlement quotas pool per
   workspace or stay per-user-within-a-workspace. Not decided here.
