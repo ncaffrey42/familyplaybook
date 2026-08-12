@@ -238,6 +238,26 @@ function refusal(): { grounded: false; answer: string; sources: [] } {
   return { grounded: false, answer: refusalText(VERTICAL), sources: [] };
 }
 
+/**
+ * Calibration aid for evals/ask-playbook/run.mjs.
+ *
+ * SIMILARITY_THRESHOLD is uncalibrated and gates release (ASK_PLAYBOOK.md §10),
+ * but without the observed distance the eval loop can only bisect it — one
+ * redeploy per step. `top_distance` makes a single run enough to see whether
+ * the grounded and should-refuse distance classes actually separate.
+ *
+ * OFF unless ASK_PLAYBOOK_DEBUG=true, because this is an anonymous endpoint:
+ * a distance is a similarity oracle, so a guest could probe whether a playbook
+ * covers a topic without ever being shown an answer.
+ */
+function debugFields(matches: MatchRow[]): Record<string, number> {
+  if (Deno.env.get('ASK_PLAYBOOK_DEBUG') !== 'true') return {};
+  const distances = matches
+    .map((m) => m.distance)
+    .filter((d): d is number => typeof d === 'number');
+  return distances.length ? { top_distance: Math.min(...distances) } : {};
+}
+
 async function handleRequest(req: Request): Promise<Response> {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -316,7 +336,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // 7. Retrieval-side gate: nothing close enough → refuse with NO LLM call.
     if (!isGrounded(matches)) {
       await recordRefusal(shareId);
-      return json(refusal());
+      return json({ ...refusal(), ...debugFields(matches) });
     }
 
     // 8. Only chunks that passed the threshold are ever shown to the model.
@@ -328,7 +348,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const answer = typeof draft?.answer === 'string' ? draft.answer.trim() : '';
     if (!draft || draft.grounded === false || !cited.ok || !answer) {
       await recordRefusal(shareId);
-      return json(refusal());
+      return json({ ...refusal(), ...debugFields(matches) });
     }
 
     // 10. Grounded, cited, in scope.
@@ -340,6 +360,7 @@ async function handleRequest(req: Request): Promise<Response> {
         name: nameById.get(guide_id) ?? 'Untitled guide',
       })),
       remaining: Math.max(0, RATE_LIMIT_PER_HOUR - asked),
+      ...debugFields(matches),
     });
   } catch (err) {
     // Log for operators; guests get a generic message. Question and answer text

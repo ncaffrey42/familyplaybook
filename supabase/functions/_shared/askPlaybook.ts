@@ -40,7 +40,11 @@ export interface MatchRow {
   distance: number;
 }
 
-/** Refusal copy, per vertical. The ONLY vertical-dependent string here. */
+/**
+ * Refusal copy, per vertical. Vertical affects copy only — this string and the
+ * framing clause in buildSystemPrompt() — never retrieval, scoping, grounding
+ * or rate limiting. That is what makes Alfred the same system (§1), not a fork.
+ */
 export function refusalText(vertical: 'family' | 'host' = 'family'): string {
   return vertical === 'host'
     ? "I don't see that in this guide — try messaging your host."

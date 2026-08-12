@@ -207,7 +207,20 @@ trustworthy answer (vs. a plausible wrong one) is won."*
   precision/recall on the refusal boundary, which is what the threshold
   should be tuned against.
 - **Unit (vitest)** — the pure logic extracted into `_shared/askPlaybook.ts`:
-  chunking, hashing, citation validation, threshold branch.
+  chunking, hashing, citation validation, threshold branch. 46 cases.
+
+### 9.1 Running it — two things that will bite
+
+- **Set `ASK_PLAYBOOK_DEBUG=true` on the function.** It adds `top_distance`
+  to the response. Without it the threshold can only be bisected — one
+  redeploy per step — whereas one debug run shows whether the grounded and
+  should-refuse distance classes *separate at all*. If they overlap, no
+  threshold works and the fix is retrieval (chunking, model), not the
+  constant. Keep it **off** in production: on an anonymous endpoint a
+  distance is a similarity oracle for "does this playbook cover X".
+- **The rate limit is 20/hour/link and there are 33 cases.** A single run
+  cannot complete on one share link. `run.mjs` takes a comma-separated
+  `EVAL_SHARE_ID` and rotates; use at least two links over the same bundle.
 
 ## 10. Status — what is built, what is proven
 
