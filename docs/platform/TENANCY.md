@@ -217,6 +217,26 @@ Full decision document in [`MOBILE_SPLIT.md`](MOBILE_SPLIT.md). Summary:
   RC entitlement as premium — must name its entitlement before any host
   product exists in RevenueCat.
 
+## Search, notifications, messaging (Prompt 11 — seam shipped dark, rest designed)
+
+Full design in [`SEAMS.md`](SEAMS.md). Summary:
+
+- **Search stays client-side** until a recorded trigger — structurally,
+  the day `DataContext` paginates; ~500 guides/workspace or measured jank
+  as proxies. The server tier (workspace-scoped FTS + trigram RPC) is
+  designed, not built. The existing `idx_guides_name_gin` is dead —
+  queried by nothing.
+- **`notifications` table shipped dark** (migration `20240132`): the ONE
+  seam, generalizing `submit-feedback`'s fan-out template. Coalescing via
+  partial-unique key — repeat events increment an unread row ("opened
+  ×7"), never append. First producer: `record_share_access`. Content-free
+  titles; no client INSERT (spoof prevention). Inbox UI specified
+  (avatar dot + Account list), not built — its producer chain is
+  unapplied.
+- **Messaging = webhook-out definitions only:** five content-free events,
+  idempotent envelope, HMAC signature mirroring the Stripe pattern.
+  `webhook_endpoints` ships with the first real consumer.
+
 ## Role matrix (designed by Prompt 3 — not yet applied)
 
 Full matrix, RLS pattern, migration plan and adversarial test list in
@@ -350,7 +370,7 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 12 — mobile & the two-app future). The
+*Last updated: 2026-08-11 (Prompt 11 — search/notifications/messaging seams; run after 12). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
@@ -360,7 +380,7 @@ generalization + media debt), `NAV.md` (navigation contract), and
 far: four flagged, default-off surfaces (`VITE_ENABLE_SHARE_TAB_MANAGE`,
 `VITE_ENABLE_SHARE_LABELS`, `VITE_ENABLE_ASK_PLAYBOOK`,
 `VITE_ENABLE_HOST_PRODUCT`) and two **unapplied** migrations
-(`20240128_share_labels_access_log`, `20240129_ask_playbook`,
-`20240130_properties_host_taxonomy`, `20240131_host_starter_library`).
-Nothing is deployed. Prompt 11 has not run yet; next update owed by
-whichever of Prompt 11/13+ runs next.*
+(`20240128` share labels/access log, `20240129` ask playbook, `20240130`
+properties/taxonomy, `20240131` starter library, `20240132` notifications).
+Nothing is deployed. Prompts 0–12 are all done; next update owed by
+Prompt 13 (full schema + ERD).*

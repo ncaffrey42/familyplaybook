@@ -882,3 +882,55 @@ created in RC.
 `src/hooks/useNativePurchases.js`. No build — decision document only.
 
 ---
+
+## 2026-08-11 — Search stays client-side until a recorded trigger; notifications are one coalescing table behind existing event sites; messaging is webhook-out definitions only
+
+**Why:** Prompt 11's three seams share one discipline: build the seam, not
+the speculative machinery behind it. (1) **Search:** client substring over
+already-loaded data is *optimal* while `DataContext` loads everything —
+zero latency, works offline — so the server tier (one workspace-scoped
+`authenticated` RPC: FTS over name‖description‖steps via
+`websearch_to_tsquery` + `pg_trgm` name fallback) is designed with a
+recorded trigger, not built. The real trigger is structural: the moment
+`DataContext` paginates, client search cannot match rows it never fetched;
+~500 guides/workspace and measured jank are early-warning proxies.
+Diligence finding en route: `idx_guides_name_gin` (`schema.sql:372`) is
+queried by nothing — an index answering a question nobody asks; the server
+tier replaces rather than extends it, and its indexes ship *at trigger
+time* to avoid repeating the mistake. (2) **Notifications:** one
+`notifications` table (migration `20240132`, shipped dark) is the
+persistent first destination behind existing event sites, generalizing
+`submit-feedback`'s fan-out template — destinations isolated, best-effort,
+never failing the source action; push/email later become additional arms
+behind the *same* events, never second event sites (`push_subscriptions`
+already exists unused, awaiting exactly this). Anti-noise is structural:
+a partial-unique `(user_id, coalesce_key) WHERE read_at IS NULL` makes
+repeat events increment an unread row's `count` ("opened ×7") instead of
+appending — bounded like `ask_playbook_usage`'s hour buckets. The first
+producer is `record_share_access` (the seam `SHARING.md` §6 reserved),
+whose notification arm is wrapped in its own exception guard so a failing
+insert can never break the guest's fire-and-forget call; titles are
+content-free (label + count, never visitor identity or question text).
+No INSERT/DELETE policy for `authenticated` — a client that could insert
+notifications could spoof "your link was opened". (3) **Messaging:**
+webhook-out definitions only — five content-free events, an envelope with
+an idempotency id, at-least-once delivery, and `X-Playbook-Signature`
+HMAC that is deliberately the inverse of the Stripe verification already
+in the codebase (one mental model, both directions). The
+`webhook_endpoints` table ships with the first real consumer, not before.
+**Alternatives rejected:** Building server search now — a network hop to
+make results worse, plus indexes nobody queries. Appending a notification
+row per event — unbounded and noisy; coalescing is why an inbox can stay
+quiet. Wiring the notification insert as a trigger on `shared_links` —
+rejected; the debounce/expiry decision lives inside `record_share_access`,
+and a trigger would fire on counter writes it can't contextualize.
+Building the inbox UI — rejected for the switcher's recorded reason
+(`NAV.md` §4.3): its only producer ends an unapplied migration chain, so
+it would render empty for everyone indefinitely; placement is specified
+(avatar dot + Account list, no 4th tab) for when the chain applies.
+Building chat — explicitly out of scope by the prompt.
+**Evidence:** `docs/platform/SEAMS.md`;
+`supabase/migrations/20240132_notifications.sql` (unapplied, depends on
+`20240128`).
+
+---
