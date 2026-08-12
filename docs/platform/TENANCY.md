@@ -75,8 +75,35 @@ migrations applied.** Nothing below is live yet.
   stay correct unmodified. See `ARCHITECTURE.md` §3.1, §7 for the full
   byte-identical argument.
 - **Not yet true:** no RLS policy has been rewritten to check workspace
-  membership, no edge function resolves a `workspace_id`, no UI reads or
-  writes a workspace. That's Prompts 2–3.
+  membership, no edge function resolves a `workspace_id`, no query that
+  loads content is workspace-scoped. That's Prompt 3/4.
+
+## Auth/session integration (designed by Prompt 2 — not yet applied)
+
+Full design in [`AUTH_FLOWS.md`](AUTH_FLOWS.md). Summary:
+
+- **Post-login workspace resolution:** last-active (`profiles
+  .last_active_workspace_id`, a new nullable column) if the user is still
+  a member of it, else their personal workspace. Computes/persists which
+  workspace is active; does **not** yet change what content loads (still
+  `DataContext`'s `ownerIds` pattern until Prompt 3/4).
+- **Workspace switcher:** lives in `AccountLayout.jsx`'s header; renders
+  only when a user has >1 `workspace_members` row. Self-gating by data —
+  every account has exactly 1 workspace until a workspace-creating flow
+  ships (earliest: Prompt 8), so no feature flag is needed for it.
+- **Registration starting vertical:** `/login?vertical=host` entry point.
+  Password/magic-link signup threads intent through `raw_user_meta_data`
+  (existing precedent: OTP already passes custom `options.data`). OAuth
+  has no equivalent hook, so intent is captured client-side and applied
+  post-callback only for a confirmed fresh signup — never on a returning
+  user's OAuth login, to prevent silently reassigning an existing
+  account's workspace type.
+- **Org-level invites** (spec'd, not built): a new, separate
+  `organization_invitations` concept for organizations with >1 workspace
+  (host, once Prompt 9 ships) — "invite once, access every property."
+  `family_invitations` stays the workspace-level mechanism and remains
+  the *only* relevant one for single-workspace orgs (i.e., every family
+  account, and every host account until they have a second property).
 
 ## Role matrix (TBD — introduced by Prompt 3)
 
@@ -100,10 +127,17 @@ manager, cleaner, guest). Empty until that prompt runs.
 - `family_members` (a second, orphaned invite-shaped table nothing in the
   app queries — see `ARCHITECTURE.md` §3.3) needs a cleanup decision;
   not migrated into the tenancy model.
+- Whether org-level membership auto-extends to a workspace added to the
+  org *after* the invite was accepted (a sync-trigger question, same
+  shape as `family_invitations`'s) — deferred with org-level invites
+  themselves. See `AUTH_FLOWS.md` §4.
+- `/check-email` (`CheckEmailScreen.jsx`) is a dead, unreachable route —
+  flagged in `AUTH_FLOWS.md` §1.8, not fixed.
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 1 — tenancy design). Target model above
-is designed, not yet applied — see `ARCHITECTURE.md` for the full design
-and migration plan. Next update owed by Prompt 2 (auth flows & workspace
-switcher).*
+*Last updated: 2026-08-11 (Prompt 2 — auth flows & workspace resolution
+design). Target model above is designed, not yet applied — see
+`ARCHITECTURE.md` for the tenancy design/migration plan and
+`AUTH_FLOWS.md` for the auth/session integration design. Next update owed
+by Prompt 3 (RBAC unification).*

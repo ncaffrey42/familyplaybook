@@ -192,3 +192,48 @@ plan); no schema or application changes shipped with this entry — design
 only, per the prompt that produced it.
 
 ---
+
+## 2026-08-11 — Workspace resolution/switching is additive UI state; starting-vertical intent is capture-and-apply, never a silent OAuth side effect
+
+**Why:** Two auth-adjacent deltas needed specifying without touching any
+of the seven existing sign-in paths (password, magic link, four OAuth
+providers, native deep-link). (1) Post-login workspace resolution
+("last-active, else personal") needs somewhere to persist "which
+workspace was I last in" — a new nullable `profiles.last_active_workspace_id`
+column, mirroring how `profiles` already carries other per-user app state
+(`full_name`, `avatar_url`). Resolution and the workspace switcher UI it
+feeds are scoped to *only* compute/display/persist the active workspace
+in this design — they don't yet change what `DataContext` loads (still
+deferred to Prompt 3/4, per `ARCHITECTURE.md` §6's precedent), so this
+stays additive. (2) The switcher needs no feature flag: it renders only
+when a user has more than one `workspace_members` row, and Prompt 1's
+backfill bijection guarantees every account has exactly one until a
+workspace-creating flow (earliest: Prompt 8) ships — the visibility
+condition is self-gating by data, the same end result a flag would give,
+without needing one. (3) Registration's starting-vertical choice
+(`?vertical=host` entry point) threads through `raw_user_meta_data` for
+password/magic-link signup (an existing precedent — OTP already passes
+custom `options.data`), but OAuth's `signInWithOAuth` has no equivalent
+caller-metadata hook, so OAuth signups capture intent client-side
+(`sessionStorage`) and apply it post-callback *only* after confirming the
+session is a fresh signup, never on a returning user's OAuth login — an
+explicit safety rule to prevent a stale intent flag from silently
+reassigning an existing account's workspace type.
+**Alternatives rejected:** Storing "last active workspace" on
+`workspace_members` itself (e.g. a `last_active_at` per membership row) —
+rejected because resolution needs one answer per *user*, not per
+membership, and deriving "most recent" from timestamps across rows is
+more complex than one direct pointer column for no benefit at this scale.
+A `VITE_ENABLE_WORKSPACE_SWITCHER`-style flag for the switcher — rejected
+as redundant: the `workspaces.length > 1` condition already makes it
+unreachable in production today, and a flag would be one more thing to
+remember to flip later for zero additional safety. Trusting the
+`sessionStorage` starting-vertical intent flag alone to authorize
+changing an OAuth user's workspace type — rejected as a tenancy-data
+integrity risk; intent from client storage can inform, never authorize,
+a change to server-side tenancy state.
+**Evidence:** `docs/platform/AUTH_FLOWS.md` (full audit, deltas, sequence
+diagrams, test matrix); no schema or application changes shipped with
+this entry — design only.
+
+---
