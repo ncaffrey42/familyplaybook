@@ -1119,3 +1119,52 @@ migration or code written; slots into `ROLLOUT.md` M3 as an accelerant,
 not a blocker.
 
 ---
+
+## 2026-08-11 — Host pricing meters on existing entitlement keys (only Alfred is new); org is the billing entity resolving through workspace→org, user_billing key unchanged
+
+**Why:** Prompt 17 designed host pricing so the second vertical prices
+itself on the first vertical's machinery. Of the four meters, **three are
+existing `feature_key`s**: guides = `active_guides_max` (→ `is_guide_editable`
+read-only-over-limit, verbatim), properties = `bundles_max` (a property IS a
+bundle, so `is_pack_editable` freezes over-cap properties, verbatim), team
+seats = `editors_max` (`send-family-invite`'s existing count check). **Only
+`alfred_questions_max` is new** — a monthly soft quota (not a content cap,
+not the per-link abuse rate-limit) checked at the anonymous `ask-playbook`
+entry by summing the owner's `ask_playbook_usage.question_count` over the
+calendar month (no new table, no cron, resets by date filter) and refusing
+with `reason: 'owner_quota'` and no LLM call when over. Three tiers — Host
+Free (1 property / 15 guides / 0 seats / no Alfred) · Host ~$15 (5 / 100 /
+3 / 300) · Host Pro ~$39 (∞ / ∞ / 15 / 3000) — with the guide cap set to
+clear the ~10-guide Starter Kit so a Free owner reaches a *complete*
+single-property playbook and the cap bites only on the second property.
+Downgrade reuses the read-only-over-limit philosophy with zero new code:
+oldest-by-`updated_at` content past cap goes read-only (guest links keep
+resolving), never deleted, never bricked. **Org-level billing** makes the
+`organization` the billing entity — one org = one subscription pointing at
+its billing owner's existing `user_billing` row (key unchanged) — and a new
+`get_workspace_numeric_limit(workspace_id, feature_key)` resolves
+workspace→org→owner's plan, which `is_guide_editable`/`is_pack_editable`
+adopt as part of the workspace-ranking change `CONTENT_ENGINE.md` **already**
+scheduled before non-owner content.create; a personal (family) org resolves
+identically to today, so family is byte-identical. Stripe/RevenueCat wire in
+as new `plans`/`stripe_price_map`/`RC_PRODUCT_*` rows on the unchanged
+reconciliation spine, per-product RC entitlements.
+**Alternatives rejected:** A new `properties_max` key + `is_property_editable`
+function — rejected; reusing `bundles_max` avoids a parallel enforcement
+path that can drift from `is_pack_editable` (naming conflation recorded as
+debt, same discipline as not renaming `packs`). Metering on guests or
+questions-answered — rejected; taxes the owner for guests' behavior, and
+counting answered (not asked) lets an owner game the quota with
+unanswerable questions, so the Alfred meter counts **questions asked**. A
+separate org billing table — rejected; the org points at its owner's
+`user_billing` row, minimal surface, no reconciliation change. Alfred on
+Free — leaning 0 (a taste that runs out mid-stay is worse than none) but
+flagged as the single most testable pricing hypothesis to A/B.
+**Carried blocker:** `useNativePurchases.js:89` (any active RC entitlement =
+premium) must be fixed before host products exist in RC — an M4 entry gate,
+restated because it lives in the billing path.
+**Evidence:** `docs/platform/PRICING.md` (tiers, metering math, entitlement
+rows, org-billing resolution, 6-group enforcement test list). Design only —
+ships at `ROLLOUT.md` M4.
+
+---
