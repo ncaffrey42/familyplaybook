@@ -1018,3 +1018,52 @@ dump.
 + errors + idempotency, RPC grants, the versioning rule, API-SEC-1).
 
 ---
+
+## 2026-08-11 — Rollout is five gated milestones; a Pre-M0 fix ships the live-bug repair first; "didn't break B2C" is three defined metrics, and CI-can-run-tests outranks them
+
+**Why:** Prompt 15 synthesized the whole Ledger into an executable order.
+Five milestones — M1 tenancy invisibly under B2C, M2 Ask to families, M3
+host alpha, M4 host billing, M5 store-split checkpoint — each with
+entry/exit/rollback, plus a **Pre-M0** that ships the `shared_links`
+UPDATE-policy fix (`20240128`) *alone and first*, because it repairs a
+defect live in production today and its only rollback is "back to the known
+bug." The ordering insight that shaped M1: because the tenancy design is a
+bijection (`ARCHITECTURE.md` §7) and no code reads the new tables until M3,
+every M1 sub-step is additive and data-only-reversible — the migration can
+land months before anything reads it, which is why "tenancy live
+invisibly" is a real milestone and not a contradiction. The
+release-blocking gates are named per milestone: M2 cannot flip until the
+Ask eval set runs and sets `SIMILARITY_THRESHOLD` from data (it is a guess
+today); M3 cannot flip until workspace-type gating is real, content scoping
+is read, and a host-workspace creation path exists; M4 cannot flip until
+`useNativePurchases` names its entitlement. "Didn't break B2C" is reduced
+to three checkable metrics (suites green, zero RLS regressions via the
+parity harness + anon probe, retention flat) — and the meta-gate recorded
+above all of them: **M1 must not start until CI can run the test suite**,
+because vitest can't start on the repo's Node 16, and a platform migration
+you can't test is ungated. Host pricing is answered as an open decision
+with a recommendation (meter on properties not guests/questions, 3 tiers,
+org-billed, read-only-over-limit reused) so M4 isn't blocked on a blank
+page. A migration-numbering hazard was caught and recorded: the tenancy
+wave was *numbered* `2024011x` before the feature migrations were *written*
+at `2024012x`+, so the tenancy migrations must be renumbered `20240134`+
+when authored, since filename order is apply order and the live DB is past
+`20240117`.
+**Alternatives rejected:** Merge-and-flip — rejected; a branch this size
+with five interlocking flags and unapplied migrations is a punch list, not
+a switch. Shipping Ask before tenancy (its `COALESCE` scope tolerates it) —
+rejected in favor of families-as-validation-audience with legible blast
+radius. Per-guest/per-question host pricing — rejected as taxing the owner
+for their guests' behavior and needing metering infra the no-SDK posture
+avoided. Treating `ARCHITECTURE.md` §8's migration numbers as filename
+mandates — rejected; they were a pre-authoring sketch.
+**Ledger final state:** Prompts 0–15 (the core sequence) are complete; the
+platform is fully *designed*, half *built* behind flags, and every decision
+and known defect is written down. What remains is execution — writing the
+tenancy/RBAC migrations, clearing the consolidated blocker ledger
+(`ROLLOUT.md` §3) in gate order, and running the milestones. Prompts 16–18
+are feature designs that slot into M3–M4 without changing this spine.
+**Evidence:** `docs/platform/ROLLOUT.md` (milestones, metrics, blocker
+ledger, pricing recommendation, numbering hazard).
+
+---
