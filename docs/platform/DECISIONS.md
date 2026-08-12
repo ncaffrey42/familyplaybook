@@ -525,3 +525,50 @@ ones are left for a change that can be tested.
 been applied**, so the bug is live until it is.
 
 ---
+
+## 2026-08-11 — Correction: the Supabase backend is live, and two entries above say otherwise
+
+**Supersedes** the reachability claims in the two entries above dated
+2026-08-11 (the `content_categories` entry — *"the live database is
+unreachable"* — and the share labels/access log entry — *"the Supabase
+project is unreachable"*). Those entries are left unedited per this file's
+append-only rule; **their reachability statements are wrong** and this entry
+is the correct one. Every other claim in them stands.
+
+**What is actually true**, verified 2026-08-11: `ifdncylgiqhhcwovpdyf.supabase.co`
+resolves, `GET /rest/v1/…` returns `200` with the anon key,
+`GET /auth/v1/health` reports GoTrue `v2.195.0`, and
+`POST /rest/v1/rpc/get_shared_content` returns `200`. Reachable from a shell
+*and* from the browser. The Supabase CLI is authenticated with this project
+linked.
+
+**Why:** Two errors compounded. A stored memory note recorded the project as
+NXDOMAIN on 2026-07-09 — true then, stale now, since the project has been
+restored. Then a single `ERR_CONNECTION_REFUSED` line in the browser console
+was attributed to Supabase without checking which URL had failed; the page's
+only cross-origin requests were Google Fonts, so it was never Supabase. A
+stale note plus an untraced error became a confidently-repeated fact used to
+justify skipping verification across two prompts.
+
+**What it changes:** nothing about the designs — no decision above depended
+on the backend being down. What it changes is the *verification debt*.
+Things previously described as unverifiable are simply unverified:
+
+- `20240128_share_labels_access_log` is unapplied because nobody applied it.
+  Confirmed live: `POST /rest/v1/rpc/record_share_access` → `404 PGRST202`
+  ("not found in the schema cache"), so the expiry bug it fixes **is still
+  live in production**.
+- The distinct `guides.category` values gating `CONTENT_ENGINE.md` §3.5's
+  constraint decision are a `select distinct` away.
+- `RBAC.md` §7's "zero viewer rows in production" is checkable, not assumed.
+
+**How to apply:** Probe before asserting — `nslookup`, then `curl` the health
+endpoint — and trace the actual failing URL before attributing an error to a
+service. Treat a memory note about infrastructure state as a lead to verify,
+never as a fact to cite. Note also that the committed `supabase/schema.sql`
+snapshot is dated 2026-07-30 and generated from the live DB, so schema claims
+drawn from it (including `shared_links`' missing `UPDATE` policy) rest on that
+snapshot plus migration history; a live `pg_policies` query is the stronger
+confirmation and needs a Management API token.
+
+---

@@ -1,8 +1,7 @@
 # Sharing v2: Arbitrary Expiry, Labels, Access Log
 
 **Status:** Spec + **one migration** (`20240128_share_labels_access_log.sql`,
-written, **not applied** — the Supabase project is unreachable) + flagged
-UI (default off). Deliverable of Prompt 6
+written, **not applied**) + flagged UI (default off). Deliverable of Prompt 6
 ([`PLATFORM_PROMPTS.md`](../../PLATFORM_PROMPTS.md)).
 
 Read [`RBAC.md`](RBAC.md) §1.2 (the anonymous-access rule this design must
@@ -281,12 +280,21 @@ the columns up automatically and reads `undefined` harmlessly beforehand.
 
 ### Not verified — be aware
 
-- **The migration has not been applied or executed anywhere.** The Supabase
-  project is unreachable (`ERR_CONNECTION_REFUSED` from the running dev
-  server), so `record_share_access`, the new policy, and the columns are
-  reviewed SQL, not tested SQL.
-- **The flag-on UI has never rendered.** It requires both the migration and
-  an authenticated session; neither is available.
+- **The migration has not been applied or executed anywhere**, so
+  `record_share_access`, the new policy, and the columns are reviewed SQL,
+  not tested SQL. Confirmed against the live API on 2026-08-11:
+  `POST /rest/v1/rpc/record_share_access` → `404 PGRST202` (function not in
+  the schema cache), while `get_shared_content` → `200`.
+- **The flag-on UI has never rendered.** It needs the migration applied and
+  an authenticated session.
+
+> **Correction (2026-08-11).** An earlier revision of this file said the
+> Supabase project was unreachable and used that to explain the gap. That
+> was wrong — the backend is live: DNS resolves, REST returns `200` with the
+> anon key, and GoTrue reports healthy. The claim came from a stale memory
+> note plus one `ERR_CONNECTION_REFUSED` console line that was never traced
+> and turned out to be unrelated to Supabase. The migration is unapplied
+> because nobody applied it, not because it couldn't be.
 - **The unit suite could not run** — `vitest` fails identically on a clean
   tree (Node v16.17 vs. rolldown needing `node:util`'s `styleText`, Node
   ≥20.12). `shareExpiry.js` is pure and is the natural place for the tests

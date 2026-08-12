@@ -35,6 +35,7 @@ import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { Badge } from "@/components/ui/badge";
 import { isVideoUrl } from '@/lib/utils';
+import { computeExpiry } from '@/lib/shareExpiry';
 
 const StepMedia = ({ url }) => {
   if (!url) return null;

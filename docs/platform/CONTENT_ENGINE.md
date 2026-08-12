@@ -249,12 +249,15 @@ constant and keeps serving family workspaces correctly.
 No FK from `guides.category` → `content_categories.key`, and no `CHECK`,
 in this migration. Three reasons:
 
-1. **Unknown legacy values.** The production database is unreachable at
-   time of writing (`user's environment: Supabase project paused`), so the
-   set of distinct `category` values in live data can't be enumerated. A
-   FK added blind could fail the migration or, worse, block writes on
-   rows nobody knew existed. `library_guides.category` (`schema.sql:107`)
-   is equally unconstrained and equally unverified.
+1. **Unknown legacy values.** The set of distinct `category` values in live
+   data has not been enumerated, so a FK added blind could fail the
+   migration or, worse, block writes on rows nobody knew existed.
+   `library_guides.category` (`schema.sql:107`) is equally unconstrained
+   and equally unverified. *(Correction, 2026-08-11: an earlier revision of
+   this file said the production database was unreachable. It is not — the
+   backend is live and reachable. Enumerating the values is a
+   `select distinct` away and should be done before M2's report is
+   treated as complete.)*
 2. **A composite FK can't express the real rule anyway.** The correct
    constraint is "this guide's category must be valid *for its
    workspace's vertical*", and `guides` doesn't carry `workspace_type` —
