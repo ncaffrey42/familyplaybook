@@ -635,3 +635,64 @@ not be enabled for any user until the eval set has been run and the
 threshold set from that data.**
 
 ---
+
+## 2026-08-11 — The Host product is a route namespace with its own chrome, not a second app; guest links are not a tab; KPIs come only from tables that already exist
+
+**Why:** Prompt 8 adds `/host` as a second app shell on the same codebase,
+build, Supabase project and design system. Four choices. (1) **Shell, not
+application.** `/host` gets its own `HostBottomNav` and KPI header, and the
+family `BottomNav` is suppressed under it — everything below the chrome
+(auth, `DataContext`, content engine, share links, billing, RLS) is shared.
+Prompt 12's two-binary question stays open precisely because the split line
+is already the shell. (2) **Nav = Properties / Guides / Team, and guest
+links are deliberately NOT a tab.** The family app makes Share a tab because
+there is one household and the link is global; for a host a link is
+meaningless without its property ("send the *Ivy Cottage* link, dated
+Fri–Sun"), so a global Share tab would force re-selecting context the app
+already had. Links live inside a property, and the aggregate ("4 live guest
+links") surfaces in the KPI header for the "is everything running?" glance.
+Same discipline that collapsed Favorites into a chip in `NAV.md` §1: a
+destination that always needs an argument is not a destination. The KPI
+dashboard is likewise a **header, not a fourth tab** — `NAV.md`'s no-4th-tab
+constraint applies to both shells. (3) **KPIs derive from existing tables
+only**, no counters and no events: active properties from `packs` (a
+property *is* a bundle, per Prompt 9's convention), live guest links from
+`shared_links`, and answered-this-week from `ask_playbook_usage` as
+`question_count − refusal_count` — the subtraction matters, because a raw
+question count would make a link where Alfred refused twenty times look
+identical to one where it answered twenty. Each KPI resolves independently
+and degrades to "—", so the unapplied `20240129` migration costs one dash
+rather than a broken header. (4) **Accent is `apricot`, not a new colour.**
+It is already in the palette, already pairs with `mulberry`/`cream`, and —
+unlike `coral`, the other candidate — carries no semantic load; `coral`
+means *destructive* here (the Share tab's "Remove {name}…"), so promoting it
+to a product's primary accent would poison that meaning.
+**Alternatives rejected:** A separate app/entry point or a second build —
+rejected as premature; nothing yet justifies splitting, and Prompt 12 owns
+the trigger condition. A `Today`/dashboard tab — rejected: the KPIs are a
+glance, not a place. A global host Share tab mirroring family — rejected per
+(2). Making `BottomNav` shell-aware instead of giving the host its own —
+rejected because "second app shell" should mean the shell owns its chrome;
+one component branching on route prefix would put both products' nav
+decisions in one file. Inventing a new host brand colour — rejected; the
+instruction was one design system, and the palette already had the right
+token.
+**Evidence:** `docs/platform/HOST_SHELL.md`; `src/pages/host/`,
+`src/components/HostBottomNav.jsx`, `src/hooks/useHostWorkspace.js`,
+`src/App.jsx`; flag `VITE_ENABLE_HOST_PRODUCT`, default off.
+**Release blocker, recorded deliberately:** **workspace-type gating is a
+stub.** Three gating layers were designed (build flag → `workspace_type =
+'host'` → capability) and only the flag is enforceable, because
+`workspaces`/`workspace_members` do not exist — `ARCHITECTURE.md` and
+`RBAC.md` are designed and unapplied. So with the flag ON, *every* account
+is host-eligible. That is acceptable for a dark shell and is a serious bug
+if shipped. All of it funnels through `useHostWorkspace()` so the real query
+lands in one file and no component changes. **Do not enable
+`VITE_ENABLE_HOST_PRODUCT` until that hook reads `workspace_type` for
+real.** Also unresolved: nothing creates a host workspace yet (Prompt 9 and
+`AUTH_FLOWS.md` §5's `?vertical=host` are the two paths), and
+`HostMode.jsx`/`VITE_ENABLE_HOST_MODE` — the older non-functional mockup
+whose QR points at a 404 — still exists and should be retired once `/host`
+is real, leaving two host flags in the meantime.
+
+---

@@ -96,3 +96,22 @@ export const GAP_NUDGE_ENABLED =
  */
 export const ASK_PLAYBOOK_ENABLED =
   import.meta.env.VITE_ENABLE_ASK_PLAYBOOK === 'true';
+
+/**
+ * HOST_PRODUCT_ENABLED gates the entire Host app shell at /host — its own
+ * 3-tab nav (Properties / Guides / Team), KPI header and apricot accent.
+ * See docs/platform/HOST_SHELL.md.
+ *
+ * Default OFF. This is currently the ONLY real gate: workspace-type gating
+ * (`workspace_type = 'host'`) is a stub in useHostWorkspace() because the
+ * workspaces table does not exist yet (ARCHITECTURE.md migration #1 is
+ * designed, not applied). With this flag ON, every account is treated as
+ * host-eligible — fine for a dark shell, a serious bug if shipped. Do not
+ * enable until useHostWorkspace() reads workspace_type for real.
+ *
+ * Distinct from HOST_MODE_ENABLED above, which gates the older
+ * non-functional /host-mode mockup. That one should be retired once /host
+ * is real — see HOST_SHELL.md §7.4.
+ */
+export const HOST_PRODUCT_ENABLED =
+  import.meta.env.VITE_ENABLE_HOST_PRODUCT === 'true';

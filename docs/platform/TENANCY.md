@@ -128,6 +128,27 @@ Full design in [`ASK_PLAYBOOK.md`](ASK_PLAYBOOK.md). Summary:
 - ⚠️ **`SIMILARITY_THRESHOLD = 0.35` is uncalibrated and gates release.** The
   eval set is written and has never been run; nothing is deployed.
 
+## Host shell (Prompt 8 — skeleton behind a flag, gating stubbed)
+
+Full design in [`HOST_SHELL.md`](HOST_SHELL.md). Summary:
+
+- **`/host` is a route namespace with its own chrome**, not a second app:
+  `HostBottomNav` (Properties / Guides / Team) + a KPI header, apricot
+  accent. Everything below the shell is shared with the family product.
+- **Guest links are not a tab.** A link is meaningless without its property,
+  so links live inside a property; the aggregate appears in the KPI header.
+- **KPIs use only existing tables** — `packs`, `shared_links`, and
+  `ask_playbook_usage` (`question_count − refusal_count`). No new analytics
+  infrastructure; each KPI degrades to "—" independently.
+- ⚠️ **Workspace-type gating is a stub.** Of the three designed layers
+  (build flag → `workspace_type = 'host'` → capability) only the flag is
+  enforceable, because `workspaces`/`workspace_members` do not exist. With
+  `VITE_ENABLE_HOST_PRODUCT` on, **every account is host-eligible**. All of
+  it funnels through `useHostWorkspace()`, so the real query lands in one
+  file. Do not enable the flag until it does.
+- **Nothing creates a host workspace yet** — Prompt 9 and
+  `AUTH_FLOWS.md` §5's `?vertical=host` are the two paths.
+
 ## Role matrix (designed by Prompt 3 — not yet applied)
 
 Full matrix, RLS pattern, migration plan and adversarial test list in
@@ -261,14 +282,15 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 7 — Ask the Playbook / Alfred). The
+*Last updated: 2026-08-11 (Prompt 8 — host app shell). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
 generalization + media debt), `NAV.md` (navigation contract), and
 `SHARING.md` (link expiry/labels/access log), and `ASK_PLAYBOOK.md`
-(grounded Q&A). Code shipped so far: three flagged, default-off surfaces
-(`VITE_ENABLE_SHARE_TAB_MANAGE`, `VITE_ENABLE_SHARE_LABELS`,
-`VITE_ENABLE_ASK_PLAYBOOK`) and two **unapplied** migrations
+(grounded Q&A) and `HOST_SHELL.md` (the second app shell). Code shipped so
+far: four flagged, default-off surfaces (`VITE_ENABLE_SHARE_TAB_MANAGE`,
+`VITE_ENABLE_SHARE_LABELS`, `VITE_ENABLE_ASK_PLAYBOOK`,
+`VITE_ENABLE_HOST_PRODUCT`) and two **unapplied** migrations
 (`20240128_share_labels_access_log`, `20240129_ask_playbook`). Nothing is
-deployed. Next update owed by Prompt 8 (host app shell).*
+deployed. Next update owed by Prompt 9 (properties + guest guide builder).*
