@@ -934,3 +934,46 @@ Building chat — explicitly out of scope by the prompt.
 `20240128`).
 
 ---
+
+## 2026-08-11 — DATA_MODEL.md is the canonical schema reference, live-verified; six drift findings and four retention findings filed
+
+**Why:** Prompt 13 generated the diligence data-model document and — because
+the backend is live — cross-checked it against **reality**, not just the
+committed snapshot: all 26 snapshot tables exist live (anon REST 200s), all
+five unapplied-migration tables are absent (404s), the `20240128` columns
+are missing (400), and the guest-enumeration posture holds (8 sensitive
+tables → zero rows to anon, with `library_packs` as the returns-data
+control). Every table is classified by owner-boundary
+(org/workspace/user/global/system) with its *today* key vs its *destined*
+key, RLS posture reduces to five patterns plus two structural rules (zero
+`TO anon` policies anywhere; silent-204 on missing write policies), and
+the delete-account cascade is walked FK-by-FK — including the load-bearing
+detail that `error_logs`' FK has no CASCADE and only the edge function's
+explicit delete keeps account deletion from failing.
+**Drift filed (D1–D6):** the snapshot header (and
+`generate-schema-snapshot.py:23`) instructs marking migrations only
+through `20240112` applied while the snapshot demonstrably contains
+`20240113`–`20240117` — following it replays five migrations (chip filed;
+fix is deriving the marker from `supabase_migrations.schema_migrations`);
+`family_members` orphan; dead FTS index; `profiles`' five legacy Stripe
+columns duplicating `user_billing`; `user_subscriptions`
+legacy-but-still-read by `send-family-invite` (two subscription sources —
+the invite path should move to the `get_user_numeric_limit()` chain);
+legacy `webhook_events` coexisting with `stripe_webhook_events`.
+**Retention filed (F1–F4):** `webhook_events.user_id` has NO FK — rows
+(with Stripe payloads that can embed customer identifiers) survive account
+deletion as dangling personal data; `revenuecat_webhook_events.app_user_id`
+retains the uid as text post-deletion; `export_user_data()` is not
+export-complete (packs/guides/favorites/pack_guides only — under-reports
+for GDPR portability, and every new table widens the gap); and
+affirmatively, guest questions/answers are stored nowhere — the system's
+strongest retention property, stated for diligence.
+**Honest limit recorded:** table-level existence is live-verified today;
+column/policy-level detail rests on the snapshot (live-generated
+2026-07-30) + migration history, because a live `pg_policies` diff needs
+the Management API token this session cannot access. Regenerating the
+snapshot closes that gap and D1 together.
+**Evidence:** `docs/platform/DATA_MODEL.md` (3 mermaid ERDs, boundary
+table, RLS summary, cascade walk, findings, verification appendix).
+
+---

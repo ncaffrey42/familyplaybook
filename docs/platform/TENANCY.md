@@ -370,7 +370,7 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 11 — search/notifications/messaging seams; run after 12). The
+*Last updated: 2026-08-11 (Prompt 13 — DATA_MODEL.md, the diligence document). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
@@ -382,5 +382,5 @@ far: four flagged, default-off surfaces (`VITE_ENABLE_SHARE_TAB_MANAGE`,
 `VITE_ENABLE_HOST_PRODUCT`) and two **unapplied** migrations
 (`20240128` share labels/access log, `20240129` ask playbook, `20240130`
 properties/taxonomy, `20240131` starter library, `20240132` notifications).
-Nothing is deployed. Prompts 0–12 are all done; next update owed by
-Prompt 13 (full schema + ERD).*
+Nothing is deployed. Prompts 0–13 are done; next update owed by
+Prompt 14 (API surface spec).*
