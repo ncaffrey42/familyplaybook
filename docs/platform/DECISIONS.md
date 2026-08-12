@@ -977,3 +977,44 @@ snapshot closes that gap and D1 together.
 table, RLS summary, cascade walk, findings, verification appendix).
 
 ---
+
+## 2026-08-11 — API.md is the canonical contract surface; versioning is "new name for breaking changes, never mutate a deployed contract"; a definer-search_path finding surfaced
+
+**Why:** Prompt 14 documented all 15 edge functions and 10
+client-callable RPCs as one reference, classified into exactly three auth
+models (public / authenticated / webhook) because the classification is
+the security-relevant fact an auditor checks. The versioning rule is
+formalized from what the codebase already practices: webhooks dedupe on
+immutable event-id PKs and add columns additively; the Ask capability
+arrived as new function names, not overloads; `get_shared_content` gained
+`expired`/`private` types additively so old clients fall through to their
+error path. Stated forward: additive-in-place is allowed (new optional
+field, new output field, new enum value); anything breaking ships as a new
+function *name* (`ask-playbook-v2`), and the old name is supported
+indefinitely because callers are cached native bundles and third-party
+webhook consumers on their own upgrade schedule. New-name-not-header was
+chosen because the platform gateway routes by function name, so one
+primitive works identically for edge functions, RPCs, and outbound
+webhooks, and "which contracts still run" stays a grep — rejected a
+`version` body field (branches inside every function) and content
+negotiation (WebViews/webhook senders don't reliably send headers).
+**Finding, filed API-SEC-1:** documenting §3.3 required checking the
+definer surface, and grepping the snapshot (rather than trusting an
+earlier draft's claim that "all are pinned") found **eight** older
+`SECURITY DEFINER` functions with **no `SET search_path`**
+(`export_user_data`, `get_pack_guide_counts`, the three `handle_new_*`,
+`increment_usage`, `recalculate_usage_stats`, `reset_user_account`) — the
+classic SD privilege-escalation vector, bounded (needs an authenticated
+caller able to shadow an unqualified name) but real, and one line each to
+fix. The newer functions all pin `'public'`. Chip filed for a
+body-untouching `ALTER FUNCTION … SET search_path` migration.
+**Alternatives rejected:** documenting only client-facing entry points —
+rejected; the definer helpers RLS calls are each an escalation surface an
+auditor must see (and §5 is exactly why). A generated OpenAPI file —
+rejected as heavier than the audience needs; this is a diligence read, and
+prose that states the auth model per row serves it better than a schema
+dump.
+**Evidence:** `docs/platform/API.md` (three auth models, per-function I/O
++ errors + idempotency, RPC grants, the versioning rule, API-SEC-1).
+
+---
