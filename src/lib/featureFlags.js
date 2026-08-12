@@ -51,6 +51,20 @@ export const SHARE_TAB_MANAGE_ENABLED =
   import.meta.env.VITE_ENABLE_SHARE_TAB_MANAGE === 'true';
 
 /**
+ * SHARE_LABELS_ENABLED gates the three additions from
+ * docs/platform/SHARING.md: an arbitrary end-date for a link (host stays
+ * don't fit "tonight"/"the weekend"), a recipient label ("Sitter — Friday"),
+ * and the per-link open counter shown in the Share tab.
+ *
+ * Default OFF, and it MUST stay off until migration
+ * 20240128_share_labels_access_log is applied — it reads and writes
+ * shared_links.recipient_label / opened_count / last_opened_at and calls
+ * the record_share_access RPC, none of which exist before then.
+ */
+export const SHARE_LABELS_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_LABELS === 'true';
+
+/**
  * Re-engagement trio — each independently toggleable, all on unless
  * explicitly disabled. These are in-app-only surfaces (no push/email):
  * silence for a cold user is guaranteed by construction.

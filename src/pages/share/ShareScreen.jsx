@@ -7,8 +7,11 @@ import { motion } from 'framer-motion';
 import { logError } from '@/lib/errorLogger';
 import { useNavigation } from '@/hooks/useNavigation';
 import HeartMark from '@/components/HeartMark';
-import { EXPIRY_PRESETS, computeExpiry, presetFromExpiry, humanizeExpiry } from '@/lib/shareExpiry';
-import { SHARE_EXPIRY_ENABLED } from '@/lib/featureFlags';
+import {
+  EXPIRY_PRESETS, computeExpiry, presetFromExpiry, humanizeExpiry,
+  expiryFromDateInput, dateInputFromExpiry,
+} from '@/lib/shareExpiry';
+import { SHARE_EXPIRY_ENABLED, SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
 import { Helmet } from 'react-helmet';
 
 const ShareScreen = () => {
@@ -20,6 +23,9 @@ const ShareScreen = () => {
     const [qrCodeData, setQrCodeData] = useState('');
     const [expiresAt, setExpiresAt] = useState(null);
     const [savingExpiry, setSavingExpiry] = useState(false);
+    // Undefined until the labels migration lands; '' keeps the input controlled.
+    const [recipientLabel, setRecipientLabel] = useState('');
+    const [savedLabel, setSavedLabel] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [content, setContent] = useState(null);
 
@@ -42,6 +48,8 @@ const ShareScreen = () => {
             }
             setContent(sharedItem);
             setExpiresAt(linkData.expires_at || null);
+            setRecipientLabel(linkData.recipient_label || '');
+            setSavedLabel(linkData.recipient_label || '');
 
             const url = `${window.location.origin}/share/${shareId}`;
             setShareUrl(url);
@@ -159,7 +167,8 @@ const ShareScreen = () => {
                                     <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-2">For how long</div>
                                     <div className="space-y-2">
                                       {EXPIRY_PRESETS.map((p) => {
-                                        const selected = presetFromExpiry(expiresAt) === p.key;
+                                        const selected =
+                                          presetFromExpiry(expiresAt, new Date(), { allowCustom: SHARE_LABELS_ENABLED }) === p.key;
                                         return (
                                           <button
                                             key={p.key}
@@ -184,9 +193,88 @@ const ShareScreen = () => {
                                         );
                                       })}
                                     </div>
+                                    {/* Host stays end on a date, not "tonight". */}
+                                    {SHARE_LABELS_ENABLED && (
+                                      <div className="mt-2">
+                                        <label
+                                          htmlFor="share-until-date"
+                                          className="block text-[12.5px] font-semibold text-body-copy mb-1"
+                                        >
+                                          Or pick the last day
+                                        </label>
+                                        <input
+                                          id="share-until-date"
+                                          type="date"
+                                          disabled={savingExpiry}
+                                          value={
+                                            presetFromExpiry(expiresAt, new Date(), { allowCustom: true }) === 'custom'
+                                              ? dateInputFromExpiry(expiresAt)
+                                              : ''
+                                          }
+                                          onChange={async (e) => {
+                                            const next = expiryFromDateInput(e.target.value);
+                                            if (!next) return;
+                                            setSavingExpiry(true);
+                                            const prev = expiresAt;
+                                            setExpiresAt(next);
+                                            const { error } = await supabase
+                                              .from('shared_links')
+                                              .update({ expires_at: next })
+                                              .eq('id', shareId)
+                                              .select('id');
+                                            if (error) {
+                                              setExpiresAt(prev);
+                                              toast({ title: 'Could not update', variant: 'destructive' });
+                                            }
+                                            setSavingExpiry(false);
+                                          }}
+                                          className="w-full h-11 px-3 rounded-lg border border-card-border bg-card text-[14.5px] text-mulberry dark:text-foreground"
+                                        />
+                                      </div>
+                                    )}
                                     <div className="mt-2 text-[12.5px] text-muted-copy text-center">
                                       This link {humanizeExpiry(expiresAt)}.
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* Who the link is for — the owner's own note. */}
+                                {SHARE_LABELS_ENABLED && (
+                                  <div className="mt-5 text-left">
+                                    <label
+                                      htmlFor="share-recipient-label"
+                                      className="block text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mb-2"
+                                    >
+                                      Who is it for
+                                    </label>
+                                    <input
+                                      id="share-recipient-label"
+                                      type="text"
+                                      maxLength={60}
+                                      value={recipientLabel}
+                                      placeholder="Sitter — Friday"
+                                      onChange={(e) => setRecipientLabel(e.target.value)}
+                                      onBlur={async () => {
+                                        const next = recipientLabel.trim();
+                                        if (next === savedLabel) return;
+                                        const prev = savedLabel;
+                                        setSavedLabel(next);
+                                        const { error } = await supabase
+                                          .from('shared_links')
+                                          .update({ recipient_label: next || null })
+                                          .eq('id', shareId)
+                                          .select('id');
+                                        if (error) {
+                                          setSavedLabel(prev);
+                                          setRecipientLabel(prev);
+                                          toast({ title: 'Could not save the label', variant: 'destructive' });
+                                        }
+                                      }}
+                                      className="w-full h-11 px-3 rounded-lg border border-card-border bg-card text-[14.5px] text-mulberry dark:text-foreground"
+                                    />
+                                    <p className="mt-1 text-[12.5px] text-muted-copy">
+                                      Only you see this — it labels the link in your Share tab.
+                                    </p>
                                   </div>
                                 )}
 

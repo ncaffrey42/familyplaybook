@@ -216,11 +216,38 @@ Full design in [`CONTENT_ENGINE.md`](CONTENT_ENGINE.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 5 — consumer dashboard & navigation).
-The tenancy model above is designed, nothing is applied — see
-`ARCHITECTURE.md` (tenancy schema + migration plan), `AUTH_FLOWS.md`
-(auth/session integration), `RBAC.md` (permission model),
-`CONTENT_ENGINE.md` (content generalization + media debt), and `NAV.md`
-(navigation contract). Prompt 5 shipped the sequence's first code: one
-flagged, default-off UI affordance (`VITE_ENABLE_SHARE_TAB_MANAGE`). Next
-update owed by Prompt 6 (temporary sharing, unified).*
+## Sharing (Prompt 6 — migration written, not applied)
+
+Full design in [`SHARING.md`](SHARING.md). Summary:
+
+- **Arbitrary expiry** for host stays (`<input type="date">`, closes at the
+  end of the chosen local day) alongside the existing presets.
+  `presetFromExpiry` gained an **opt-in** `allowCustom` so shipped callers
+  keep their exact fuzzy behavior.
+- **`recipient_label`** — who a link is for; owner-only, never shown to the
+  guest. Named to avoid colliding with the client-derived content `label`.
+- **Access log = two counters** (`opened_count`, `last_opened_at`), not an
+  events table — privacy by construction, O(1) reads, no retention policy.
+  Bumped by `record_share_access()`, a `VOLATILE SECURITY DEFINER` RPC
+  granted to `anon`. **No `TO anon` RLS policy is added**, so `RBAC.md`
+  §1.2's structural "guest never enumerates" guarantee is intact.
+- **Notifications: one seam, no infrastructure.** `record_share_access` is
+  the single moment "your link was opened" becomes true; Prompt 11's
+  `notifications` table is the intended first channel.
+- **Bug fixed by the same migration:** `shared_links` never had an `UPDATE`
+  policy, so link expiry has been silently immutable since it shipped —
+  "Until I switch it off" produced a link that still died at midnight. Live
+  until the migration is applied.
+
+---
+
+*Last updated: 2026-08-11 (Prompt 6 — temporary sharing, unified). The
+tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
+(tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
+integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
+generalization + media debt), `NAV.md` (navigation contract), and
+`SHARING.md` (link expiry/labels/access log). Code shipped so far: two
+flagged, default-off UI changes (`VITE_ENABLE_SHARE_TAB_MANAGE`,
+`VITE_ENABLE_SHARE_LABELS`) and one **unapplied** migration
+(`20240128_share_labels_access_log`). Next update owed by Prompt 7 (AI
+Q&A — "Ask the Playbook").*

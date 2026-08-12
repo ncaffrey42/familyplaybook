@@ -36,11 +36,52 @@ export function computeExpiry(preset, now = new Date()) {
   return null;
 }
 
-/** Best-matching preset for an existing expires_at (for showing selection). */
-export function presetFromExpiry(expiresAt, now = new Date()) {
+/**
+ * Host stays don't fit "tonight" or "the weekend" — a guest checks out on a
+ * date. `custom` carries that date; the link closes at the END of it
+ * (23:59:59.999 local), so a checkout-day guest keeps access all day.
+ */
+export function expiryFromDateInput(value) {
+  if (!value) return null;
+  const [y, m, d] = String(value).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const dt = new Date(y, m - 1, d, 23, 59, 59, 999); // local, end of that day
+  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
+/** `expires_at` → a `yyyy-mm-dd` value for <input type="date">, in local time. */
+export function dateInputFromExpiry(expiresAt) {
+  if (!expiresAt) return '';
+  const d = new Date(expiresAt);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Best-matching preset for an existing expires_at (for showing selection).
+ *
+ * `allowCustom` is opt-in and defaults to FALSE so this keeps its original
+ * behaviour for every existing caller. With only three presets, the fuzzy
+ * "under 26h ⇒ tonight, else weekend" rule was always right — every link
+ * was one of the three. Once arbitrary dates exist that stops holding, so
+ * callers that offer a date picker pass `allowCustom: true` and get
+ * 'custom' for anything that isn't an exact preset match. Exact matching
+ * is the only way to tell "picked Tonight" from "picked a custom date that
+ * happens to be tonight" — the durations overlap.
+ */
+export function presetFromExpiry(expiresAt, now = new Date(), { allowCustom = false } = {}) {
   if (!expiresAt) return 'until_off';
-  const diffH = (new Date(expiresAt) - now) / 36e5;
-  return diffH <= 26 ? 'tonight' : 'weekend';
+  if (!allowCustom) {
+    const diffH = (new Date(expiresAt) - now) / 36e5;
+    return diffH <= 26 ? 'tonight' : 'weekend';
+  }
+
+  const exp = new Date(expiresAt);
+  if (Number.isNaN(exp.getTime())) return 'until_off';
+  if (exp.getTime() === new Date(computeExpiry('tonight', now)).getTime()) return 'tonight';
+  if (exp.getTime() === new Date(computeExpiry('weekend', now)).getTime()) return 'weekend';
+  return 'custom';
 }
 
 export function isExpired(expiresAt, now = new Date()) {

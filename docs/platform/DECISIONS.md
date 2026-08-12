@@ -432,3 +432,96 @@ the Share tab's Family & helpers header — flag-off renders the original
 line verbatim.
 
 ---
+
+## 2026-08-11 — Share access is counted in two columns via an anon-callable `SECURITY DEFINER` RPC, never an events table and never an anon RLS policy; notification channels get one seam and no infrastructure
+
+**Why:** Adding labels, arbitrary expiry and an access log to share links
+forced four choices. (1) **The access log is two denormalised counters**
+(`opened_count`, `last_opened_at`) on `shared_links`, not a
+`share_access_events` table: O(1) to read in a list that already queries
+every link, no unbounded growth or retention policy, no new RLS surface —
+and, decisively, **privacy by construction**, since per-open rows would let
+an owner reconstruct when a specific houseguest was reading. No IP, no
+user-agent, no visitor id is stored. The cost is no history, accepted
+because the ask was exactly two scalars. (2) **A separate `VOLATILE`
+`record_share_access()` RPC** was structurally necessary, not stylistic:
+`get_shared_content()` is `STABLE`, and a `STABLE` function cannot write.
+It mirrors that function's posture exactly — `SECURITY DEFINER`,
+`search_path` pinned, `REVOKE FROM PUBLIC` + `GRANT EXECUTE TO anon` — so
+**no `TO anon` RLS policy is added**, preserving the structural
+"guest never enumerates" guarantee from `RBAC.md` §1.2. It returns `void`
+and behaves identically for real, expired and nonexistent ids, so it can't
+probe which links exist. (3) **Counts are deliberately approximate**: a
+1-minute debounce collapses refreshes and bounds bot-driven row churn,
+expired links don't count (they show the guest nothing), and the call is
+client-invoked and therefore skippable — fine for a retention signal, so
+it must never become a billing or security input. (4) **Notifications get a
+seam, not infrastructure**: `record_share_access` is the single
+server-side moment where "someone opened your link" becomes true, so every
+future channel attaches there. Channel plan recorded — in-app inbox first
+(Prompt 11's `notifications` table), web push deferred (`push_subscriptions`
+already exists but nothing delivers), email deferred as a digest, native
+push unplanned — inheriting the existing re-engagement rules that surfaces
+are in-app only and silence is the default.
+**Alternatives rejected:** A `share_access_events` table — see the privacy
+and growth argument above; addable later alongside the counters if history
+is ever needed. Writing the counter inside `get_shared_content` — impossible
+without making it `VOLATILE`, which would forfeit planner caching on the
+hottest anonymous read path for an analytics side effect. An `anon`
+`UPDATE` RLS policy on `shared_links` — rejected outright: it would trade
+a structural guarantee for a policy predicate, exactly what `RBAC.md` §1.2
+exists to prevent. Naming the label column `label` — rejected because
+`ShareCenterScreen` already derives a client-side `label` for the *content*
+name, so the column would be silently discarded by the object spread.
+Changing `presetFromExpiry` to exact matching unconditionally — rejected as
+a behavior change to shipped UI (stale links would lose their highlighted
+selection), so exact matching is opt-in via `{ allowCustom: true }` and the
+fuzzy default is preserved and verified. A trigger firing per open —
+rejected as infrastructure with no consumer.
+**Evidence:** `docs/platform/SHARING.md`;
+`supabase/migrations/20240128_share_labels_access_log.sql` (written, **not
+applied** — the Supabase project is unreachable); UI behind
+`VITE_ENABLE_SHARE_LABELS`, default off, which **must** stay off until that
+migration is applied.
+
+---
+
+## 2026-08-11 — `shared_links` never had an UPDATE policy, so link expiry has been silently immutable since it shipped
+
+**Why:** Recorded as a decision because the fix ships here and the failure
+mode is worth remembering. `20240109_share_link_hardening.sql` gave
+`shared_links` `INSERT`, `SELECT` and `DELETE` policies — its own comment
+(*"Owners could create links but never revoke them; allow delete for future
+unshare/revocation flows"*) shows `UPDATE` was simply never considered. Two
+shipped client paths issue `UPDATE`s anyway: the "For how long" expiry
+picker (`ShareScreen.jsx:172`) and re-share expiry refresh
+(`GuideDetail.jsx:160`). Under RLS with no permissive `UPDATE` policy,
+Postgres matches zero rows, PostgREST returns `204`, and supabase-js
+reports `error: null` — so the optimistic UI shows success and the value
+reverts on reload. `expires_at` is correct at `INSERT` (always
+`computeExpiry('tonight')`) and immutable thereafter, with
+`SHARE_EXPIRY_ENABLED` defaulting **on**. Net: choosing "Until I switch it
+off" produces a link the owner believes is permanent and that still dies at
+midnight. The `UPDATE` policy was independently required for labels — a
+label you cannot save is not a feature — so the fix is the same one line.
+**The lesson worth keeping: a missing RLS policy for a write is silent, not
+loud.** Nothing in the client distinguishes "blocked by RLS" from
+"succeeded", because both are a 204. Any future write path to a
+`SECURITY`-sensitive table should either call `.select()` so zero rows is
+detectable, or be covered by a test that reloads and re-reads.
+**Alternatives rejected:** Fixing it in the client (e.g. via an edge
+function using the service-role key) — rejected as working around a missing
+policy with a privilege escalation. Leaving it for a dedicated bugfix
+prompt — rejected because this prompt's own feature cannot work without the
+same policy. Adding `.select()` to the two existing call sites in the same
+change — deferred: strictly better, but it touches unflagged shipped paths
+and this change set cannot run the unit suite (pre-existing Node/vitest
+incompatibility), so the new code paths use `.select('id')` and the old
+ones are left for a change that can be tested.
+**Evidence:** `supabase/schema.sql:1104-1106` (three policies, no UPDATE);
+`supabase/migrations/20240109_share_link_hardening.sql:148-155`;
+`docs/platform/SHARING.md` §2. Fixed by
+`supabase/migrations/20240128_share_labels_access_log.sql` — **which has not
+been applied**, so the bug is live until it is.
+
+---

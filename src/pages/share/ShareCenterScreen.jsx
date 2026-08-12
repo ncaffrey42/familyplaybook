@@ -8,7 +8,7 @@ import { useData } from '@/contexts/DataContext';
 import { humanizeExpiry, isExpired } from '@/lib/shareExpiry';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
-import { FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED } from '@/lib/featureFlags';
+import { FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED, SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
 
 /**
  * The Share tab — "Your team". Everyone sees only what you share.
@@ -56,7 +56,14 @@ const ShareCenterScreen = () => {
             : Promise.resolve({ data: [] }),
           supabase
             .from('shared_links')
-            .select('id, created_at, expires_at, guide_id, bundle_id, guides(name), packs(name)')
+            // The label/counter columns only exist once migration
+            // 20240128_share_labels_access_log is applied, so they are
+            // requested only when the flag that requires it is on.
+            .select(
+              SHARE_LABELS_ENABLED
+                ? 'id, created_at, expires_at, guide_id, bundle_id, recipient_label, opened_count, last_opened_at, guides(name), packs(name)'
+                : 'id, created_at, expires_at, guide_id, bundle_id, guides(name), packs(name)'
+            )
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
         ]);
@@ -309,11 +316,19 @@ const ShareCenterScreen = () => {
                     onClick={() => navigate(`/share-manage/${l.id}`)}
                     className="flex-1 min-w-0 text-left"
                   >
-                    <div className="font-bold text-[15.5px] text-mulberry dark:text-foreground truncate">{l.label}</div>
+                    <div className="font-bold text-[15.5px] text-mulberry dark:text-foreground truncate">
+                      {l.label}
+                      {SHARE_LABELS_ENABLED && l.recipient_label && (
+                        <span className="font-semibold text-muted-copy"> · {l.recipient_label}</span>
+                      )}
+                    </div>
                     <div className={`text-[12.5px] ${isExpired(l.expires_at) ? 'text-chevron' : 'text-muted-copy'}`}>
                       {l.kind} · {isExpired(l.expires_at)
                         ? 'ended'
                         : humanizeExpiry(l.expires_at)}
+                      {SHARE_LABELS_ENABLED && l.opened_count > 0 && (
+                        <> · opened {l.opened_count}×</>
+                      )}
                     </div>
                   </button>
                   <button

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Helmet } from 'react-helmet';
-import { logError } from '@/lib/errorLogger';
+import { logError, addBreadcrumb } from '@/lib/errorLogger';
+import { SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
 import { Button } from '@/components/ui/button';
 import { Lock, ShieldOff } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -102,6 +103,18 @@ const PublicSharePage = () => {
           setBundleGuides(data.bundle_guides || []);
         } else {
           throw new Error('Empty share link');
+        }
+
+        // Count the open — only once content actually resolved, so expired
+        // and un-shared links never inflate the owner's signal. Fire and
+        // forget: the guest's page must never wait on, or fail because of,
+        // an analytics write. The RPC records a count and a timestamp only
+        // (see 20240128_share_labels_access_log).
+        if (SHARE_LABELS_ENABLED) {
+          supabase.rpc('record_share_access', { p_share_id: shareId })
+            .then(({ error: logErr }) => {
+              if (logErr) addBreadcrumb('record_share_access failed', { message: logErr.message });
+            });
         }
       } catch (err) {
         logError(err, { context: 'PublicSharePage', shareId });
