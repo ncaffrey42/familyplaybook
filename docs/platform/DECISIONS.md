@@ -1067,3 +1067,55 @@ are feature designs that slot into M3–M4 without changing this spine.
 ledger, pricing recommendation, numbering hazard).
 
 ---
+
+## 2026-08-11 — Listing import is honest about Airbnb's missing content API: owner-consented page fetch + official iCal + AI structuring, all behind a provider interface
+
+**Why:** Prompt 16 designed "connect your listing" against the real
+constraint, not a wished-for one: **Airbnb has no public content API for
+third-party developers** (the former API is partner-gated, no open signup,
+no endpoint returning a listing's title/photos/rules/amenities). So v1 is
+built from what genuinely exists, and the design never blurs the two very
+different sources. (a) **Content** = an owner-*initiated* server fetch of
+the owner's *own public* listing page, extracted into a review form where
+the owner edits and confirms every field before anything saves — the exact
+trust posture as voice-to-guide ("the machine drafts, the human commits"),
+and the address is always owner-entered because Airbnb obscures it anyway.
+(b) **Calendar** = the iCal export URL Airbnb officially gives every host —
+a real, read-only, pull-based integration whose payoff is auto-dating guest
+links to a stay's checkout (ties directly into `SHARING.md`'s arbitrary
+expiry). (c) **Structuring** = the amenity/rules free text feeds
+`voice-to-guide`'s existing OpenAI `json_schema` path (host taxonomy swapped
+in) and each draft arrives in the guide editor through the *same*
+`starterTemplate`/`hostContext` `location.state` mechanism a Starter-Kit
+guide uses, so "owner reviews before save" is enforced by reusing the
+surface that already enforces it, and the AI cost counts against the
+existing `_shared/ai.ts` quota — no new metering, no unlimited-AI backdoor.
+The whole thing sits behind a **`ListingProvider` interface**
+(`fetchListing`/`parseCalendar`/`capabilities`, implementations `airbnb`
+/`vrbo`/`direct`) — v1 is Airbnb, but modeling it as one provider means
+VRBO or a deep partnership is three methods, not a rewrite, and **that
+interface is the acquisition story**: a listing-agnostic hosting layer, not
+an Airbnb tool. `direct` (owner types everything) is a first-class
+provider, not a fallback.
+**Legal honesty, recorded not hidden:** the content fetch is the one grey
+area — mitigated by owner-initiated + owner-owns-it + public-page-only +
+cache-nothing-beyond-what-the-owner-saves, and the architecture makes
+retreat cheap: if a provider's fetch must be disabled, it degrades to
+`confidence: 'manual'` (owner types it) with zero change to the wizard or
+property model, and the iCal integration (explicitly Airbnb-sanctioned) is
+unaffected. **Hard line: never store the owner's Airbnb credentials** — both
+the URL and iCal link are public/exported artifacts; the moment a design
+needs the owner's Airbnb password it has left the honest path.
+**Alternatives rejected:** Claiming/implying an Airbnb content API —
+rejected as fiction that would collapse on contact. Auto-saving scraped
+content — rejected; violates the review-before-save rule and the owner's
+chance to catch a wrong photo/stale rule. An Airbnb-specific import coded
+inline — rejected as the thing that makes the second channel a rewrite;
+the provider interface is the point. Writing to Airbnb's calendar or
+scraping availability/pricing — out of scope; v1 is content-in-not-out,
+one listing, owner-driven.
+**Evidence:** `docs/platform/LISTING_IMPORT.md`. Design only — no
+migration or code written; slots into `ROLLOUT.md` M3 as an accelerant,
+not a blocker.
+
+---
