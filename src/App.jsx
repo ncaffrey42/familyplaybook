@@ -63,8 +63,9 @@ const HostMode = lazy(() => import('./pages/HostMode'));
 // Host product — the second app shell (docs/platform/HOST_SHELL.md).
 // Lazy so the family bundle never pays for it while the flag is off.
 const HostShell = lazy(() => import('./pages/host/HostShell'));
-const HostProperties = lazy(() =>
-  import('./pages/host/HostSkeletons').then((m) => ({ default: m.HostProperties })));
+const HostProperties = lazy(() => import('./pages/host/HostProperties'));
+const HostPropertyDetail = lazy(() => import('./pages/host/HostPropertyDetail'));
+const HostQrSheet = lazy(() => import('./pages/host/HostQrSheet'));
 const HostGuides = lazy(() =>
   import('./pages/host/HostSkeletons').then((m) => ({ default: m.HostGuides })));
 const HostTeam = lazy(() =>
@@ -188,12 +189,20 @@ const AppContent = () => {
               which is where real workspace_type gating lands once the
               tenancy migration is applied. See docs/platform/HOST_SHELL.md */}
           {HOST_PRODUCT_ENABLED ? (
-            <Route path="/host" element={<PrivateRoute><LazyRoute><HostShell /></LazyRoute></PrivateRoute>}>
-              <Route index element={<Navigate to="/host/properties" replace />} />
-              <Route path="properties" element={<LazyRoute><HostProperties /></LazyRoute>} />
-              <Route path="guides" element={<LazyRoute><HostGuides /></LazyRoute>} />
-              <Route path="team" element={<LazyRoute><HostTeam /></LazyRoute>} />
-            </Route>
+            <>
+              <Route path="/host" element={<PrivateRoute><LazyRoute><HostShell /></LazyRoute></PrivateRoute>}>
+                <Route index element={<Navigate to="/host/properties" replace />} />
+                <Route path="properties" element={<LazyRoute><HostProperties /></LazyRoute>} />
+                <Route path="property/:id" element={<LazyRoute><HostPropertyDetail /></LazyRoute>} />
+                <Route path="guides" element={<LazyRoute><HostGuides /></LazyRoute>} />
+                <Route path="team" element={<LazyRoute><HostTeam /></LazyRoute>} />
+              </Route>
+              {/* Printable QR sheet: mounted OUTSIDE the HostShell layout —
+                  but inside this same flag block — so the printed page has
+                  no KPI header or bottom nav to hide, only its own controls.
+                  See docs/platform/PROPERTIES.md §3. */}
+              <Route path="/host/property/:id/qr-sheet" element={<PrivateRoute><LazyRoute><HostQrSheet /></LazyRoute></PrivateRoute>} />
+            </>
           ) : (
             <Route path="/host/*" element={<Navigate to="/home" replace />} />
           )}

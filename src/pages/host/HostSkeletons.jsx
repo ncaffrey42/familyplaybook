@@ -1,7 +1,9 @@
 import React from 'react';
 
 /**
- * Skeleton screens for the Host shell's three tabs.
+ * Skeleton screens for the Host shell's not-yet-built tabs. Properties
+ * graduated to a real screen (src/pages/host/HostProperties.jsx, Prompt 9);
+ * Guides and Team remain.
  *
  * Deliberately honest rather than fake: each states which prompt fills it
  * in, so that flipping VITE_ENABLE_HOST_PRODUCT internally shows a shell
@@ -23,14 +25,6 @@ const Placeholder = ({ title, blurb, owner }) => (
       <span className="text-[12.5px] font-bold text-mulberry">{owner}</span>
     </div>
   </section>
-);
-
-export const HostProperties = () => (
-  <Placeholder
-    title="Properties"
-    blurb="Each place you host, with its guest guide and the dated links you've issued. A property is a bundle on the existing content engine — no new content type."
-    owner="Built by Prompt 9"
-  />
 );
 
 export const HostGuides = () => (
