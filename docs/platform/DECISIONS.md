@@ -830,3 +830,55 @@ prohibit operational error logging (the existing first-party
 outgrows the counters (`SHARING.md` §5.1 anticipated exactly that path).
 
 ---
+
+## 2026-08-11 — One binary ships both products until a recorded trigger fires; the family bundle id is locked before it becomes immutable; RevenueCat stays one project with per-product entitlements
+
+**Why:** Prompt 12 had to decide, not survey. (1) **Now:** the workspace
+switcher decides the shell — post-login resolution (`AUTH_FLOWS.md` §2)
+lands a `host`-type workspace at `/host/properties`, else `/home`; the
+switcher (both mounts, now including the host KPI header — resolving
+`NAV.md` §8's open question) is the cross-shell jump. One conditional in
+the resolution landing; no second router; native adds zero gating surface.
+(2) **The split path** is ordered so nothing forecloses anything: Phase A
+= two Vite entries + two Capacitor configs in this repo (fastlane lanes
+parameterized); Phase B — extracting a `packages/core` — happens only if
+drift earns it, because a package boundary is a recurring daily cost and
+today there is no second team and no drift. (3) **Bundle identity, locked
+now while it costs nothing:** the family app keeps
+`com.familyplaybook.app` (it has NO public store listing yet —
+`VITE_APPSTORE_ID` blank — so this is the last cheap moment to decide; at
+first public release the id becomes permanent with ratings and subscribers
+attached); host is born `com.familyplaybook.host` at split, keeps its
+hands off `familyplaybook://` (OAuth deep-links already bound to it), and
+uses universal/app links for guest-facing URLs because a printed QR must
+open in the browser for guests without the app. (4) **RevenueCat: one
+project, two apps, per-product entitlements** (`family_premium` /
+`host_premium`), `app_user_id` = Supabase uid throughout — so the
+webhook→`user_billing` reconciliation is untouched by the split.
+**The trigger, recorded:** split on the FIRST of — (a) positioning: host
+acquisition starts depending on store search that "Family Playbook"'s
+listing cannot carry (expected to be the one that fires; a marketing
+observation, not an engineering one); (b) scale: host ≥1,000 MAU sustained
+60 days or host MRR ≥25% of total; (c) policy: store review friction from
+two products in one binary. **Explicit non-triggers:** engineering
+preference, cleanliness, redesigns, or the tenancy migrations landing —
+one binary is the correct shape until a trigger fires, because the shell
+boundary already provides the seam.
+**Alternatives rejected:** Splitting now — rejected; §2.4's costs (two
+review pipelines, double store metadata/tracks) are recurring, and every
+technical prerequisite is already in place, so waiting loses nothing.
+A monorepo/core-package extraction as the first step — rejected as paying
+a daily boundary cost on zero evidence of drift. Two RevenueCat projects —
+rejected; it would fork the identity spine and force the webhook to
+reconcile two sources.
+**Hazard surfaced while writing this, pre-existing:**
+`useNativePurchases.js:89` treats ANY active RC entitlement as premium —
+correct while only family entitlements exist, wrong the day a host
+entitlement appears (a host-only subscriber would read family-premium on
+device). Must be fixed to name its entitlement before any host product is
+created in RC.
+**Evidence:** `docs/platform/MOBILE_SPLIT.md`; `capacitor.config.ts`;
+`fastlane/Fastfile`; `src/lib/revenuecat.js`;
+`src/hooks/useNativePurchases.js`. No build — decision document only.
+
+---

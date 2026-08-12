@@ -197,6 +197,26 @@ Full design in [`HOST_TEAMS.md`](HOST_TEAMS.md). Summary:
   never-nag rule).
 - **No third-party analytics SDK, as policy** — own DECISIONS entry.
 
+## Mobile & the two-app future (Prompt 12 — decided, no build)
+
+Full decision document in [`MOBILE_SPLIT.md`](MOBILE_SPLIT.md). Summary:
+
+- **Now:** one Capacitor binary ships both products; the workspace switcher
+  decides the shell (host-type workspace → `/host/properties`, else
+  `/home`). The switcher mounts in both shells — resolving `NAV.md` §8.
+- **Split path:** two Vite entries + two Capacitor configs first; a shared
+  core package only if drift earns it. Family keeps
+  `com.familyplaybook.app` (locked now — no public listing exists yet, so
+  this was the last cheap moment); host born `com.familyplaybook.host`.
+  One RevenueCat project, per-product entitlements, `app_user_id` =
+  Supabase uid throughout, so `user_billing` reconciliation is untouched.
+- **Trigger, recorded in DECISIONS.md:** first of (a) store-positioning
+  need, (b) host ≥1,000 MAU / ≥25% MRR, (c) store-review friction.
+  Non-triggers: preference, cleanliness, tenancy landing.
+- ⚠️ Pre-existing hazard: `useNativePurchases.js:89` treats *any* active
+  RC entitlement as premium — must name its entitlement before any host
+  product exists in RevenueCat.
+
 ## Role matrix (designed by Prompt 3 — not yet applied)
 
 Full matrix, RLS pattern, migration plan and adversarial test list in
@@ -330,7 +350,7 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 10 — host teams & analytics). The
+*Last updated: 2026-08-11 (Prompt 12 — mobile & the two-app future). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
@@ -342,5 +362,5 @@ far: four flagged, default-off surfaces (`VITE_ENABLE_SHARE_TAB_MANAGE`,
 `VITE_ENABLE_HOST_PRODUCT`) and two **unapplied** migrations
 (`20240128_share_labels_access_log`, `20240129_ask_playbook`,
 `20240130_properties_host_taxonomy`, `20240131_host_starter_library`).
-Nothing is deployed. Next update owed by Prompt 11 (search,
-notifications, messaging seams).*
+Nothing is deployed. Prompt 11 has not run yet; next update owed by
+whichever of Prompt 11/13+ runs next.*
