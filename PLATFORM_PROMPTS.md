@@ -23,7 +23,7 @@ The prompts below are written against this reality:
 | Content engine v1: guides (steps jsonb), bundles (`packs` + ordered `pack_guides`), media uploads | ✅ built |
 | Sharing: unguessable links w/ **expiry presets**, QR codes, per-person grants, family invites + roles (viewer/editor), helper read-only view | ✅ built |
 | AI: voice/text→guide, AI handoff-bundle assembly, per-plan quotas ledger | ✅ built |
-| AI Q&A over shared content ("Ask the Playbook") | 📄 **spec'd, unbuilt — PR #16** |
+| AI Q&A over shared content ("Ask the Playbook" / Alfred) | 🔨 **built by Prompt 7, unproven** — code + evals written; nothing deployed, no migration applied, grounding threshold uncalibrated. See `docs/platform/ASK_PLAYBOOK.md` §10 |
 | Billing: Stripe (web) + RevenueCat IAP reconciled into one `user_billing` | ✅ built |
 | Feedback system, freshness/gap nudges, feature-flag pattern (`VITE_*`) | ✅ built |
 | Mobile: Capacitor iOS/Android shells, brand system | ✅ built |

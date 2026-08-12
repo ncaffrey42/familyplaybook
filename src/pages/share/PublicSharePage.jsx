@@ -3,12 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Helmet } from 'react-helmet';
 import { logError, addBreadcrumb } from '@/lib/errorLogger';
-import { SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
+import { SHARE_LABELS_ENABLED, ASK_PLAYBOOK_ENABLED } from '@/lib/featureFlags';
 import { Button } from '@/components/ui/button';
 import { Lock, ShieldOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import HeartMark from '@/components/HeartMark';
 import GuideIcon from '@/components/GuideIcon';
+import AskPlaybook from '@/components/AskPlaybook';
 import { isVideoUrl } from '@/lib/utils';
 
 /**
@@ -286,6 +287,8 @@ const PublicSharePage = () => {
               </div>
             </div>
           )}
+
+          {ASK_PLAYBOOK_ENABLED && <AskPlaybook shareId={shareId} />}
         </main>
 
         <footer className="mt-8 pb-12 px-6 text-center">

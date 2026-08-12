@@ -572,3 +572,66 @@ snapshot plus migration history; a live `pg_policies` query is the stronger
 confirmation and needs a Management API token.
 
 ---
+
+## 2026-08-11 — Ask the Playbook and Alfred are one function scoped by share link, gated to paid owners, counts-only; the grounding threshold ships uncalibrated and blocks release
+
+**Why:** Prompt 7 revised `SPEC_ASK_PLAYBOOK.md` (commit `f1e7ff3`, branch
+`claude/spec-ask-playbook`) for the platform and resolved its four open
+decisions. (1) **One surface, two products.** A babysitter asking "can Ella
+have peanuts?" and a guest asking "what's the wifi?" are the same question
+shape against the same machinery, so Alfred is not a second system — it is
+`ask-playbook` reached from a host workspace's guest link, which is already
+a bundle share. The only vertical-dependent thing is the refusal/label copy,
+which comes from workspace data exactly like `content_categories` and
+`workspace_roles.label`. Prompt 9 therefore gets the guest VA with no new
+endpoint. (2) **Scope is one share link, resolved server-side, never a
+caller-supplied guide list.** `resolve_ask_scope(share_id)` re-applies
+`get_shared_content`'s exact checks — exists, not expired, still shareable —
+because an expired link that still answers questions would silently defeat
+the link-expiry feature the product sells. It additionally enforces a
+single-workspace invariant written as `COALESCE(workspace_id, user_id)`, so
+it is correct both before and after `ARCHITECTURE.md` migration #4 backfills
+`workspace_id` rather than needing a retrofit. `match_playbook_chunks`
+re-resolves scope from the share id itself, so even a compromised edge
+function cannot widen retrieval. **No `TO anon` RLS policy is added** —
+`RBAC.md` §1.2's rule, and this feature is its sharpest test, because a
+retrieval system scoped wrong *is* an enumeration primitive. (3) **Two
+independent grounding gates**, because either alone is insufficient:
+retrieval-side (nothing near enough → refuse without an LLM call, saving
+cost and preventing drift) and generation-side (an answer citing no in-scope
+guide is a hallucinated source and is downgraded to a refusal). (4) **The
+four decisions:** share-page surface now (Host Mode is still a mockup);
+paid owners' links only; 20 questions/hour/share link; counts-only
+analytics.
+**Alternatives rejected:** Building a real Host Mode first — rejected as a
+dependency on unbuilt tenancy when the share page already works. Per-IP rate
+limiting — rejected in favour of per-share-link, because the link is both
+the unit of sharing and the only thing an owner can revoke. An event row per
+question — rejected for the same privacy reason as `SHARING.md` §5.1's
+access log; hour-bucketed counters give the rate check and Prompt 18's
+refusal signal while storing not one question. Storing question text for an
+owner-facing "what did guests ask" view — rejected as a default: a
+babysitter's questions are health data about a child, so owner visibility
+would need its own consent design. Free-for-all availability — rejected,
+though the growth cost is real and acknowledged: the guest experience is the
+viral surface, and gating it means most guests never see it. It is a
+plan-entitlement row, so revisiting it is data, not code. Trusting the model
+to self-report `grounded` — rejected; citations are validated against the
+resolved scope server-side.
+**Evidence:** `docs/platform/ASK_PLAYBOOK.md`;
+`supabase/migrations/20240129_ask_playbook.sql`;
+`supabase/functions/_shared/askPlaybook.ts` + `ask-playbook/` + `embed-guides/`;
+`src/components/AskPlaybook.jsx`; `evals/ask-playbook/`.
+**Release blocker, recorded deliberately:** `SIMILARITY_THRESHOLD = 0.35` is
+**a guess**. It is the single number deciding whether a stressed babysitter
+gets an answer or a refusal, and the original spec's own warning was to
+budget for the eval loop because "that is where a trustworthy answer (vs a
+plausible wrong one) is won". The eval set and runner are written; the loop
+has **never been run**, because nothing is deployed and no migration is
+applied. Additionally the unit tests have never executed — `vitest` cannot
+start in this environment (pre-existing: Node v16.17 vs. rolldown requiring
+`node:util`'s `styleText`, needs ≥20.12). **`VITE_ENABLE_ASK_PLAYBOOK` must
+not be enabled for any user until the eval set has been run and the
+threshold set from that data.**
+
+---

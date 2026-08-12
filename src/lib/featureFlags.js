@@ -75,3 +75,24 @@ export const FRESHNESS_ENABLED =
   import.meta.env.VITE_ENABLE_FRESHNESS !== 'false';
 export const GAP_NUDGE_ENABLED =
   import.meta.env.VITE_ENABLE_GAP_NUDGE !== 'false';
+
+/**
+ * ASK_PLAYBOOK_ENABLED gates "Ask the Playbook" (host vertical: Alfred) —
+ * grounded Q&A over exactly the guides one share link exposes, rendered on
+ * the anonymous /share/:shareId page. Eligibility is resolved server-side
+ * (paid owner's link only), so the flag only decides whether the client
+ * asks the question at all.
+ *
+ * Default OFF, and it MUST stay off until BOTH are true: migration
+ * 20240129_ask_playbook is applied — it adds guide_embeddings,
+ * ask_playbook_usage and the resolve_ask_scope / match_playbook_chunks /
+ * ask_playbook_available SECURITY DEFINER functions the client calls — AND
+ * the ask-playbook edge function is deployed.
+ *
+ * Beyond those two: SIMILARITY_THRESHOLD is still an uncalibrated guess and
+ * must be set from the eval set before this is enabled for real users. It
+ * is the number that decides whether a stressed babysitter gets an answer
+ * or a refusal — see docs/platform/ASK_PLAYBOOK.md §10.
+ */
+export const ASK_PLAYBOOK_ENABLED =
+  import.meta.env.VITE_ENABLE_ASK_PLAYBOOK === 'true';

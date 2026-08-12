@@ -108,6 +108,26 @@ Full design in [`AUTH_FLOWS.md`](AUTH_FLOWS.md). Summary:
   the *only* relevant one for single-workspace orgs (i.e., every family
   account, and every host account until they have a second property).
 
+## Ask the Playbook / Alfred (Prompt 7 — built, not deployed, not proven)
+
+Full design in [`ASK_PLAYBOOK.md`](ASK_PLAYBOOK.md). Summary:
+
+- **One function, both verticals.** Alfred is `ask-playbook` reached from a
+  host guest link; only the copy differs. A property's guest link is already
+  a bundle share, so Prompt 9 inherits the guest VA with no new endpoint.
+- **Scope = one share link = one workspace.** `resolve_ask_scope()` re-applies
+  `get_shared_content`'s checks (exists / not expired / still shareable) and
+  enforces a single-workspace invariant written as
+  `COALESCE(workspace_id, user_id)`, so it stays correct across
+  `ARCHITECTURE.md` migration #4. Callers never supply a guide list.
+  **No `TO anon` RLS policy** — `RBAC.md` §1.2 holds.
+- **Two grounding gates:** below-threshold retrieval refuses without an LLM
+  call; an answer citing no in-scope guide is downgraded to a refusal.
+- **Decisions resolved:** share page now · paid owners' links only ·
+  20/hour/link · counts-only (hour-bucketed, never question text).
+- ⚠️ **`SIMILARITY_THRESHOLD = 0.35` is uncalibrated and gates release.** The
+  eval set is written and has never been run; nothing is deployed.
+
 ## Role matrix (designed by Prompt 3 — not yet applied)
 
 Full matrix, RLS pattern, migration plan and adversarial test list in
@@ -241,13 +261,14 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 6 — temporary sharing, unified). The
+*Last updated: 2026-08-11 (Prompt 7 — Ask the Playbook / Alfred). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
 generalization + media debt), `NAV.md` (navigation contract), and
-`SHARING.md` (link expiry/labels/access log). Code shipped so far: two
-flagged, default-off UI changes (`VITE_ENABLE_SHARE_TAB_MANAGE`,
-`VITE_ENABLE_SHARE_LABELS`) and one **unapplied** migration
-(`20240128_share_labels_access_log`). Next update owed by Prompt 7 (AI
-Q&A — "Ask the Playbook").*
+`SHARING.md` (link expiry/labels/access log), and `ASK_PLAYBOOK.md`
+(grounded Q&A). Code shipped so far: three flagged, default-off surfaces
+(`VITE_ENABLE_SHARE_TAB_MANAGE`, `VITE_ENABLE_SHARE_LABELS`,
+`VITE_ENABLE_ASK_PLAYBOOK`) and two **unapplied** migrations
+(`20240128_share_labels_access_log`, `20240129_ask_playbook`). Nothing is
+deployed. Next update owed by Prompt 8 (host app shell).*
