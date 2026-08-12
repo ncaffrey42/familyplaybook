@@ -146,8 +146,56 @@ Full design in [`HOST_SHELL.md`](HOST_SHELL.md). Summary:
   `VITE_ENABLE_HOST_PRODUCT` on, **every account is host-eligible**. All of
   it funnels through `useHostWorkspace()`, so the real query lands in one
   file. Do not enable the flag until it does.
-- **Nothing creates a host workspace yet** — Prompt 9 and
-  `AUTH_FLOWS.md` §5's `?vertical=host` are the two paths.
+- **Nothing creates a host workspace yet** — `AUTH_FLOWS.md` §5's
+  `?vertical=host` remains the path; Prompt 9 deliberately did *not* create
+  workspaces either (properties key on `user_id` with a born-nullable
+  `workspace_id`, same as all content).
+
+## Properties (Prompt 9 — built + seeded, migrations unapplied)
+
+Full design in [`PROPERTIES.md`](PROPERTIES.md). Summary:
+
+- **A property = a row + a convention**: `properties.bundle_id NOT NULL
+  UNIQUE → packs`. The playbook is the property's one bundle on the
+  existing content engine, so share links, expiry, QR and Ask the Playbook
+  all work on properties with zero new code. `ON DELETE RESTRICT` — content
+  outlives the veneer.
+- **Host taxonomy migrated** (`content_categories`, from Prompt 4's design):
+  Arrival / House / Local / Departure, read-only, no write policy. Client
+  mirrors it in `hostTaxonomy.js`; the E2E asserts no drift.
+- **Starter kit**: `pack_host_starter` + 10 fill-in-the-blank guides through
+  the existing library copy-to-mine flow.
+- **Dated links** = Prompt 6's arbitrary expiry relabelled: link expires at
+  the end of the checkout day; check-in feeds only the label.
+- ⚠️ **Host bundles appear in the family Guides tab** until workspace
+  scoping lands (`DataContext` fetches all the user's `packs`). Same
+  release gate as the host-shell gating stub.
+- The E2E (`e2e/host-property-flow.mjs`) runs against migrations alone —
+  no edge functions — but needs `20240128`–`20240131` applied and a test
+  user. **Never run.**
+
+## Host teams & analytics (Prompt 10 — teams designed, coverage shipped)
+
+Full design in [`HOST_TEAMS.md`](HOST_TEAMS.md). Summary:
+
+- **Teams = the existing invite machinery + two role values.** Managers and
+  cleaners join via `family_invitations`/the invite edge functions/the sync
+  trigger, unchanged; the delta is widening the role CHECK to admit
+  `manager`/`cleaner`. **No value-mapping down** — cleaner ≡ viewer is a
+  true capability identity, manager ≢ editor (would silently lose
+  `share.grant.manage`, `member.invite`, `content.create`). The
+  CHECK-widening migration ships with the RBAC wave, not before (dead
+  schema otherwise).
+- **Cleaners see granted guides only** — `share_grants` +
+  `viewer_can_see_guide()` verbatim; the dormant `ShareCenterScreen`
+  grant-picker becomes the Team tab's cleaner surface.
+- **Analytics v1 = three per-property numbers, zero new infrastructure:**
+  link opens (`20240128` counters), VA asked/refused (`ask_playbook_usage`
+  — *corrected premise: not `ai_generations`, which guests never write*),
+  and coverage (`hostCoverage.js`, shipped: 9 topics ≡ Starter Kit minus
+  the explainer; empty playbook = 0/9 on purpose, inverting the family
+  never-nag rule).
+- **No third-party analytics SDK, as policy** — own DECISIONS entry.
 
 ## Role matrix (designed by Prompt 3 — not yet applied)
 
@@ -282,7 +330,7 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 8 — host app shell). The
+*Last updated: 2026-08-11 (Prompt 10 — host teams & analytics). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content
@@ -292,5 +340,7 @@ generalization + media debt), `NAV.md` (navigation contract), and
 far: four flagged, default-off surfaces (`VITE_ENABLE_SHARE_TAB_MANAGE`,
 `VITE_ENABLE_SHARE_LABELS`, `VITE_ENABLE_ASK_PLAYBOOK`,
 `VITE_ENABLE_HOST_PRODUCT`) and two **unapplied** migrations
-(`20240128_share_labels_access_log`, `20240129_ask_playbook`). Nothing is
-deployed. Next update owed by Prompt 9 (properties + guest guide builder).*
+(`20240128_share_labels_access_log`, `20240129_ask_playbook`,
+`20240130_properties_host_taxonomy`, `20240131_host_starter_library`).
+Nothing is deployed. Next update owed by Prompt 11 (search,
+notifications, messaging seams).*

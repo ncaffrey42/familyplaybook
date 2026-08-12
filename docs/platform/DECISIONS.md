@@ -696,3 +696,137 @@ whose QR points at a 404 — still exists and should be retired once `/host`
 is real, leaving two host flags in the meantime.
 
 ---
+
+## 2026-08-11 — A property is a row plus a bundle-per-property convention enforced by UNIQUE; the host taxonomy finally migrates; the starter kit is library rows, not code
+
+**Why:** Prompt 9 builds properties on three reuse decisions. (1) **The
+per-property playbook is not a new content type.** `properties` is a thin
+veneer — name, address, photo — over `bundle_id uuid NOT NULL UNIQUE
+REFERENCES packs`, so the schema, not prose, enforces one-bundle-per-
+property, and everything already built for bundles (guides, ordering, share
+links, expiry, QR, Ask the Playbook) works on properties with zero new
+code. `ON DELETE RESTRICT` points from property → bundle so content
+outlives the veneer: deleting a property keeps its guides; deleting a
+bundle that is some property's playbook is refused until the property goes
+first. `workspace_id` is born present-and-nullable so ARCHITECTURE.md
+migration #4 has one less table to retrofit. (2) **`content_categories`
+ships now** — Prompt 4 designed it, design-only; the guest-guide builder is
+its first real consumer, so the migration lands here, byte-for-byte as
+CONTENT_ENGINE.md §3.2 specified (family four incl. Emergency, host
+Arrival/House/Local/Departure; read-only, no write policy). The client
+reads a mirrored constant (`hostTaxonomy.js`) instead of querying on the
+editor's hot path; the E2E's step 0 asserts the two stay in sync. (3) **The
+starter kit is ten `library_guides` rows** under one `library_packs` row
+(`pack_host_starter`), flowing through the exact `handleAddBundleFromLibrary`
+copy-to-mine path families already use — fill-in-the-blank templates
+(⟨network name⟩) rather than prose, so a new owner reaches a complete
+playbook by editing, not composing. Check-in/check-out dated links are
+Prompt 6's `expiryFromDateInput` relabelled — the link expires at the end
+of the checkout day, and check-in feeds only the label.
+**Alternatives rejected:** A `property_guides` join or per-property content
+tables — rejected as a parallel content engine; the whole point of the
+bundle convention is that Prompts 4–7's work applies unmodified. `CASCADE`
+from bundle→property deletion — rejected; a mis-tap deleting a bundle
+should never silently take the property record with it, and RESTRICT makes
+the dependency visible. Hardcoding the starter kit in client code —
+rejected; library rows survive app releases, are editable without deploys,
+and the copy-to-mine flow already handles entitlement checks and
+`template_id` provenance. Querying `content_categories` from the editor —
+rejected for now (hot path, one more failure mode pre-migration); the
+mirrored constant is one file to delete later.
+**Evidence:** `docs/platform/PROPERTIES.md`;
+`supabase/migrations/20240130_properties_host_taxonomy.sql` and
+`20240131_host_starter_library.sql`; `src/lib/hostTaxonomy.js`;
+`src/pages/host/`; `e2e/host-property-flow.mjs`.
+**Known limitation, recorded loudly (PROPERTIES.md §6):** host bundles
+appear in the family app's Guides tab — `DataContext` fetches all of a
+user's `packs` and nothing scopes by workspace yet. Not fixable here
+without touching the one query every family screen depends on; acceptable
+while the host flag is dark; **must be resolved by workspace scoping before
+`VITE_ENABLE_HOST_PRODUCT` ships** — same release gate as HOST_SHELL.md
+§7's gating stub. The E2E is runnable against migrations alone (no edge
+functions, no deploy) but **has never run**: it needs migrations
+20240128–20240131 applied and a disposable test user; exits with a distinct
+code naming the missing prerequisite rather than stack-tracing.
+
+---
+
+## 2026-08-11 — Host teams reuse the invite machinery with two new role values (not value-mapping); analytics v1 is three per-property numbers off existing tables; the "ai ledger" premise is corrected
+
+**Why:** Prompt 10's teams design reduces to two role values because
+everything else already exists. The invitation *workflow* —
+`family_invitations` token/email-binding/TTL, both invite edge functions,
+and the `workspace_members` sync trigger — is reused wholesale; the delta
+is widening `family_invitations.role`'s CHECK to admit `'manager'` and
+`'cleaner'`, plus a vertical-aware allowed-set in `send-family-invite`.
+**Mapping the new roles down to existing values was rejected on capability
+grounds:** cleaner ≡ viewer is a true identity (`RBAC.md` §3.1, identical
+capability rows), but manager ≢ editor — manager holds
+`share.grant.manage`, `member.invite` and `content.create`, which
+family:editor lacks, so a value-mapped manager would silently arrive
+three capabilities short. Roles are data; the data must carry the real
+role. The vertical boundary (no cleaner in a family workspace) is enforced
+once, at the membership layer by `RBAC.md` §2.2's validity trigger — never
+re-implemented in the invite layer. Cleaners' "task-relevant guides only"
+is the `share_grants` + `viewer_can_see_guide()` machinery verbatim, and
+its first real user is the dormant grant-picker UI already built in
+`ShareCenterScreen` (`RBAC.md` §7) — resurfaced in the host Team tab.
+Analytics v1 is three numbers per property, all joined off
+`properties.bundle_id`, all behind existing RLS: link opens
+(`shared_links.opened_count`/`last_opened_at`, migration `20240128`), VA
+asked/refused (`ask_playbook_usage`, migration `20240129`), and coverage
+(`hostCoverage.js`, shipped — the gap-filler's deterministic keyword
+approach pointed at the host taxonomy, nine topics ≡ the Starter Kit
+minus the meta "Just ask" explainer). One deliberate inversion: an empty
+property playbook reports 0/9 instead of the family rule's silence,
+because a new host is in the opposite moment — coverage IS their to-do
+list.
+**Corrected premise, recorded:** the prompt sourced VA counts from "the
+ai ledger" (`ai_generations`). That table is per-user and `ask-playbook`
+deliberately never writes it for guests — anonymity + Prompt 7's
+counts-only decision put guest activity in `ask_playbook_usage`, whose
+refusal counter exists precisely for this consumption. Premise predates
+Prompt 7's resolution; superseded, not wrong.
+**Alternatives rejected:** A parallel host-invite system — rejected; one
+write path is the whole point of the sync-trigger design. Shipping the
+CHECK-widening migration now — rejected as dead schema: the edge function
+rejects the values and no UI sends them until the RBAC wave lands, so it
+ships with that wave. An AI-scored coverage metric — rejected;
+`gapDetection`'s "no AI, no mystery" precedent holds, and a deterministic
+regex a host can falsify beats a model's opinion for a to-do list.
+Wiring analytics into `HostPropertyDetail` in this prompt — deferred
+solely for sequencing: that file is mid-edit by Prompt 9's build, and two
+tasks editing one file is how merge damage happens; the library is
+shipped and tested, the surface lands on that file's next touch.
+**Evidence:** `docs/platform/HOST_TEAMS.md`; `src/lib/hostCoverage.js`;
+`src/__tests__/hostCoverage.test.js` (10 cases incl. the self-coverage
+invariant — every starter must satisfy its own topic regex, else the
+nudge loops forever; runner still blocked on Node v16).
+
+---
+
+## 2026-08-11 — No third-party analytics SDK, as policy
+
+**Why:** Every host-facing number ships from first-party tables the
+user's own product actions already write (`shared_links` counters,
+`ask_playbook_usage` buckets, client-side coverage) — there is nothing a
+PostHog/Amplitude/Firebase SDK would add except: bundle weight on a
+mobile-first app, a consent surface, App Store privacy-label
+declarations, and a third party holding guest behavior that includes
+health-adjacent question patterns ("can Ella have peanuts") —
+the exact data `ASK_PLAYBOOK.md` §3's privacy floor exists to keep
+un-collected. The App Store privacy posture stays clean because there is
+nothing to declare, which is itself a diligence asset: the honest answer
+to "what do you collect about guests?" is counts, held by us, and no one
+else.
+**Alternatives rejected:** "Just add the SDK dark-flagged for later" —
+rejected; an SDK in the bundle is a declaration obligation whether or not
+it is initialized, and removing one later is harder than never adding it.
+Server-side event forwarding to a third party — same objection, minus the
+bundle weight.
+**Scope:** policy for guest- and host-behavior analytics. It does not
+prohibit operational error logging (the existing first-party
+`error_logs`) or a future first-party events table if a real need
+outgrows the counters (`SHARING.md` §5.1 anticipated exactly that path).
+
+---
