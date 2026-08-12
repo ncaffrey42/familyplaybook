@@ -293,3 +293,93 @@ migration plan, 35 adversarial tests); no schema or application changes
 shipped with this entry — design only.
 
 ---
+
+## 2026-08-11 — Category becomes `content_categories` rows keyed by `workspace_type`; "playbook" is defined as the `workspace_id` equivalence class, not a table
+
+**Why:** Generalizing the content engine to hosts needs the guide/bundle
+taxonomy to vary per vertical without forking the engine. (1) `category`
+moves into a `content_categories (workspace_type, key, label, prompt_hint,
+color_token, sort_order, is_default)` table — same shape and same
+read-only/no-write-policy RLS posture as `RBAC.md`'s capability tables, so
+a new vertical is an `INSERT`. `key` stores the literal display string
+(`'How To'`, not `'how_to'`) because that is what `guides.category` holds
+today and what `get_shared_content()` returns to the public share page;
+slugging would mean rewriting live rows, the AI enum, the filter chips and
+the share payload for no user-visible gain — the same "stored values stay,
+labels are data" call `RBAC.md` §2.1 made for role names. (2) `prompt_hint`
+makes the one hand-written sentence in `voice-to-guide`'s system prompt
+data too, so the AI path's category guidance generalizes with the taxonomy
+rather than beside it. (3) **"Playbook" is formalized without a table**:
+it is exactly the set of `guides`/`packs` rows sharing one `workspace_id`.
+One workspace ⟺ one playbook, so a `playbooks` table would add an entity
+with no information in it. Prompt 9's per-property playbook is then a
+sub-tree (a bundle) of the workspace's playbook, not a competing root.
+(4) No FK or `CHECK` ties `guides.category` to the new table yet:
+the column is unconstrained `text` today, the live database is unreachable
+to enumerate existing values, and the correct rule ("valid *for this
+row's workspace's vertical*") isn't expressible as a simple FK anyway —
+so a validation *report* ships first and constraints are deferred, the
+same verify-then-constrain discipline as `20240104_retire_archive.sql`.
+**Alternatives rejected:** A `CHECK` constraint listing all verticals'
+categories on `guides.category` — rejected because it makes every new
+vertical a migration on the largest table, and can hard-fail on unknown
+legacy values. Per-vertical content tables (`host_guides`) — rejected for
+the same reason `ARCHITECTURE.md` rejected per-vertical workspace tables.
+A `playbooks` table — rejected as an entity carrying no data that
+`workspace_id` doesn't already carry; it would need a 1:1 constraint with
+`workspaces` and a join on every content query to express nothing.
+Slugged category keys — rejected (see above). Enforcing that a host
+workspace can't hold a `How To` guide — deferred: `category` drives a
+colored dot and a filter chip, `GuideIcon` already falls back safely on
+unknown values, so an invalid category is a cosmetic defect and not worth
+a constraint that can block writes.
+**Evidence:** `docs/platform/CONTENT_ENGINE.md` §3–4; `guides.category` is
+`text` with no constraint (`supabase/schema.sql:86`); the taxonomy is
+currently duplicated across six literals in
+`voice-to-guide/index.ts:15,99,124`, `CreateGuideScreen.jsx:265-267`,
+`GuidesLibrary.jsx:19`, `GuideIcon.jsx:17-22` — which have already drifted
+(`GuideIcon` styles an `Emergency` category nothing else knows about). No
+schema or application changes shipped with this entry — design only.
+
+---
+
+## 2026-08-11 — Public storage buckets are recorded debt with a phased path to private buckets + signed URLs; not blocking the host build
+
+**Why:** Media (`images`, `guide-videos` buckets) is uploaded and read via
+`getPublicUrl()`, so every object is world-readable by URL forever. This
+is not an abstract concern — it defeats two features the product already
+ships: **share-link expiry** (`get_shared_content()` correctly returns
+`{type:'expired'}`, but every media URL that link rendered still resolves)
+and **un-sharing** (`is_shareable=false` returns `{type:'private'}`, same
+gap). The guide text closes; the photos of the keys and the alarm panel do
+not. It is recorded rather than fixed now because the fix is genuinely
+non-trivial and the prompt that surfaced it explicitly said not to block
+on it: **signed URLs cannot be minted inside Postgres**, so the anonymous
+share path — today a self-contained `SECURITY DEFINER` RPC — necessarily
+grows a new edge function that re-validates share id/expiry/`is_shareable`
+before issuing short-TTL signed URLs. The phased path (P1 write new
+uploads to a private bucket as *paths* with dual-read on `http`-prefixed
+legacy values → P2 signing endpoints → P3 backfill + rewrite the `steps`
+jsonb → P4 flip old buckets private → P5 GC orphaned `temp-*` uploads)
+keeps every phase non-breaking except P4, which is gated on P3 being
+verified complete.
+**Alternatives rejected:** Flipping the buckets private now — rejected as
+an immediate outage for every existing guide's media, with no read path in
+place. Keeping media public permanently and documenting it as intended —
+rejected because expiring share links are a paid, promoted feature whose
+guarantee is materially weaker than users would assume. Storing signed
+URLs in the `steps` jsonb — rejected: signed URLs expire, so persisting
+them just converts a permanent leak into permanently broken images.
+Blocking the host vertical on this remediation — rejected per the prompt,
+and because host media has the same exposure as family media today, so
+shipping hosts does not worsen the existing posture.
+**Evidence:** `docs/platform/CONTENT_ENGINE.md` §5;
+`src/components/MediaUpload.jsx:125,140`, `src/components/ImageUpload.jsx:62,68`;
+`supabase/migrations/20240109_share_link_hardening.sql`. Related diligence
+gap: `scripts/generate-schema-snapshot.py:29-30` snapshots only
+`schemaname='public'`, so **no `storage` schema policy appears in
+`supabase/schema.sql` at all** — the repo's own source-of-truth snapshot
+cannot answer what protects `storage.objects`. No schema or application
+changes shipped with this entry — design only.
+
+---

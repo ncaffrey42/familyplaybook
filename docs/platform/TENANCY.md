@@ -142,6 +142,35 @@ Full matrix, RLS pattern, migration plan and adversarial test list in
 - **Not yet true:** no capability policy exists, nothing calls
   `has_capability()`, no client code reads capabilities.
 
+## Content engine (designed by Prompt 4 — not yet applied)
+
+Full design in [`CONTENT_ENGINE.md`](CONTENT_ENGINE.md). Summary:
+
+- **Content belongs to a workspace**; `guides.user_id` / `packs.user_id`
+  stay as **provenance** (who authored the row), not authorization. The
+  column is not dropped — tier ranking, usage stats, and GDPR export all
+  still read it.
+- **Ordering dependency worth knowing about:** `is_guide_editable` /
+  `is_pack_editable` rank rows by `user_id` and read *the author's* plan.
+  That must move to `workspace_id` **before** `content.create` is granted
+  to any non-owner role — otherwise an Adult's guide in a paid owner's
+  workspace is governed by the Adult's own free plan, and each member
+  effectively gets a separate quota inside a workspace someone else pays
+  for. Granting that capability is a one-row `INSERT` (`RBAC.md` §3), so
+  the dependency is easy to trip.
+- **`category` becomes `content_categories` rows** keyed by
+  `workspace_type` (family: How To/Find It/Reference/Emergency; host:
+  Arrival/House/Local/Departure), same read-only/no-write-policy posture
+  as the RBAC tables. Stored values stay the literal display strings. No
+  FK or CHECK on `guides.category` yet — validation report first.
+- **"Playbook" = the `workspace_id` equivalence class.** No table; one
+  workspace ⟺ one playbook. See `GLOSSARY.md`.
+- **Media is recorded debt, not a blocker:** public buckets +
+  `getPublicUrl()` mean share-link expiry and un-sharing don't apply to
+  media. Phased path to private buckets + signed URLs in
+  `CONTENT_ENGINE.md` §5.3; the anonymous branch needs a new edge
+  function because signed URLs can't be minted inside Postgres.
+
 ## Open questions
 
 - Org-level billing when one org has many workspaces (host case) — see
@@ -155,12 +184,21 @@ Full matrix, RLS pattern, migration plan and adversarial test list in
   never RLS subjects at all.
 - Whether AI/entitlement quotas (`ai_generations`, `user_usage` — per-user
   today, untouched by Prompt 1) pool per workspace or stay per-user — host
-  pricing's call, Prompt 17.
+  pricing's call, Prompt 17. Same question for **storage quota**, summed
+  today from `storage.objects.owner_id` per user (`CONTENT_ENGINE.md` §8).
+- What "export my data" / "reset my account" mean once a workspace holds
+  content authored by several members — interacts with `delete-account`'s
+  cascade (`CONTENT_ENGINE.md` §2.4, `ARCHITECTURE.md` §5.2).
+- When the media debt gets scheduled — non-blocking, but the final phase
+  gets harder the more public URLs accumulate inside `steps` jsonb
+  (`CONTENT_ENGINE.md` §5.3).
 - Whether family:editor (Adult) should gain `content.create` — withheld
   in `RBAC.md` §3 to preserve parity with today's INSERT policy; now a
   one-row product decision rather than a migration.
 - Whether the viewer/Helper invite path should be surfaced in the UI at
   all — the entire backend exists but is unreachable (`RBAC.md` §7).
+  Same shape: whether the `Emergency` category should be surfaced in the
+  family picker or removed from `GuideIcon` (`CONTENT_ENGINE.md` §3.1).
 - Whether host:manager should hold `member.remove` — withheld as the
   conservative default; revisit in Prompt 10 with real host workflows.
 - `family_members` (a second, orphaned invite-shaped table nothing in the
@@ -175,8 +213,9 @@ Full matrix, RLS pattern, migration plan and adversarial test list in
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 3 — RBAC unification). Everything above
-is designed, nothing is applied — see `ARCHITECTURE.md` (tenancy schema +
-migration plan), `AUTH_FLOWS.md` (auth/session integration), and
-`RBAC.md` (permission model). Next update owed by Prompt 4 (shared
-content engine v2).*
+*Last updated: 2026-08-11 (Prompt 4 — shared content engine v2).
+Everything above is designed, nothing is applied — see `ARCHITECTURE.md`
+(tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
+integration), `RBAC.md` (permission model), and `CONTENT_ENGINE.md`
+(content generalization + media debt). Next update owed by Prompt 5
+(consumer dashboard & navigation).*
