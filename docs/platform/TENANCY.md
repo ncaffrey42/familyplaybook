@@ -370,7 +370,7 @@ Full design in [`SHARING.md`](SHARING.md). Summary:
 
 ---
 
-*Last updated: 2026-08-11 (Prompt 17 — PRICING.md; Phase E). The
+*Last updated: 2026-08-11 (Prompt 18 — ALFRED_OWNER_LOOP.md; SEQUENCE COMPLETE). The
 tenancy model above is designed and unapplied — see `ARCHITECTURE.md`
 (tenancy schema + migration plan), `AUTH_FLOWS.md` (auth/session
 integration), `RBAC.md` (permission model), `CONTENT_ENGINE.md` (content

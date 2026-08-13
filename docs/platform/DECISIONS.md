@@ -1168,3 +1168,69 @@ rows, org-billing resolution, 6-group enforcement test list). Design only —
 ships at `ROLLOUT.md` M4.
 
 ---
+
+## 2026-08-11 — The Alfred owner loop runs on counts + coverage + calendar, never stored question text; the digest infers the topic rather than reading the question
+
+**Why:** Prompt 18 asked for "a digest of unanswered guest questions per
+property," which **conflicts with Prompt 7 decision #4** (`ASK_PLAYBOOK.md`
+§3): question/answer text is *never stored* — `ask_playbook_usage` holds
+only `question_count`/`refusal_count` — because a guest question can be
+health data about a child. Building the digest literally would silently
+reverse that committed privacy floor. Resolved in the floor's favor: **the
+digest is refusal *counts* × coverage *gaps*, not text.** Refusal count is
+the urgency signal (a property where Alfred never refuses needs no nudge);
+`detectPropertyCoverage()` (shipped Prompt 10) names the likely-missing
+topic — so "Alfred was stumped 9 times; you're missing Parking and Trash"
+is actionable without ever reading a guest's words. Each digest item ends
+in the same one-tap "Add it" that opens the guide editor prefilled from the
+topic's starter template — the exact `starterTemplate`/`hostContext`
+`location.state` path the family gap-card uses, so zero new guide-creation
+code. A real-question version exists only as an explicit **opt-in, host-
+only, default-off, retention-bounded, guest-noticed** Layer 2
+(`ASK_PLAYBOOK.md` §3#4 flagged it as needing its own consent design);
+recommendation is to ship the inference layer first, build Layer 2 only if
+inference proves too coarse, and **never enable it for family**. The
+freshness loop is the family loop pointed at host content with one added
+dimension — **season**: `hostFreshness.js` (shipped, in-browser verified)
+classifies seasonal content and surfaces a seasonal guide whose season is
+arriving that was last touched in a different season ("pool guide, last
+touched in winter"), beating the season-blind 90-day clock and falling back
+to it for non-seasonal content. Coverage score reuses the already-shipped
+`detectPropertyCoverage` verbatim — that surface is presentation, not new
+logic. All three obey `HomeNudge`'s rules verbatim (at most one, server-side
+dismissals, in-app only, opt-out respected, silence-is-default).
+**Alternatives rejected:** Storing question text to satisfy the prompt
+literally — rejected; it reverses a recorded privacy commitment without
+consent. Storing refused-question *embeddings* to name topics — rejected;
+embeddings approximate the text (invertible), so not meaningfully more
+private, and coverage inference already names the topic without them. Push
+notifications for the digest — rejected; no push infra, and the family
+loop's in-app-only rule exists precisely so a cold user stays silent. A new
+AI call to summarize gaps — rejected; the deterministic coverage regex a
+host can falsify beats a model's opinion for a to-do list.
+**Known limitation recorded:** season hemisphere defaults to north; the fix
+is deriving it from the property `address`, deferred, with the `hemisphere`
+parameter as the seam — a wrong-hemisphere nudge is mistimed, never data
+loss.
+**Evidence:** `docs/platform/ALFRED_OWNER_LOOP.md`; `src/lib/hostFreshness.js`
++ `src/__tests__/hostFreshness.test.js` (8 assertions, in-browser verified).
+Ships at `ROLLOUT.md` M3.
+
+---
+
+## 2026-08-11 — Platform sequence complete (Prompts 0–18)
+
+The `PLATFORM_PROMPTS.md` sequence is fully worked. The platform is
+**designed end to end, half-built behind flags, and applied nowhere**;
+every decision, rejected alternative, drift finding, retention finding, and
+release blocker is recorded across this log and the `docs/platform/`
+documents it cites. What remains is **execution, not design**: fix CI's
+Node so the suites can run (`ROLLOUT.md` B4), write the tenancy/RBAC
+migrations (renumbered `20240134`+ per `ROLLOUT.md` §0.1), clear the
+consolidated blocker ledger (`ROLLOUT.md` §3) in gate order, and run the
+five milestones. The three living documents (`DECISIONS.md` append-only,
+`TENANCY.md` snapshot, `GLOSSARY.md` names) carry forward; this log keeps
+appending as execution choices are made. One sentence for an acquirer: the
+platform is a punch list with gates, not a research project.
+
+---
