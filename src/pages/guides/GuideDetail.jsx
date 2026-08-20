@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PageHeader from '@/components/PageHeader';
 import { logError } from '@/lib/errorLogger';
+import { loadProgress, saveProgress, pruneProgress } from '@/lib/checklistProgress';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import GuideIcon from '@/components/GuideIcon';
@@ -111,6 +112,21 @@ const GuideDetail = ({ guide: propGuide }) => {
   const steps = (guide && Array.isArray(guide.steps)) ? guide.steps.map((step, index) => ({...step, id: step.id || index})) : [];
   const content = guide ? guide.content : null;
   const bundleId = new URLSearchParams(window.location.search).get('bundleId');
+
+  // Checklist progress survives a backgrounded app, and resets on its own
+  // tomorrow. Library previews aren't a checklist you're working through, so
+  // they neither load nor save.
+  const progressScope = !isLibraryView && guide?.id ? `guide:${guide.id}` : null;
+
+  useEffect(() => { pruneProgress(); }, []);
+
+  useEffect(() => {
+    setCheckedSteps(progressScope ? loadProgress(progressScope) : []);
+  }, [progressScope]);
+
+  useEffect(() => {
+    if (progressScope) saveProgress(progressScope, checkedSteps);
+  }, [progressScope, checkedSteps]);
 
   const toggleStep = (stepId) => {
     if (isLibraryView) return; // Disable toggling in library view

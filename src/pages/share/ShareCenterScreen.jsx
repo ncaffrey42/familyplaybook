@@ -8,6 +8,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
 import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
+import { describeWindow, isLive } from '@/lib/shareWindows';
 
 /**
  * The Share tab — "Your team". Everyone sees only what you share.
@@ -55,7 +56,7 @@ const ShareCenterScreen = () => {
             : Promise.resolve({ data: [] }),
           supabase
             .from('shared_links')
-            .select('id, created_at, guide_id, bundle_id, guides(name), packs(name)')
+            .select('id, created_at, expires_at, recipient_name, guide_id, bundle_id, guides(name), packs(name)')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
         ]);
@@ -130,14 +131,21 @@ const ShareCenterScreen = () => {
     }
   };
 
-  const liveLinks = useMemo(
-    () => links.map((l) => ({
-      ...l,
-      label: l.packs?.name || l.guides?.name || 'Shared item',
-      kind: l.bundle_id ? 'Bundle' : 'Guide',
-    })),
-    [links]
-  );
+  // Live links first, closed ones after — a closed link is still worth seeing
+  // (it explains why a helper says the link stopped working) but it shouldn't
+  // sit above the ones that are working.
+  const liveLinks = useMemo(() => {
+    const now = new Date();
+    return links
+      .map((l) => ({
+        ...l,
+        label: l.packs?.name || l.guides?.name || 'Shared item',
+        kind: l.bundle_id ? 'Bundle' : 'Guide',
+        live: isLive(l, now),
+        window: describeWindow(l, now),
+      }))
+      .sort((a, b) => (a.live === b.live ? 0 : a.live ? -1 : 1));
+  }, [links]);
 
   const revokeLink = async (linkId) => {
     const prev = links;
@@ -296,16 +304,18 @@ const ShareCenterScreen = () => {
                     onClick={() => navigate(`/share-manage/${l.id}`)}
                     className="flex-1 min-w-0 text-left"
                   >
-                    <div className="font-bold text-[15.5px] text-mulberry dark:text-foreground truncate">{l.label}</div>
+                    <div className={`font-bold text-[15.5px] truncate ${l.live ? 'text-mulberry dark:text-foreground' : 'text-muted-copy'}`}>
+                      {l.recipient_name ? `${l.recipient_name} · ${l.label}` : l.label}
+                    </div>
                     <div className="text-[12.5px] text-muted-copy">
-                      {l.kind} · live since {new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {l.kind} · {l.live ? `live ${l.window}` : 'closed'}
                     </div>
                   </button>
                   <button
                     onClick={() => revokeLink(l.id)}
                     className="flex-shrink-0 text-[13px] font-bold text-raspberry"
                   >
-                    Turn off
+                    {l.live ? 'Turn off' : 'Delete'}
                   </button>
                 </div>
               ))}

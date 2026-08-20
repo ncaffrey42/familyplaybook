@@ -221,6 +221,8 @@ CREATE TABLE IF NOT EXISTS public.shared_links (
   guide_id uuid,
   bundle_id uuid,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  recipient_name text,
+  expires_at timestamp with time zone,
   CONSTRAINT shared_links_pkey PRIMARY KEY (id),
   CONSTRAINT shared_links_bundle_id_fkey FOREIGN KEY (bundle_id) REFERENCES packs(id) ON DELETE CASCADE,
   CONSTRAINT shared_links_guide_id_fkey FOREIGN KEY (guide_id) REFERENCES guides(id) ON DELETE CASCADE,

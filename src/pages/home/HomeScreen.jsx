@@ -1,11 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import GuideIcon from '@/components/GuideIcon';
+import { describeWindow } from '@/lib/shareWindows';
 
 /**
  * Brand v1 Home: answer "what do I need right now" in one screen.
@@ -43,6 +45,28 @@ const HomeScreen = () => {
   const { allGuides, allBundles, favorites, isDataLoaded } = useData();
   const limits = usePlanLimits();
 
+  // The soonest-closing live link with a window on it — "Ana is sitting".
+  // A link with no expiry is an always-on share, not a scheduled handoff, so
+  // it never claims the card.
+  const [handoff, setHandoff] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) return undefined;
+    supabase
+      .from('shared_links')
+      .select('id, recipient_name, expires_at, guide_id, bundle_id, guides(name), packs(name)')
+      .eq('user_id', user.id)
+      .not('expires_at', 'is', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled) setHandoff((data && data[0]) || null);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
   const familyName = profile?.full_name || user?.email?.split('@')[0] || 'your family';
@@ -62,6 +86,19 @@ const HomeScreen = () => {
 
   const guideCount = (allGuides || []).filter((g) => !g.is_shared_with_me).length;
   const bundles = (allBundles || []).slice(0, 8);
+
+  const handoffFirstName = (handoff?.recipient_name || '').trim().split(' ')[0] || '';
+  const handoffItemName = handoff?.packs?.name || handoff?.guides?.name || 'Your playbook';
+  const handoffLabel = useMemo(() => {
+    if (!handoff?.expires_at) return '';
+    const expiry = new Date(handoff.expires_at);
+    const now = new Date();
+    const endsToday =
+      expiry.getFullYear() === now.getFullYear() &&
+      expiry.getMonth() === now.getMonth() &&
+      expiry.getDate() === now.getDate();
+    return `${endsToday ? 'Tonight' : 'Live now'} · ${describeWindow(handoff)}`;
+  }, [handoff]);
 
   // Usage nudge only past 50% of the cap (and only when the plan has a cap).
   const guideCap = limits?.active_guides ?? null;
@@ -97,31 +134,51 @@ const HomeScreen = () => {
           </button>
         </div>
 
-        {/* Share card (generic variant — no scheduled-handoff source yet) */}
+        {/* Share card — the live-handoff variant when a timed link is open,
+            the generic invitation otherwise. */}
         <div className="relative overflow-hidden bg-mulberry rounded-2xl p-5 mb-7">
           <div
             className="absolute -top-8 -right-8 w-[110px] h-[110px] rounded-full"
             style={{ background: 'rgba(253,248,243,.06)' }}
           />
           <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-apricot">
-            One link, everything they need
+            {handoff ? handoffLabel : 'One link, everything they need'}
           </div>
           <div className="font-display font-semibold text-[20px] leading-[1.25] text-cream mt-1.5">
-            Share your playbook
+            {handoff
+              ? handoffFirstName
+                ? `${handoffFirstName} has your playbook`
+                : `${handoffItemName} is shared`
+              : 'Share your playbook'}
           </div>
           <p className="text-[14px] leading-[1.55] mt-1" style={{ color: 'rgba(253,248,243,.72)' }}>
-            A sitter, a grandparent, a house-guest — send one link and they see
-            exactly what you choose. No app on their end.
+            {handoff
+              ? `${handoffItemName} — live ${describeWindow(handoff)}. ${
+                  handoffFirstName ? `${handoffFirstName} sees` : 'They see'
+                } only what's in it.`
+              : 'A sitter, a grandparent, a house-guest — send one link and they see exactly what you choose. No app on their end.'}
           </p>
           <div className="flex gap-2.5 mt-4">
             <button
-              onClick={() => navigate('/share-center')}
+              onClick={() => navigate(handoff ? `/share-manage/${handoff.id}` : '/share-center')}
               className="flex-1 h-11 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
             >
-              Share a link
+              {handoff
+                ? handoffFirstName
+                  ? `${handoffFirstName}'s link`
+                  : 'Open the link'
+                : 'Share a link'}
             </button>
             <button
-              onClick={() => navigate('/guides?segment=bundles')}
+              onClick={() =>
+                navigate(
+                  handoff?.bundle_id
+                    ? `/bundle/${handoff.bundle_id}`
+                    : handoff?.guide_id
+                      ? `/guide/${handoff.guide_id}`
+                      : '/guides?segment=bundles'
+                )
+              }
               className="h-11 px-5 rounded-full font-bold text-[15px] text-cream transition-colors"
               style={{ background: 'rgba(253,248,243,.12)' }}
             >

@@ -44,7 +44,22 @@ Use this checklist before every deployment to ensuring billing/entitlement chang
     - [ ] **IF limit NOT reached:** Create form opens.
     - [ ] *Note: The navigation to the form itself might be allowed, but saving might be blocked, or the entry button might show a lock icon. Key is that the APP DOES NOT CRASH.*
 
-## 5. Technical Health
+## 5. Share Windows & Checklist Progress
+*Links carry a name and a duration; checklists resume where you left off.*
+
+- [ ] **Set a window:**
+    - [ ] Share a bundle -> link-ready screen opens.
+    - [ ] Type a name in "Who's this for?" and tab away -> no error toast.
+    - [ ] Pick "Tonight" -> subtitle reads "live until midnight".
+- [ ] **Guest view:** open the link in a private window -> header shows
+      "TONIGHT · UNTIL MIDNIGHT"; the guides inside still open.
+- [ ] **Home:** go back to Home -> the dark card names the recipient and the
+      window (not the generic "Share your playbook" copy).
+- [ ] **Share Center:** the link lists as "<Name> · <Item>" with "live until…".
+- [ ] **Checklist resumes:** tick 2 steps in a guide, navigate away, come back
+      -> the same 2 steps are still ticked. (Library previews must NOT persist.)
+
+## 6. Technical Health
 - [ ] **Console:** Open Browser Developer Tools (F12). No red errors during navigation.
 - [ ] **Network:** No failed (4xx/5xx) API requests in Network tab during navigation.
 
