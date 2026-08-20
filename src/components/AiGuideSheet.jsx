@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { toFunctionError } from '@/hooks/useSubscription';
@@ -27,6 +29,7 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
  */
 const AiGuideSheet = ({ isOpen, onClose, onDraft }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { isRecording, elapsed, error, start, stop, cancel, maxSeconds } = useVoiceRecorder();
   const [mode, setMode] = useState('voice'); // 'voice' | 'text'
   const [prompt, setPrompt] = useState('');
@@ -62,10 +65,18 @@ const AiGuideSheet = ({ isOpen, onClose, onDraft }) => {
 
   const handleError = (err) => {
     console.error('AI guide error:', err);
+    const needsUpgrade = err.code === 'upgrade_required';
     toast({
-      title: err.code === 'upgrade_required' ? 'Upgrade to keep going' : 'Could not create guide',
+      title: needsUpgrade ? 'Upgrade to keep going' : 'Could not create guide',
       description: err.message,
       variant: 'destructive',
+      // The free taste runs out here — give it somewhere to go rather than
+      // dead-ending on the message.
+      action: needsUpgrade ? (
+        <ToastAction altText="See plans" onClick={() => { resetAndClose(); navigate('/plans'); }}>
+          See plans
+        </ToastAction>
+      ) : undefined,
     });
     setIsGenerating(false);
   };
