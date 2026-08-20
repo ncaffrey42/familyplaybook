@@ -57,3 +57,6 @@ fastlane/test_output/
 build/ios/
 *.ipa
 *.dSYM.zip
+
+# Test coverage output (scripts/audit.mjs)
+coverage/

@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { billingUpdateFromEvent, productMapFromEnv } from './mapping.ts';
+import { timingSafeEqual } from 'jsr:@std/crypto@1/timing-safe-equal';
 
 /**
  * RevenueCat webhook → reconcile native IAP purchases into user_billing.
@@ -35,14 +36,33 @@ async function recordProcessed(id: string, type: string, appUserId: string) {
   if (error) console.error('[revenuecat-webhook] ledger write failed:', error.message);
 }
 
+/**
+ * Constant-time secret comparison. SHA-256 both sides so the inputs are
+ * always 32 bytes, then compare with timingSafeEqual — neither the value
+ * nor the length of the presented secret is observable through timing.
+ */
+async function secretsMatch(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(a)),
+    crypto.subtle.digest('SHA-256', enc.encode(b)),
+  ]);
+  return timingSafeEqual(new Uint8Array(ha), new Uint8Array(hb));
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  // Shared-secret auth (set the same value as RevenueCat's Authorization header)
+  // Shared-secret auth (set the same value as RevenueCat's Authorization header).
+  // Compared in constant time: `!==` on strings short-circuits at the first
+  // differing byte, which leaks the secret's prefix to anyone who can time
+  // our responses. timingSafeEqual needs equal-length inputs, so hash both
+  // sides first — that fixes the length and removes the length leak too.
   const expected = Deno.env.get('REVENUECAT_WEBHOOK_AUTH');
-  if (!expected || req.headers.get('Authorization') !== expected) {
+  const presented = req.headers.get('Authorization');
+  if (!expected || !presented || !(await secretsMatch(presented, expected))) {
     return new Response('Unauthorized', { status: 401 });
   }
 
