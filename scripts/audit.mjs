@@ -41,7 +41,9 @@ const DO_LOG = argv.includes('--log');
  * is better (a floor). Baselines set from the 2026-08-20 audit.
  */
 const RATCHET = {
-  'coverage.statements':      { dir: 'min', limit: 6.8,  unit: '%'  },
+  // 6.8 -> 17.9 in phase 3. Tightened in the same change that earned it:
+  // a ratchet left behind its own improvement protects nothing.
+  'coverage.statements':      { dir: 'min', limit: 17.9, unit: '%'  },
   'definer.unpinned':         { dir: 'max', limit: 0,    unit: ' fns' },
   // 5 carried forward as of 2026-08-20, none reachable from shipped browser
   // code: 4 are build-time only (sucrase -> brace-expansion/glob/minimatch/

@@ -203,3 +203,73 @@ extract `secretsMatch` beside it and test it there. **First item for phase 3.**
 **Also note:** running the Deno tests generated a root `deno.lock` pinning all
 JSR/npm specifiers with integrity hashes. It should be committed — it is what
 makes the CI Deno step reproducible.
+
+---
+
+## 2026-08-20 — phase 3 — `claude/mobile-redesign` (full)
+
+Coverage, aimed at the paths where a bug costs money or leaks data rather than
+at the percentage.
+
+| Check | Value | Δ |
+|---|---|---|
+| `coverage.statements` | **17.99%** | ▲ from 6.82 |
+| vitest tests | **228** | ▲ from 180 |
+| deno tests | **35** | ▲ from 26 |
+| `definer.unpinned` | 0 fns | — |
+| `npm.highOrCritical` | 5 vulns | — |
+| `ci.denoTestsWired` | 1 | — |
+
+Per layer: `services/` 43.2%, `contexts/` **35.1%** (was 0), `lib/` 28.4%,
+`hooks/` **23.1%** (was 0), `components/` 16.7%, `pages/` **8.6%** (was 2.2).
+
+**Fixed:**
+1. **`_shared/webhookAuth.ts` + 9 tests** — extracted `secretsMatch` out of
+   `revenuecat-webhook/index.ts`, which was the item this log flagged at the
+   end of phase 2. It is now executed, not merely type-checked. Tests cover
+   the byte-by-byte prefix attack a timing leak enables, and every
+   missing-secret shape. Mutation-tested: reverting to `===` fails the "both
+   missing does NOT authenticate" case — the shape where an unconfigured
+   deployment would accept every request.
+2. **`useSubscription`, 0% → covered, 13 tests.** The two write paths that
+   cost money. Notably pins that a downgrade is *scheduled*, not immediate,
+   and that a `200 OK` carrying `success: false` is treated as a failure —
+   without that check the UI reports a downgrade that never happened.
+3. **`SupabaseAuthContext`, 0% → covered, 18 tests.** Session validation
+   (`getUser()` round-trip, not just `getSession()`'s local read), the
+   `session_not_found` branch that must NOT call `signOut` or it re-enters the
+   403 loop, sign-out clearing local state even when the network fails, and
+   the `sb-*-auth-token` purge. `isPremium` is table-tested across 8
+   status/plan pairs — a paid plan with a lapsed subscription must not unlock
+   features.
+4. **`DataContext` cache, 0% → covered, 10 tests.** The cache is keyed on user
+   id because serving a stale one on a shared device shows one family's
+   private guides to another. Mutation-tested: removing the cross-user guard
+   fails the test.
+5. **Screen smoke tests, 4 screens, 7 tests.** `pages/` was 2.2%, so a screen
+   could throw on mount and only a human clicking would notice — the same
+   class of failure as the AI handoff row lost in the 3-tab redesign.
+
+**Coverage ratchet tightened 6.8 → 17.9 in this change**, per §1: a ratchet
+left behind its own improvement protects nothing.
+
+**Found while writing the tests — three of my own mistakes, recorded because
+the next person will hit them:**
+- `iapActive` is a **function** (`IAP_ENABLED && isNative()`), not a boolean.
+  Mocking it as `false` throws on mount. Cost the most time of anything here.
+- `DataContext`'s load effect keys on **`session`**, not `user`. A fixture
+  supplying only `user` takes the signed-out branch, which wipes state *and*
+  deletes the cache — so cache tests silently tested nothing. That branch is
+  now a test of its own.
+- Screen smokes are **one file per screen**. Several large screen graphs in a
+  single file hang the run. And LoginScreen must be given a **signed-out**
+  fixture: hand it a user and it loops on its post-auth redirect. The screen
+  is right; the fixture was wrong.
+
+**Carried forward:** `pages/` is still 8.6% — the four smoke tests are a floor
+("does it mount"), not interaction coverage. `GuideDetail`, `CreateGuideScreen`,
+`BundleDetail` and `ManageFamilyScreen` remain at 0% and are the next targets.
+The 5 npm advisories and the e2e schema drift are unchanged.
+
+**Verified:** lint clean, 228/228 vitest, 35/35 deno, both builds succeed,
+`npm run audit` PASS at the tightened ratchet.
