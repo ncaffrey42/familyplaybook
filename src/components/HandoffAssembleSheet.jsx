@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useData } from '@/contexts/DataContext';
@@ -60,11 +61,19 @@ const HandoffAssembleSheet = ({ isOpen, onClose }) => {
       navigate(`/bundle/${data.bundle_id}`, { state: { aiAssembled: true } });
     } catch (err) {
       console.error('Handoff assemble error:', err);
+      const needsUpgrade = err.code === 'upgrade_required';
       toast({
-        title: err.code === 'upgrade_required' ? 'Upgrade to keep going'
+        title: needsUpgrade ? 'Upgrade to keep going'
           : err.code === 'no_guides' ? 'No guides yet' : 'Could not assemble',
         description: err.message,
         variant: 'destructive',
+        // The free taste runs out here — give it somewhere to go rather than
+        // dead-ending on the message.
+        action: needsUpgrade ? (
+          <ToastAction altText="See plans" onClick={() => { onClose(); navigate('/plans'); }}>
+            See plans
+          </ToastAction>
+        ) : undefined,
       });
       setIsGenerating(false);
     }

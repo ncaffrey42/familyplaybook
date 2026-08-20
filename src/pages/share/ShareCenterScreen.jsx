@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
-import { FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
+import HandoffAssembleSheet from '@/components/HandoffAssembleSheet';
+import { AI_GENERATION_ENABLED, FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
 import { describeWindow, isLive } from '@/lib/shareWindows';
 
 /**
@@ -17,8 +18,9 @@ import { describeWindow, isLive } from '@/lib/shareWindows';
  *  - the family members you've invited (accepted invitations), with roles
  *  - every LIVE share link, with one-tap revoke (owner delete policy)
  *  - the door into sharing a bundle
- * Per-person visibility subsets and timed links are follow-ups; nothing here
- * pretends otherwise.
+ *  - the AI handoff assembler (gated on AI_GENERATION_ENABLED)
+ * Per-person visibility subsets are a follow-up; nothing here pretends
+ * otherwise.
  */
 
 const AVATAR_COLORS = ['bg-mulberry', 'bg-raspberry', 'bg-apricot'];
@@ -40,6 +42,7 @@ const ShareCenterScreen = () => {
   const [selectedId, setSelectedId] = useState(null); // invitation id
   const [grants, setGrants] = useState([]);           // selected member's grants
   const [grantsLoading, setGrantsLoading] = useState(false);
+  const [isHandoffOpen, setIsHandoffOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,10 +326,33 @@ const ShareCenterScreen = () => {
           )}
         </div>
 
+        {/* AI handoff — one quiet row, matching the guide editor's AI row
+            (brand v1). Lived on the retired My Bundles screen until the
+            3-tab redesign orphaned it; this is its home now, next to the
+            share doors it feeds. */}
+        {AI_GENERATION_ENABLED && (
+          <button
+            onClick={() => setIsHandoffOpen(true)}
+            className="mt-8 w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-3.5 flex items-center gap-3.5 text-left transition-all hover:border-hover-border hover:-translate-y-px"
+          >
+            <span className="w-[34px] h-[34px] rounded-full bg-halo-apricot flex items-center justify-center flex-shrink-0">
+              <span className="w-3 h-3 rounded-full bg-apricot" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold text-[15px] text-mulberry dark:text-foreground">
+                Assemble a handoff
+              </span>
+              <span className="block text-[13px] text-muted-copy">
+                Sitter tonight? I&rsquo;ll gather the guides they need
+              </span>
+            </span>
+          </button>
+        )}
+
         {/* Share CTA */}
         <button
           onClick={() => navigate('/guides?segment=bundles')}
-          className="mt-8 w-full h-12 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15.5px] transition-colors"
+          className={`${AI_GENERATION_ENABLED ? 'mt-4' : 'mt-8'} w-full h-12 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15.5px] transition-colors`}
         >
           Share a bundle
         </button>
@@ -334,6 +360,7 @@ const ShareCenterScreen = () => {
           No app, no account needed on their end.
         </p>
       </motion.div>
+      <HandoffAssembleSheet isOpen={isHandoffOpen} onClose={() => setIsHandoffOpen(false)} />
     </>
   );
 };
