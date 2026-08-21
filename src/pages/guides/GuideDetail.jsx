@@ -427,7 +427,7 @@ const GuideDetail = ({ guide: propGuide }) => {
           </PageHeader>
   
           <div className="flex items-center gap-4">
-            <GuideIcon category={guide.category} size={48} dot={17} />
+            <GuideIcon category={guide.category} size={48} glyph={22} />
             <div className="flex-1 min-w-0">
               <h1 className="font-display font-semibold text-[25px] leading-[1.2] text-mulberry dark:text-foreground truncate">{guide.name}</h1>
               <p className="text-[13.5px] text-muted-copy mt-0.5">

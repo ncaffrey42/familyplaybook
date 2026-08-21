@@ -82,7 +82,8 @@ const FavoritesScreen = () => {
                   <GuideIcon 
                     iconName={guide.icon} 
                     category={guide.category} 
-                    className="w-12 h-12 text-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" 
+                    className="w-12 h-12" 
+                    glyph={22}
                   />
                 </div>
                 

@@ -7,6 +7,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import GuideIcon from '@/components/GuideIcon';
+import BundleGlyph from '@/components/BundleGlyph';
 import { describeWindow } from '@/lib/shareWindows';
 
 /**
@@ -26,7 +27,7 @@ const GuideRow = ({ guide, onClick }) => (
     onClick={onClick}
     className="w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-[15px] flex items-center gap-3.5 text-left transition-all hover:border-hover-border hover:-translate-y-px"
   >
-    <GuideIcon category={guide.category} size={42} dot={15} />
+    <GuideIcon category={guide.category} size={42} glyph={19} />
     <div className="flex-1 min-w-0">
       <div className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">
         {guide.name}
@@ -234,7 +235,7 @@ const HomeScreen = () => {
                   onClick={() => navigate(`/bundle/${b.id}`)}
                   className="flex-shrink-0 w-[158px] bg-card rounded-lg border border-card-border shadow-card overflow-hidden text-left transition-all hover:border-hover-border hover:-translate-y-px"
                 >
-                  <div className="h-[30px]" style={{ background: b.color || '#C25065' }} />
+                  <div className="h-[30px] flex items-center px-3" style={{ background: b.color || "#C25065" }}><BundleGlyph size={16} /></div>
                   <div className="p-3.5">
                     <div className="font-bold text-[15px] text-mulberry dark:text-foreground truncate">
                       {b.name}

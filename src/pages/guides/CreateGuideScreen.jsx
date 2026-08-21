@@ -331,7 +331,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                     setIcon={setIcon} 
                     trigger={
                       <button className="w-16 h-16 rounded-2xl bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center transition-all group">
-                         <GuideIcon iconName={icon} category={category} size={32} className="w-12 h-12" />
+                         <GuideIcon iconName={icon} category={category} className="w-12 h-12" glyph={22} />
                       </button>
                     }
                   />

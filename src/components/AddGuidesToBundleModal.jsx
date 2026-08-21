@@ -147,7 +147,7 @@ const AddGuidesToBundleModal = ({
                         {isManagingGuidePacks ? (
                             <span className="text-2xl">📦</span>
                         ) : (
-                            <GuideIcon iconName={item.icon} category={item.category} size={24} />
+                            <GuideIcon iconName={item.icon} category={item.category} size={34} glyph={15} />
                         )}
                     </div>
                     <div className="flex-grow min-w-0">

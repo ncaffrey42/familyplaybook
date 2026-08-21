@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet';
 import { useData } from '@/contexts/DataContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import GuideIcon from '@/components/GuideIcon';
+import BundleGlyph from '@/components/BundleGlyph';
 import HeartMark from '@/components/HeartMark';
 import { searchGuides, searchBundles } from '@/lib/searchUtils';
 
@@ -32,7 +33,7 @@ const GuideRow = ({ guide, onClick, right }) => (
     onKeyDown={(e) => e.key === 'Enter' && onClick()}
     className="w-full bg-card rounded-lg border border-card-border shadow-card px-4 py-[15px] flex items-center gap-3.5 text-left cursor-pointer transition-all hover:border-hover-border hover:-translate-y-px"
   >
-    <GuideIcon category={guide.category} size={42} dot={15} />
+    <GuideIcon category={guide.category} size={42} glyph={19} />
     <div className="flex-1 min-w-0">
       <div className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">
         {guide.name}
@@ -227,7 +228,7 @@ const GuidesLibrary = () => {
                     onKeyDown={(e) => e.key === 'Enter' && navigate(`/bundle/${b.id}`)}
                     className="bg-card rounded-lg border border-card-border shadow-card overflow-hidden cursor-pointer transition-all hover:border-hover-border hover:-translate-y-px"
                   >
-                    <div className="h-[34px]" style={{ background: b.color || '#C25065' }} />
+                    <div className="h-[34px] flex items-center px-3.5" style={{ background: b.color || '#C25065' }}><BundleGlyph size={16} /></div>
                     <div className="px-4 py-3.5">
                       <div className="font-bold text-[17px] text-mulberry dark:text-foreground truncate">
                         {b.name}

@@ -273,7 +273,7 @@ const PublicSharePage = () => {
                         g.category === 'Emergency' ? 'bg-emergency-bg border-coral/30' : 'border-card-border'
                       }`}
                     >
-                      <GuideIcon category={g.category} size={48} dot={17} />
+                      <GuideIcon category={g.category} size={48} glyph={22} />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-display font-semibold text-[19px] text-mulberry truncate">{g.name}</h3>
                         <p className="text-[14.5px] text-muted-copy">{g.category}</p>
