@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Package } from 'lucide-react';
+import BundleGlyph from '@/components/BundleGlyph';
 
 const generateAvatar = (name) => {
   if (!name) return { initials: '?', color: '#cccccc' };
@@ -41,7 +41,7 @@ export const BundleImage = ({ imageUrl, bundleName, bundleColor, className }) =>
       className={cn('w-full h-full flex items-center justify-center bg-secondary', className)}
       style={{ backgroundColor: bundleColor || avatar.color }}
     >
-      <Package className="w-1/2 h-1/2 text-white/50" />
+      <BundleGlyph size={44} />
     </div>
   );
 };

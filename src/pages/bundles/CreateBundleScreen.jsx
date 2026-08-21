@@ -160,7 +160,7 @@ const CreateBundleScreen = ({ bundle: propBundle }) => {
                 {selectedGuides.length > 0 ? selectedGuides.map(guide => (
                   <motion.div key={guide.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center justify-between bg-card p-3 rounded-xl shadow-sm">
                     <div className="flex items-center gap-3">
-                      <GuideIcon iconName={guide.icon} category={guide.category} className="w-10 h-10" size={20} />
+                      <GuideIcon iconName={guide.icon} category={guide.category} className="w-10 h-10" glyph={18} />
                       <span className="font-medium text-foreground">{guide.name}</span>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveGuide(guide.id)} className="text-muted-foreground hover:text-destructive"><X size={20} /></Button>
