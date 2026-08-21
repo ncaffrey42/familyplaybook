@@ -33,6 +33,7 @@ import { logError } from '@/lib/errorLogger';
 import GuideIcon from '@/components/GuideIcon';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { computeExpiry } from '@/lib/shareExpiry';
+import { keyboardClickable } from '@/lib/utils';
 
 const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
   const { id } = useParams();
@@ -415,7 +416,7 @@ const BundleDetail = ({ bundle: propBundle, guides: propGuides }) => {
                   <span className="w-4 flex-shrink-0 text-[13px] font-bold text-chevron">
                     {String(index + 1).padStart(2, '0')}
                   </span>
-                  <div onClick={() => handleGuideClick(guide)} className="flex-1 flex items-center gap-3.5 cursor-pointer min-w-0">
+                  <div {...keyboardClickable(() => handleGuideClick(guide))} className="flex-1 flex items-center gap-3.5 cursor-pointer min-w-0">
                     <GuideIcon category={guide.category} size={42} dot={15} />
                     <div className="min-w-0">
                       <h3 className="font-bold text-[16.5px] text-mulberry dark:text-foreground truncate">{guide.name}</h3>

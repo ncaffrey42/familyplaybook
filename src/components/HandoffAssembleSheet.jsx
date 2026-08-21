@@ -122,10 +122,10 @@ const HandoffAssembleSheet = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">
+              <label htmlFor="handoffassemblesheet-field" className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">
                 Anything they should know? <span className="font-normal text-gray-400">(optional)</span>
               </label>
-              <Textarea
+              <Textarea id="handoffassemblesheet-field"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Kids have a dentist appointment at 4pm; the dog can't have the back stairs."

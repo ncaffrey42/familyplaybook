@@ -53,12 +53,13 @@ they are exactly the two `--fast` skips.
 | `coverage.statements` | >= 6.8% | Code was added without tests, faster than tests were added |
 | `definer.unpinned` | 0 | A `SECURITY DEFINER` function shipped without `SET search_path` (§4.1) |
 | `npm.highOrCritical` | 0 | A high/critical advisory landed in a **runtime** dependency |
-| `bundle.largestChunkKB` | <= 600 KB | The vendor chunk grew; cold start on mobile got worse |
+| `bundle.largestChunkKB` | <= 200 KB | The entry chunk grew; cold start on mobile got worse |
 | `rls.tablesWithoutRls` | 0 | A table shipped without RLS — treat as an outage-grade bug |
 | `edge.fnsWithoutAuth` | 0 | An edge function has no auth check and no documented exemption |
 | `secrets.hardcoded` | 0 | A live key pattern reached the repo |
 | `a11y.imgsWithoutAlt` | 0 | An image shipped without alt text |
-| `a11y.clickableNonButtons` | <= 14 | A new `onClick` on a `div`/`span` — not keyboard reachable |
+| `a11y.clickableNonButtons` | <= 5 | A new `onClick` on a `div`/`span` — not keyboard reachable |
+| `a11y.eslintPlugin` | >= 1 | `eslint-plugin-jsx-a11y` was removed — every a11y rule silently stops |
 | `ci.denoTestsWired` | >= 1 | The CI step that runs the money-path Deno tests was removed |
 | `ci.aiSmokeBuild` | >= 1 | The CI build with AI flags on was removed |
 
@@ -127,17 +128,37 @@ exact version on purpose; do not float it to satisfy an advisory.
 
 ### 4.6 Accessibility
 
-Two cheap structural signals, matched against multi-line JSX (a line-based
-grep gets both of these wrong). They are a floor, not an audit — they say
-nothing about focus order, contrast, or screen-reader labelling. There is no
-`jsx-a11y` ESLint plugin configured yet; adding one supersedes this check.
+`eslint-plugin-jsx-a11y` is enabled as of phase 4 and is the real gate; the
+regex counts remain only as a backstop in case the plugin is removed, which
+`a11y.eslintPlugin` also guards.
+
+Three rules are switched off, each with the reason recorded inline in
+[`eslint.config.mjs`](../../eslint.config.mjs):
+
+| Rule | Why |
+|---|---|
+| `media-has-caption` | Every guide video is uploaded by the family that wrote it. There is no caption track to point at, and an empty `<track>` would satisfy the linter while helping nobody. Revisit if voice-to-guide ever produces transcripts |
+| `no-autofocus` | Two deliberate uses — the login email field and the AI sheet's prompt box — both opened by an explicit user action where focus is the expected outcome |
+| `heading-has-content` | Scoped to `src/components/ui/**` only. `AlertTitle`/`CardTitle` receive their content through `{...props}`, which the rule cannot see. Narrow scope so a genuinely empty heading in app code is still caught |
+
+For elements that must stay a `div`, spread
+[`keyboardClickable(onClick)`](../../src/lib/utils.js) onto them: it supplies
+the role, tab stop and Enter/Space handling a real button has, without
+touching styling. Prefer an actual `<button>` in new code.
 
 ### 4.7 `bundle.largestChunkKB`
 
-Route-level splitting is already good — 33 lazy routes. The number this
-tracks is the shared **vendor** chunk, which has no `manualChunks` config and
-so accumulates every dependency any route touches. It is the cold-start cost
-on the phone, which is the primary target.
+Route-level splitting was already good — 33 lazy routes — but everything those
+routes shared collapsed into one ~580 KB entry chunk that every cold start had
+to download before anything rendered.
+
+Phase 4 added a `manualChunks` bucket per large, stable library
+([`vite.config.js`](../../vite.config.js)): **entry 580 KB → 186 KB**, with
+`react-vendor`, `supabase`, `motion`, `router`, `icons` and `date-fns` split
+out. Bucketed by library rather than one `vendor` chunk so a change in app
+code does not invalidate React, and a Supabase bump does not invalidate the
+icons. Only genuinely large dependencies are split — for anything small, an
+extra request costs more than it saves.
 
 ## 5. Tests that exist but never run
 
@@ -206,11 +227,27 @@ default OFF in [`featureFlags.js`](../../src/lib/featureFlags.js): the flags
 are correctly guarding against exactly this state. Do not flip either on
 before the matching migration is applied.
 
-**To bring e2e online:** apply 20240128–20240132, create a disposable test
-user, store the four env vars as CI secrets, add an `npm run e2e` script, then
-gate it on a manual/nightly job rather than every push (it writes real rows).
-Treat the first green run as data collection — the header is right that you
-will fix the script as much as the feature.
+**Wired in phase 4, still gated.** `npm run e2e` and `npm run eval:ask-playbook`
+now exist, and [`e2e.yml`](../../.github/workflows/e2e.yml) runs either on
+**manual dispatch only** — never on push. That is deliberate: the e2e creates
+and deletes real properties, guides and share links as a live test user, and
+the eval spends OpenAI credit. Running them per-commit would write production
+rows and burn money on every push.
+
+Neither can pass yet. What remains:
+
+1. Apply migrations `20240128`–`20240132`.
+2. Create a **disposable** test user — never a real account.
+3. Add `E2E_SUPABASE_URL`, `E2E_SUPABASE_ANON_KEY`, `E2E_EMAIL`,
+   `E2E_PASSWORD` as repo secrets. The workflow checks for these and fails
+   with a pointer here rather than letting the script exit on a missing env
+   var, which reads as "the feature is broken".
+
+Treat the first green run as data collection — both headers are right that you
+will fix the script as much as the feature. The eval's specific job is to
+calibrate `SIMILARITY_THRESHOLD` from its refusal-boundary report; that must
+happen before `ASK_PLAYBOOK_ENABLED` is turned on for real users
+([`ASK_PLAYBOOK.md`](ASK_PLAYBOOK.md) §10).
 
 ## 7. Logging protocol
 

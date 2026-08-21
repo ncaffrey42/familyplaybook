@@ -294,6 +294,7 @@
         "npm:eslint-config-react-app@^7.0.1",
         "npm:eslint-import-resolver-alias@^1.1.2",
         "npm:eslint-plugin-import@^2.31.0",
+        "npm:eslint-plugin-jsx-a11y@^6.10.2",
         "npm:eslint-plugin-react-hooks@^5.1.0",
         "npm:eslint-plugin-react@^7.37.3",
         "npm:eslint@^8.57.1",

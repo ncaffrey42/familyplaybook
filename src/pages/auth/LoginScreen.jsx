@@ -361,8 +361,8 @@ const LoginScreen = () => {
                         className="space-y-4"
                      >
                         <div>
-                          <label className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
-                          <input
+                          <label htmlFor="loginscreen-email-address" className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
+                          <input id="loginscreen-email-address"
                             type="email"
                             placeholder="Enter your email address"
                             value={email}
@@ -407,8 +407,8 @@ const LoginScreen = () => {
                       className="space-y-4"
                     >
                       <div>
-                        <label className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
-                        <input
+                        <label htmlFor="loginscreen-email-address" className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
+                        <input id="loginscreen-email-address"
                           type="email"
                           placeholder="Enter your email address"
                           value={email}
@@ -419,7 +419,7 @@ const LoginScreen = () => {
                       
                       <div>
                         <div className="flex justify-between items-center mb-1.5 ml-1">
-                            <label className="block text-sm font-medium text-foreground">Password</label>
+                            <label htmlFor="loginscreen-password" className="block text-sm font-medium text-foreground">Password</label>
                             <button 
                                 type="button"
                                 onClick={() => { setMode('forgot_password'); setSent(false); }} 
@@ -429,7 +429,7 @@ const LoginScreen = () => {
                             </button>
                         </div>
                         <div className="relative">
-                          <input
+                          <input id="loginscreen-password"
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
                             value={password}
@@ -485,8 +485,8 @@ const LoginScreen = () => {
                       className="space-y-3"
                     >
                       <div>
-                        <label className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
-                        <input
+                        <label htmlFor="loginscreen-email-address" className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Email Address</label>
+                        <input id="loginscreen-email-address"
                           type="email"
                           placeholder="Enter your email address"
                           value={email}

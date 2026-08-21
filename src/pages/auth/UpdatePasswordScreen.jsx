@@ -89,9 +89,9 @@ const UpdatePasswordScreen = () => {
             <div className="bg-white/50 dark:bg-gray-800/50 p-6 rounded-3xl border border-border shadow-sm space-y-4">
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5 ml-1 text-foreground">New Password</label>
+                  <label htmlFor="updatepasswordscreen-new-password" className="block text-sm font-medium mb-1.5 ml-1 text-foreground">New Password</label>
                   <div className="relative">
-                    <input
+                    <input id="updatepasswordscreen-new-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter new password"
                       value={password}
@@ -109,9 +109,9 @@ const UpdatePasswordScreen = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Confirm Password</label>
+                  <label htmlFor="updatepasswordscreen-confirm-password" className="block text-sm font-medium mb-1.5 ml-1 text-foreground">Confirm Password</label>
                   <div className="relative">
-                    <input
+                    <input id="updatepasswordscreen-confirm-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Confirm new password"
                       value={confirmPassword}

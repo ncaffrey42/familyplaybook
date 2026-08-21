@@ -12,12 +12,13 @@ import BundleImage from '@/components/BundleImage';
 import { Button } from '@/components/ui/button';
 import { searchBundles } from '@/lib/searchUtils';
 import UsageBadge from '@/components/UsageBadge';
+import { keyboardClickable } from '@/lib/utils';
 
 const BundleCard = ({ bundle, onClick, isLibrary = false }) => {
   const isReadOnly = !!bundle.is_read_only && !isLibrary;
   return (
     <div
-      onClick={onClick}
+      {...keyboardClickable(onClick)}
       className={`bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-card hover:shadow-soft transition-all duration-300 cursor-pointer flex flex-col justify-between group relative ${isReadOnly ? 'opacity-75' : ''}`}
     >
       {isReadOnly && (

@@ -273,3 +273,77 @@ The 5 npm advisories and the e2e schema drift are unchanged.
 
 **Verified:** lint clean, 228/228 vitest, 35/35 deno, both builds succeed,
 `npm run audit` PASS at the tightened ratchet.
+
+---
+
+## 2026-08-20 — phase 4 — `claude/mobile-redesign` (full)
+
+Performance, accessibility, and closing out the orphaned suites.
+
+| Check | Value | Δ |
+|---|---|---|
+| `bundle.largestChunkKB` | **186 KB** | ▼ from 580 |
+| `a11y.clickableNonButtons` | **5 els** | ▼ from 14 |
+| `a11y.eslintPlugin` | **1** | new — jsx-a11y now enforced |
+| `coverage.statements` | 17.98% | — |
+| `definer.unpinned` | 0 fns | — |
+| `npm.highOrCritical` | 5 vulns | — |
+
+**Fixed:**
+1. **Entry chunk 580 KB → 186 KB** via `manualChunks`
+   ([`vite.config.js`](../../vite.config.js)). Routes were already lazy-loaded
+   (33), but everything they shared collapsed into one chunk every cold start
+   had to download before anything rendered. Split per library —
+   `react-vendor` 143 KB, `supabase` 137 KB, `motion` 102 KB, `router` 22 KB,
+   `date-fns` 21 KB, `icons` 19 KB — so an app-code change does not invalidate
+   React and a Supabase bump does not invalidate the icons. The Rollup
+   chunk-size warning is gone. Verified in a real browser against
+   `vite preview`: every split chunk 200 OK, zero console errors.
+2. **`eslint-plugin-jsx-a11y` enabled**, and the 41 violations it found
+   triaged: 33 fixed, 8 switched off with the reason recorded inline.
+   - 10 clickable `div`s now spread `keyboardClickable(onClick)`, a new helper
+     in `lib/utils.js` giving them the role, tab stop and Enter/Space handling
+     a real button has, with no styling change. One more — GuideDetail's step
+     row — is conditionally interactive, so its tab stop and key handler are
+     conditional too; a read-only step must not advertise itself as
+     actionable.
+   - 12 labels wired to their controls with `htmlFor`/`id`.
+   - Off with reasons: `media-has-caption` (guide videos are family-uploaded;
+     there is no caption track, and an empty `<track>` would satisfy the
+     linter while helping nobody), `no-autofocus` (two deliberate uses), and
+     `heading-has-content` scoped to `components/ui/**` only (shadcn
+     `AlertTitle`/`CardTitle` receive content via `{...props}`, which the rule
+     cannot see).
+   - `a11y.eslintPlugin` is now ratcheted, so removing the plugin fails the
+     audit. Mutation-tested.
+3. **ServiceWorker no longer errors on native.** `main.jsx` registered
+   `/sw.js` whenever `PROD`, which Capacitor's WebViewLocalServer cannot serve
+   — an error on every cold start of both native apps, buying nothing (a
+   packaged app has no offline problem to solve). Now skipped when
+   `isNative()`. The web PWA path is untouched and still registers.
+4. **`e2e/` and `evals/` are wired, not deleted.** `npm run e2e` and
+   `npm run eval:ask-playbook` exist, and
+   [`e2e.yml`](../../.github/workflows/e2e.yml) runs them on **manual dispatch
+   only**. Never on push, deliberately: the e2e writes and deletes real rows
+   as a live test user and the eval spends OpenAI credit. Both were worth
+   keeping — they are careful, dependency-free scripts — they simply cannot
+   pass until the schema drift is resolved.
+
+**Ratchets tightened in this change:** bundle 600 → 200 KB,
+clickableNonButtons 14 → 5, plus the new `a11y.eslintPlugin` floor.
+
+**Found:** `--quiet` in the lint script hides warnings, so
+`react-hooks/exhaustive-deps` (4) and `import/no-duplicates` (2, one of them a
+genuine duplicate `react-router-dom` import in `CreateFab.jsx` since `a312d04`)
+have been invisible the whole time. Not touched here — turning them into
+errors is its own decision — but worth knowing that "lint clean" currently
+means "no errors", not "no findings".
+
+**Carried forward:** the 5 npm advisories (react-router needs a v7 major; four
+are build-time only), the schema drift blocking e2e, `pages/` coverage at 8.6%
+with `GuideDetail`, `CreateGuideScreen`, `BundleDetail` and
+`ManageFamilyScreen` still at 0%.
+
+**Verified:** lint clean with jsx-a11y on, 228/228 vitest, 35/35 deno, build
+succeeds, production build verified in-browser, `npm run audit` PASS at all
+tightened ratchets.

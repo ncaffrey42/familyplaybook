@@ -371,8 +371,8 @@ const CreateGuideScreen = ({ pack: propPack }) => {
                   />
                 </div>
                 <div className="flex-grow">
-                  <label className="block text-[10.5px] font-bold text-raspberry mb-1 uppercase tracking-[0.13em]">Guide Name</label>
-                  <input
+                  <label htmlFor="createguidescreen-guide-name" className="block text-[10.5px] font-bold text-raspberry mb-1 uppercase tracking-[0.13em]">Guide Name</label>
+                  <input id="createguidescreen-guide-name"
                     type="text"
                     value={guideName}
                     onChange={(e) => setGuideName(e.target.value)}
@@ -384,7 +384,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
              </div>
 
              <div>
-                <label className="block text-[10.5px] font-bold text-raspberry mb-2 uppercase tracking-[0.13em]">Kind of guide</label>
+                <label htmlFor="createguidescreen-kind-of-guide" className="block text-[10.5px] font-bold text-raspberry mb-2 uppercase tracking-[0.13em]">Kind of guide</label>
                 <div className={isHostGuide ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-3 gap-2'}>
                   {categoryOptions.map((opt) => (
                     <button
@@ -408,7 +408,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
               choice to offer — selectedBundleId is pre-seeded with it. */}
           {!isHostGuide && (
           <div className="bg-white rounded-2xl p-4 shadow-card">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Add to Bundle (Optional)</label>
+            <label htmlFor="createguidescreen-add-to-bundle-optional" className="block text-sm font-semibold text-gray-700 mb-2">Add to Bundle (Optional)</label>
             <Select value={selectedBundleId} onValueChange={setSelectedBundleId}>
               <SelectTrigger className="w-full h-12 rounded-xl bg-gray-50 border-gray-200">
                 <SelectValue placeholder="Select a bundle..." />
@@ -428,8 +428,8 @@ const CreateGuideScreen = ({ pack: propPack }) => {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-            <Textarea
+            <label htmlFor="createguidescreen-description" className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+            <Textarea id="createguidescreen-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Briefly describe what this guide is about..."
@@ -439,7 +439,7 @@ const CreateGuideScreen = ({ pack: propPack }) => {
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-semibold text-gray-700">Steps</label>
+              <label htmlFor="createguidescreen-steps" className="block text-sm font-semibold text-gray-700">Steps</label>
               <Button
                 onClick={addStep}
                 size="sm"

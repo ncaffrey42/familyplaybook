@@ -51,12 +51,20 @@ const RATCHET = {
   // v6 — clearing it needs a v7 major. Lower this the moment either is done;
   // it exists to catch a SIXTH, not to bless these five.
   'npm.highOrCritical':       { dir: 'max', limit: 5,    unit: ' vulns' },
-  'bundle.largestChunkKB':    { dir: 'max', limit: 600,  unit: ' KB' },
+  // 580 -> 186 KB in phase 4 via manualChunks. Ratchet set just above the
+  // new figure: the entry chunk is what every cold start must download.
+  'bundle.largestChunkKB':    { dir: 'max', limit: 200,  unit: ' KB' },
   'rls.tablesWithoutRls':     { dir: 'max', limit: 0,    unit: ' tables' },
   'edge.fnsWithoutAuth':      { dir: 'max', limit: 0,    unit: ' fns' },
   'secrets.hardcoded':        { dir: 'max', limit: 0,    unit: ' hits' },
   'a11y.imgsWithoutAlt':      { dir: 'max', limit: 0,    unit: ' imgs' },
-  'a11y.clickableNonButtons': { dir: 'max', limit: 14,   unit: ' els' },
+  // 14 -> 5 in phase 4. The remaining 5 already carry a role, so jsx-a11y
+  // passes on them; this regex is cruder than the linter and double-counts.
+  // jsx-a11y is now the real gate — see a11y.eslintPlugin below.
+  'a11y.clickableNonButtons': { dir: 'max', limit: 5,    unit: ' els' },
+  // 1 = eslint-plugin-jsx-a11y is installed AND enabled. Removing it would
+  // silently drop every accessibility rule, so it is ratcheted.
+  'a11y.eslintPlugin':        { dir: 'min', limit: 1,    unit: ''   },
   // 1 = wired. Phase 2 turned these on; they must not be silently removed.
   'ci.denoTestsWired':        { dir: 'min', limit: 1,    unit: ''   },
   'ci.aiSmokeBuild':          { dir: 'min', limit: 1,    unit: ''   },
@@ -209,6 +217,14 @@ function checkA11y() {
     const txt = readFileSync(f, 'utf8');
     for (const m of txt.matchAll(/<img\b[^>]*>/gi)) if (!/\balt=/.test(m[0])) noAlt++;
     for (const _ of txt.matchAll(/<(?:div|span)\b[^>]*\bonClick=/gi)) clickable++;
+  }
+  // Is the linter actually enforcing a11y, or is this regex the only check?
+  const eslintCfg = join(ROOT, 'eslint.config.mjs');
+  const cfgTxt = existsSync(eslintCfg) ? readFileSync(eslintCfg, 'utf8') : '';
+  results['a11y.eslintPlugin'] =
+    /jsx-a11y/.test(cfgTxt) && existsSync(join(ROOT, 'node_modules/eslint-plugin-jsx-a11y')) ? 1 : 0;
+  if (!results['a11y.eslintPlugin']) {
+    note('MEDIUM', 'a11y.eslintPlugin', 'eslint-plugin-jsx-a11y is not enabled — a11y rules are unenforced');
   }
   results['a11y.imgsWithoutAlt'] = noAlt;
   results['a11y.clickableNonButtons'] = clickable;

@@ -8,7 +8,7 @@ import { Film, Image as ImageIcon, Loader2, X, UploadCloud, Zap } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { v4 as uuidv4 } from 'uuid';
 import { compressVideo } from '@/lib/videoCompression';
-import { isVideoUrl } from '@/lib/utils';
+import { isVideoUrl, keyboardClickable } from '@/lib/utils';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 
@@ -235,7 +235,7 @@ const MediaUpload = ({ guideId, currentMedia, onUpload }) => {
   }
 
   return (
-    <div {...getRootProps({ onClick: (e) => e.preventDefault() })} onClick={handleContainerClick} className="group">
+    <div {...getRootProps({ onClick: (e) => e.preventDefault() })} {...keyboardClickable(handleContainerClick)} className="group">
       <input {...getInputProps({ ref: fileInputRef })} />
       <div className={`w-full h-48 rounded-2xl flex flex-col items-center justify-center text-center p-6 cursor-pointer transition-all duration-200 ${isDragActive ? 'bg-purple-50 border-purple-500' : 'bg-gray-50 border-gray-300 hover:bg-white'} border-2 border-dashed`}>
         <div className="p-3 rounded-full mb-3 bg-gray-100 text-gray-500 group-hover:bg-purple-50 group-hover:text-purple-600">
