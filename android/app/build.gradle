@@ -1,5 +1,26 @@
 apply plugin: 'com.android.application'
 
+/**
+ * Release signing.
+ *
+ * Credentials live in android/keystore.properties, which is gitignored and
+ * NEVER committed — see keystore.properties.example for the shape. If the file
+ * is absent (CI, a fresh clone, anyone just running a debug build) the release
+ * signingConfig is simply not created and `assembleRelease` produces an
+ * unsigned artifact rather than failing. That keeps the repo buildable by
+ * people who do not hold the upload key.
+ *
+ * The upload keystore is the single most important file in the Play account:
+ * lose it and this app can never be updated again. Back it up somewhere
+ * durable and outside this repo.
+ */
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasSigningConfig = keystorePropertiesFile.exists()
+if (hasSigningConfig) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.familyplaybook.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,8 +37,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasSigningConfig) {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            // Only attach the config when the properties file supplied one;
+            // otherwise Gradle would fail resolving a non-existent signingConfig.
+            if (hasSigningConfig) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
