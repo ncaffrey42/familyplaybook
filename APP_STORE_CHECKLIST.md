@@ -94,9 +94,12 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 - ☐ Store listing copy, graphics and Data safety answers — drafted in
   [`PLAY_LISTING.md`](PLAY_LISTING.md)
 - ✅ **Feature graphic 1024×500** — generated 2026-08-20, alpha stripped (Play
-  rejects transparency). Source of truth is
-  [`assets/store/feature-graphic.html`](assets/store/feature-graphic.html) so
-  it stays reproducible and on-brand; regeneration steps are in that file.
+  rejects transparency). **Two variants exist — pick one before submitting:**
+  [`A · circles`](assets/store/feature-graphic-a-circles.html), an abstract
+  concentric mark, and [`B · heartmark`](assets/store/feature-graphic-b-heartmark.html),
+  which uses the real brand HeartMark and is the on-brand default. Both render
+  1024×500 with alpha stripped; regeneration steps are in each file. Do not
+  ship both.
 
 ## D. Assets & config
 
