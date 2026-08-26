@@ -25,6 +25,13 @@
   Composition note: Play crops and overlays this at several sizes, so all
   copy sits well inside the left two-thirds and nothing critical touches an
   edge.
+
+  The mark is the real HeartMark — the dashed heart-route with the apricot
+  player dot — copied verbatim from src/components/HeartMark.jsx. The v1 brand
+  guide states the path, the 10 8 dash pattern and the apricot dot must not be
+  altered, so do not "tidy" them here. An earlier draft used an abstract
+  raspberry circle instead; it represented nothing and read as a rendering
+  failure.
 -->
 <html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,12 +65,12 @@
     font-size:23px;line-height:1.45;color:rgba(253,248,243,.80);
     margin-top:22px;max-width:560px;
   }
-  /* Brand mark: the raspberry dot-in-halo used throughout the app. */
-  .mark{position:absolute;right:132px;top:50%;transform:translateY(-50%);z-index:2;
-        width:196px;height:196px;border-radius:50%;background:rgba(246,223,211,.16);
-        display:flex;align-items:center;justify-content:center}
-  .mark span{width:82px;height:82px;border-radius:50%;background:#C25065;
-             box-shadow:0 12px 34px rgba(0,0,0,.22)}
+  /* The brand heart-route mark. Path, dash pattern (10 8) and the apricot
+     player dot are copied verbatim from src/components/HeartMark.jsx — the
+     v1 brand guide says they must not be altered. */
+  .mark{position:absolute;right:126px;top:50%;transform:translateY(-50%);z-index:2;
+        width:236px;height:236px;display:flex;align-items:center;justify-content:center}
+  .mark svg{width:236px;height:236px;filter:drop-shadow(0 10px 26px rgba(0,0,0,.20))}
 </style></head><body>
 <div class="g">
   <div class="halo halo-1"></div>
@@ -72,6 +79,14 @@
     <h1>Your home,<br>explained.</h1>
     <p>Turn the routines that live in your head into guides you can hand to a sitter, a grandparent or a guest.</p>
   </div>
-  <div class="mark"><span></span></div>
+  <div class="mark">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M50 84 C26 64, 14 48, 14 34 C14 21, 24 14, 34 14 C42 14, 48 19, 50 28 C52 19, 58 14, 66 14 C76 14, 86 21, 86 34 C86 48, 74 64, 56 79"
+        stroke="#F6DFD3" stroke-width="5.5" stroke-linecap="round"
+        stroke-dasharray="10 8" fill="rgba(246,223,211,.07)" />
+      <circle cx="50" cy="84" r="5.5" fill="#F4A259" />
+    </svg>
+  </div>
 </div>
 </body></html>
