@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
-import { humanizeExpiry, isExpired } from '@/lib/shareExpiry';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
 import HandoffAssembleSheet from '@/components/HandoffAssembleSheet';
 import { AI_GENERATION_ENABLED, FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED, SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
+import { describeWindow, isLive } from '@/lib/shareWindows';
 
 /**
  * The Share tab — "Your team". Everyone sees only what you share.
@@ -19,8 +19,8 @@ import { AI_GENERATION_ENABLED, FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED
  *  - every LIVE share link, with one-tap revoke (owner delete policy)
  *  - the door into sharing a bundle
  *  - the AI handoff assembler (gated on AI_GENERATION_ENABLED)
- * Per-person visibility subsets and timed links are follow-ups; nothing here
- * pretends otherwise.
+ * Per-person visibility subsets are a follow-up; nothing here pretends
+ * otherwise.
  */
 
 const AVATAR_COLORS = ['bg-mulberry', 'bg-raspberry', 'bg-apricot'];
@@ -59,9 +59,12 @@ const ShareCenterScreen = () => {
             : Promise.resolve({ data: [] }),
           supabase
             .from('shared_links')
-            // The label/counter columns only exist once migration
-            // 20240128_share_labels_access_log is applied, so they are
-            // requested only when the flag that requires it is on.
+            // recipient_label / opened_count come from migration
+            // 20240128_share_labels_access_log, so they are requested only when
+            // the flag that surfaces them is on. Selecting a column the database
+            // does not have returns 400, and a 400 here empties the entire links
+            // list — which is exactly what main's unconditional recipient_name
+            // select did, since that column was never applied.
             .select(
               SHARE_LABELS_ENABLED
                 ? 'id, created_at, expires_at, guide_id, bundle_id, recipient_label, opened_count, last_opened_at, guides(name), packs(name)'
@@ -141,14 +144,21 @@ const ShareCenterScreen = () => {
     }
   };
 
-  const liveLinks = useMemo(
-    () => links.map((l) => ({
-      ...l,
-      label: l.packs?.name || l.guides?.name || 'Shared item',
-      kind: l.bundle_id ? 'Bundle' : 'Guide',
-    })),
-    [links]
-  );
+  // Live links first, closed ones after — a closed link is still worth seeing
+  // (it explains why a helper says the link stopped working) but it shouldn't
+  // sit above the ones that are working.
+  const liveLinks = useMemo(() => {
+    const now = new Date();
+    return links
+      .map((l) => ({
+        ...l,
+        label: l.packs?.name || l.guides?.name || 'Shared item',
+        kind: l.bundle_id ? 'Bundle' : 'Guide',
+        live: isLive(l, now),
+        window: describeWindow(l, now),
+      }))
+      .sort((a, b) => (a.live === b.live ? 0 : a.live ? -1 : 1));
+  }, [links]);
 
   const revokeLink = async (linkId) => {
     const prev = links;
@@ -319,16 +329,14 @@ const ShareCenterScreen = () => {
                     onClick={() => navigate(`/share-manage/${l.id}`)}
                     className="flex-1 min-w-0 text-left"
                   >
-                    <div className="font-bold text-[15.5px] text-mulberry dark:text-foreground truncate">
+                    <div className={`font-bold text-[15.5px] truncate ${l.live ? 'text-mulberry dark:text-foreground' : 'text-muted-copy'}`}>
                       {l.label}
                       {SHARE_LABELS_ENABLED && l.recipient_label && (
                         <span className="font-semibold text-muted-copy"> · {l.recipient_label}</span>
                       )}
                     </div>
-                    <div className={`text-[12.5px] ${isExpired(l.expires_at) ? 'text-chevron' : 'text-muted-copy'}`}>
-                      {l.kind} · {isExpired(l.expires_at)
-                        ? 'ended'
-                        : humanizeExpiry(l.expires_at)}
+                    <div className="text-[12.5px] text-muted-copy">
+                      {l.kind} · {l.live ? `live ${l.window}` : 'closed'}
                       {SHARE_LABELS_ENABLED && l.opened_count > 0 && (
                         <> · opened {l.opened_count}×</>
                       )}
@@ -338,7 +346,7 @@ const ShareCenterScreen = () => {
                     onClick={() => revokeLink(l.id)}
                     className="flex-shrink-0 text-[13px] font-bold text-raspberry"
                   >
-                    Turn off
+                    {l.live ? 'Turn off' : 'Delete'}
                   </button>
                 </div>
               ))}

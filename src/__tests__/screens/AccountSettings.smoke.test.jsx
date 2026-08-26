@@ -59,7 +59,13 @@ vi.mock('@/lib/native', () => ({ isNative: false, NATIVE_AUTH_REDIRECT: 'fp://au
 // Every query resolves empty rather than hanging, so mount-time fetches settle.
 const chain = () => {
   const c = {
-    select: () => c, eq: () => c, in: () => c, order: () => c, limit: () => c,
+    // Mirror the query-builder surface the screens actually use. A missing
+    // method here surfaces as "x is not a function" on mount, which is the
+    // smoke test doing its job — add the method rather than deleting the test.
+    select: () => c, eq: () => c, neq: () => c, in: () => c, is: () => c,
+    not: () => c, or: () => c, filter: () => c,
+    gt: () => c, gte: () => c, lt: () => c, lte: () => c,
+    order: () => c, limit: () => c, range: () => c,
     single: () => Promise.resolve({ data: null, error: null }),
     maybeSingle: () => Promise.resolve({ data: null, error: null }),
     then: (r) => Promise.resolve({ data: [], error: null }).then(r),

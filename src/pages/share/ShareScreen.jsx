@@ -13,6 +13,13 @@ import {
 } from '@/lib/shareExpiry';
 import { SHARE_EXPIRY_ENABLED, SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
 import { Helmet } from 'react-helmet';
+import {
+    SHARE_WINDOWS,
+    SHARE_WINDOW_FOREVER,
+    describeWindow,
+    expiryForWindow,
+    windowIdFor,
+} from '@/lib/shareWindows';
 
 const ShareScreen = () => {
     const { shareId } = useParams();
@@ -28,6 +35,10 @@ const ShareScreen = () => {
     const [savedLabel, setSavedLabel] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [content, setContent] = useState(null);
+    const [recipient, setRecipient] = useState('');
+    const [windowId, setWindowId] = useState(SHARE_WINDOW_FOREVER);
+    // expiresAt is declared above — both branches added it independently.
+    const [isSavingWindow, setIsSavingWindow] = useState(false);
 
     const generateShareLink = useCallback(async () => {
         setIsLoading(true);
@@ -48,6 +59,10 @@ const ShareScreen = () => {
             }
             setContent(sharedItem);
             setExpiresAt(linkData.expires_at || null);
+            setWindowId(windowIdFor(linkData.expires_at));
+            // recipient_label, not recipient_name: 20240128 applied the former,
+            // main's 20240116_timed_share_links (which added the latter) never
+            // did and cannot, its number already being taken.
             setRecipientLabel(linkData.recipient_label || '');
             setSavedLabel(linkData.recipient_label || '');
 
@@ -65,6 +80,37 @@ const ShareScreen = () => {
     useEffect(() => {
         generateShareLink();
     }, [generateShareLink]);
+
+    // Name + duration are one setting: "this link is Ana's, until midnight".
+    // Saved through set_share_window so a bundle's window reaches the guide
+    // links that bundle exposes.
+    const saveWindow = useCallback(async (nextName, nextWindowId) => {
+        const nextExpiry = expiryForWindow(nextWindowId);
+        setIsSavingWindow(true);
+        try {
+            const { error } = await supabase.rpc('set_share_window', {
+                p_share_id: shareId,
+                p_recipient_name: nextName || null,
+                p_expires_at: nextExpiry,
+            });
+            if (error) throw error;
+            setExpiresAt(nextExpiry);
+        } catch (error) {
+            logError(error, { context: 'setShareWindow', shareId });
+            toast({
+                title: 'Could not update the link',
+                description: 'It still works — try setting that again.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSavingWindow(false);
+        }
+    }, [shareId, toast]);
+
+    const handleWindowSelect = (id) => {
+        setWindowId(id);
+        saveWindow(recipient.trim(), id);
+    };
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(shareUrl);
@@ -85,6 +131,8 @@ const ShareScreen = () => {
         downloadLink.click();
         document.body.removeChild(downloadLink);
     };
+
+    const firstName = recipient.trim().split(' ')[0];
 
     const handleShare = async () => {
         if (navigator.share) {
@@ -142,11 +190,64 @@ const ShareScreen = () => {
                                     <HeartMark size={52} stroke="#C25065" />
                                 </div>
                                 <h1 className="font-display font-semibold text-[25px] text-mulberry dark:text-foreground">
-                                    {content?.name ? `“${content.name}” is ready` : 'Link ready'}
+                                    {firstName
+                                        ? `${firstName}'s all set`
+                                        : content?.name
+                                            ? `“${content.name}” is ready`
+                                            : 'Link ready'}
                                 </h1>
                                 <p className="text-[13.5px] text-muted-copy mt-1">
-                                    Anyone with the link can view it — share carefully.
+                                    {content?.name ? `${content.name} · ` : ''}
+                                    live {describeWindow({ expires_at: expiresAt })}
                                 </p>
+
+                                {/* Who it's for, and for how long */}
+                                <div className="bg-card rounded-2xl border border-card-border shadow-card p-5 mt-6 text-left">
+                                    <label
+                                        htmlFor="share-recipient"
+                                        className="block text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry"
+                                    >
+                                        Who's this for?
+                                    </label>
+                                    <input
+                                        id="share-recipient"
+                                        type="text"
+                                        value={recipient}
+                                        onChange={(e) => setRecipient(e.target.value)}
+                                        onBlur={() => saveWindow(recipient.trim(), windowId)}
+                                        placeholder="Ana"
+                                        className="mt-2 w-full h-11 px-4 rounded-full bg-cream dark:bg-background border border-card-border text-[15px] text-mulberry dark:text-foreground placeholder:text-placeholder focus:outline-none focus:border-raspberry"
+                                    />
+
+                                    <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-raspberry mt-5">
+                                        For how long
+                                    </div>
+                                    <div className="mt-2 space-y-2">
+                                        {SHARE_WINDOWS.map((w) => {
+                                            const selected = windowId === w.id;
+                                            return (
+                                                <button
+                                                    key={w.id}
+                                                    onClick={() => handleWindowSelect(w.id)}
+                                                    disabled={isSavingWindow}
+                                                    className={`w-full text-left rounded-lg px-4 py-3 border transition-colors disabled:opacity-60 ${
+                                                        selected
+                                                            ? 'bg-[#FDF3F5] dark:bg-raspberry/10 border-raspberry border-[1.5px]'
+                                                            : 'bg-card border-card-border hover:border-hover-border'
+                                                    }`}
+                                                >
+                                                    <div className="font-bold text-[15px] text-mulberry dark:text-foreground">
+                                                        {w.label}
+                                                    </div>
+                                                    <div className="text-[13px] text-muted-copy">{w.hint}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="mt-3 text-[13px] text-muted-copy">
+                                        A closed link stops opening for everyone — you can send a new one any time.
+                                    </p>
+                                </div>
 
                                 <motion.div
                                     initial={{ opacity: 0, y: 8 }}
@@ -283,7 +384,7 @@ const ShareScreen = () => {
                                         onClick={handleShare}
                                         className="flex-1 h-12 rounded-full bg-raspberry hover:bg-raspberry-hover text-cream font-bold text-[15px] transition-colors"
                                     >
-                                        Send the link
+                                        {firstName ? `Text it to ${firstName}` : 'Send the link'}
                                     </button>
                                     <button
                                         onClick={handleCopyLink}

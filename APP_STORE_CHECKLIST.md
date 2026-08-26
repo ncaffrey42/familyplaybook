@@ -52,7 +52,13 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   `NSMicrophoneUsageDescription`, `NSPhotoLibraryUsageDescription`,
   `NSPhotoLibraryAddUsageDescription`) and all written as specific,
   feature-explaining sentences rather than boilerplate — which is what Apple
-  actually rejects on.
+  actually rejects on. The matching Android permissions are in
+  `android/app/src/main/AndroidManifest.xml`.
+- ⚠️ **Plan promise must match the marketing site** — the app is the source of
+  truth (Free 15 guides / Couple $6.99 / Family $13.99, per `src/lib/plans.js`
+  and `plan_entitlements`). The WordPress copy still promises *5 active guides*
+  and a single *Premium* tier and needs updating to match before submission —
+  reviewers compare store listing, site and IAP.
 
 ## B. App Store Connect (iOS) listing
 
@@ -107,8 +113,10 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 - ✅ `assets/icon.png` + `assets/splash.png` are already **1024×1024**
   (verified 2026-08-20). Note they are byte-identical — a splash usually wants
   a different composition from an app icon. Cosmetic, not a blocker.
-- ☐ App icon has no transparency (iOS requirement) and no rounded corners
-  (the OS rounds them)
+- ✅ App icon has no transparency — the master carries an alpha channel but
+  `capacitor-assets` flattens it, and the generated
+  `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` is RGB
+  with no alpha. Re-verify after any `npm run mobile:assets` run.
 
 ## D.1 Native build state — verified 2026-08-20
 

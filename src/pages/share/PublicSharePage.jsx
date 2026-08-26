@@ -5,17 +5,20 @@ import { Helmet } from 'react-helmet';
 import { logError, addBreadcrumb } from '@/lib/errorLogger';
 import { SHARE_LABELS_ENABLED, ASK_PLAYBOOK_ENABLED } from '@/lib/featureFlags';
 import { Button } from '@/components/ui/button';
-import { Lock, ShieldOff } from 'lucide-react';
+import { Lock, ShieldOff, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import HeartMark from '@/components/HeartMark';
 import GuideIcon from '@/components/GuideIcon';
 import AskPlaybook from '@/components/AskPlaybook';
 import { isVideoUrl } from '@/lib/utils';
+import { windowLabel, describeWindow } from '@/lib/shareWindows';
+import { loadProgress, saveProgress, pruneProgress } from '@/lib/checklistProgress';
 
 /**
  * Helper mode — the read-only guest view of a shared guide or bundle.
  * A deliberately different surface: no tab bar, no FAB, nothing editable.
- * Check state is ephemeral (local only) and never writes to the owner's data.
+ * Check state stays on the guest's own device (localStorage, today only) and
+ * never writes to the owner's data.
  * Content resolves through the get_shared_content SECURITY DEFINER RPC.
  */
 
@@ -50,12 +53,12 @@ const StepMedia = ({ url }) => {
   );
 };
 
-const HelperHeader = ({ title, subtitle }) => (
+const HelperHeader = ({ title, subtitle, share }) => (
   <header className="bg-mulberry px-6 pt-14 pb-8">
     <div className="max-w-2xl mx-auto">
       <HeartMark size={34} stroke="#FDF8F3" />
       <div className="mt-4 text-[10.5px] font-bold uppercase tracking-[0.13em] text-apricot">
-        Shared with you
+        {windowLabel(share)}
       </div>
       <h1 className="font-display font-semibold text-[30px] leading-[1.15] text-cream mt-1">
         {title}
@@ -76,8 +79,15 @@ const PublicSharePage = () => {
   const [bundleGuides, setBundleGuides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Helper-mode check state: local only, never persisted.
-  const [checked, setChecked] = useState([]);
+  const [share, setShare] = useState(null);
+  // Helper-mode check state: this device, today. Never sent anywhere.
+  const [checked, setChecked] = useState(() => loadProgress(`share:${shareId}`));
+
+  useEffect(() => { pruneProgress(); }, []);
+
+  useEffect(() => {
+    saveProgress(`share:${shareId}`, checked);
+  }, [shareId, checked]);
 
   useEffect(() => {
     const fetchSharedContent = async () => {
@@ -96,6 +106,12 @@ const PublicSharePage = () => {
           setLoading(false);
           return;
         }
+        if (data.type === 'expired') {
+          setError({ type: 'expired' });
+          setLoading(false);
+          return;
+        }
+        setShare(data.share || null);
         if (data.type === 'guide') {
           setGuide(data.guide);
           if (data.bundle) setBundle(data.bundle);
@@ -141,6 +157,8 @@ const PublicSharePage = () => {
     return <ErrorDisplay icon={Lock} title="Link not found" message="This share link is either invalid or has been turned off." />;
   if (error?.type === 'not_shareable')
     return <ErrorDisplay icon={ShieldOff} title="This guide is private" message="The owner hasn't made this guide shareable." />;
+  if (error?.type === 'expired')
+    return <ErrorDisplay icon={Clock} title="This link has closed" message="It was shared for a set amount of time, and that time has passed. Ask the family for a fresh link." />;
   if (!guide && !bundle)
     return <ErrorDisplay icon={Lock} title="Link not found" message="This share link is either invalid or has been turned off." />;
 
@@ -165,6 +183,7 @@ const PublicSharePage = () => {
         <HelperHeader
           title={pageTitle}
           subtitle={guide && bundle ? `From the bundle: ${bundle.name}` : bundle?.description || guide?.category}
+          share={share}
         />
 
         <main className="px-6 py-6 max-w-2xl mx-auto">
@@ -281,8 +300,10 @@ const PublicSharePage = () => {
 
               <div className="mt-6 bg-blush rounded-lg p-5">
                 <p className="text-[14.5px] leading-[1.6] text-blush-copy">
-                  You can't change anything in here, so tap freely. If this link
-                  stops working, the family turned it off.
+                  You can't change anything in here, so tap freely.{' '}
+                  {share?.expires_at
+                    ? `This link closes itself ${describeWindow(share)}.`
+                    : 'If this link stops working, the family turned it off.'}
                 </p>
               </div>
             </div>
