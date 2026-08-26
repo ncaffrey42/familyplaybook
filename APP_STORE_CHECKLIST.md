@@ -26,9 +26,16 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 
 - ✅ **Account deletion** — in-app "Delete Account" fully removes account + data
   (delete-account edge function; verified live).
-- ✅ **Sign in with Apple** — offered alongside Google/Facebook/Discord
-  (guideline 4.8). Requires Apple provider config in Supabase +
-  "Sign in with Apple" capability in Xcode (see MOBILE_BUILD.md §2–3).
+- ⚠️ **Sign in with Apple** — the button ships and `signInWithApple()` is wired
+  (`SupabaseAuthContext.jsx:361`, `LoginScreen.jsx:175`), but **the Xcode
+  capability is NOT configured**: verified 2026-08-20 there are *zero*
+  `.entitlements` files in `ios/` and zero `CODE_SIGN_ENTITLEMENTS` /
+  `com.apple.developer.applesignin` references in `project.pbxproj`.
+  It currently runs as a Supabase **web** OAuth flow via `Browser.open`, not
+  native Sign in with Apple. Guideline 4.8 requires the option to be offered
+  when other social logins are — it is — but add the capability + entitlement
+  before submitting, and confirm the Apple provider is configured in Supabase
+  (MOBILE_BUILD.md §2–3).
 - ✅ **No placeholder/dead features shown** — Host Mode hidden behind a flag;
   its misleading plan-card bullet replaced.
 - ✅ **In-App Purchase (guideline 3.1.1 / Play Billing)** — native apps use
@@ -40,8 +47,12 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   (verified 2026-08-20, HTTP 200). Confirm it covers: account data, guides/media
   in Supabase, Stripe/Play Billing for payments, OpenAI for AI, analytics.
 - ☐ **Support URL / contact** — https://famplaybook.com/support/ (support email as needed).
-- ☐ **Permission usage strings** applied from `native-config/` (mic, camera,
-  photos) — Apple auto-rejects missing ones.
+- ✅ **Permission usage strings** — verified present in `ios/App/App/Info.plist`
+  2026-08-20, all four (`NSCameraUsageDescription`,
+  `NSMicrophoneUsageDescription`, `NSPhotoLibraryUsageDescription`,
+  `NSPhotoLibraryAddUsageDescription`) and all written as specific,
+  feature-explaining sentences rather than boilerplate — which is what Apple
+  actually rejects on.
 
 ## B. App Store Connect (iOS) listing
 
@@ -58,8 +69,8 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   Content (guides/photos), Identifiers (user id), Usage Data (first-party
   analytics). **Not** tracking across apps (no third-party SDK) → ATT not
   required.
-- ☐ Encryption compliance: uses standard HTTPS only → typically "exempt"
-  (`ITSAppUsesNonExemptEncryption = false` in Info.plist).
+- ✅ Encryption compliance — `ITSAppUsesNonExemptEncryption = false` is already
+  set in Info.plist (verified 2026-08-20). No per-submission prompt.
 
 ## C. Google Play Console (Android) listing
 
@@ -90,6 +101,38 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   a different composition from an app icon. Cosmetic, not a blocker.
 - ☐ App icon has no transparency (iOS requirement) and no rounded corners
   (the OS rounds them)
+
+## D.1 Native build state — verified 2026-08-20
+
+| Item | iOS | Android |
+|---|---|---|
+| Bundle / package id | `com.familyplaybook.app` ✅ | `com.familyplaybook.app` ✅ |
+| Version | `MARKETING_VERSION 1.0` / build `1` ✅ | `versionName 1.0` / `versionCode 1` ✅ |
+| Min OS | deployment target **13.0** ✅ | `minSdk 22` ✅ |
+| Target API | n/a | **36** ✅ (verified on device) |
+| App icons generated | ✅ single-size `AppIcon-512@2x` | ✅ 24 launcher PNGs + adaptive icon |
+| Splash generated | ✅ | ✅ (all densities, incl. night) |
+| Deep-link scheme | `familyplaybook` ✅ matches `capacitor.config.ts` | ✅ |
+| Permission strings | ✅ all four, specific | ✅ 5 perms, all justified |
+| Release signing | ⚠️ `DEVELOPMENT_TEAM` unset | ⚠️ config wired, keystore not created |
+
+**Android permissions requested** — `CAMERA`, `INTERNET`, `READ_MEDIA_IMAGES`,
+`READ_MEDIA_VIDEO`, `RECORD_AUDIO`. All map to shipped features (step
+photo/video, Voice-to-Guide). Notably **absent**: `QUERY_ALL_PACKAGES`,
+`MANAGE_EXTERNAL_STORAGE`, location — the permissions that trigger Play policy
+declarations. Nothing to justify in the console.
+
+### Two decisions worth making before submitting
+
+- ⚠️ **`android:allowBackup="true"`** with no `dataExtractionRules` or
+  `fullBackupContent` — so Android auto-backup copies app data, **including the
+  Supabase auth token**, to the user's Google Drive. That is the platform
+  default, not a bug, but for an app holding family routines and a session
+  token it deserves a deliberate call: either set `allowBackup="false"`, or add
+  backup rules that exclude the auth storage.
+- ⚠️ **`DEVELOPMENT_TEAM` is unset** in `project.pbxproj` (zero entries).
+  Archiving and uploading to App Store Connect will fail until the Apple team
+  id is set in Xcode.
 
 ## E. Accounts & prerequisites
 
