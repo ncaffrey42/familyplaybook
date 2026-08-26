@@ -1,0 +1,118 @@
+<!doctype html>
+<!--
+  Google Play feature graphic — 1024x500, mandatory for the store listing.
+
+  SOURCE OF TRUTH. The PNG is generated from this file, so the asset stays
+  reproducible and on-brand instead of being an undocumented binary. Colours
+  are the Tailwind brand tokens verbatim (mulberry #5C2A3E, apricot #F4A259,
+  cream #FDF8F3, raspberry #C25065) and the type is the app's own Fraunces /
+  Nunito Sans, pulled from Google Fonts.
+
+  To regenerate (needs the dev server running so the fonts resolve):
+
+    npm run dev                       # in another shell
+    cp assets/store/feature-graphic.html .fgtmp/index.html
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1024,500 --virtual-time-budget=6000 \
+      --screenshot=fg.png "http://localhost:3000/.fgtmp/index.html"
+    magick fg.png -background "#5C2A3E" -alpha remove -alpha off -strip \
+      PNG24:feature-graphic.png
+
+  The alpha strip is required: Play rejects feature graphics with a
+  transparency channel.
+
+  Composition note: Play crops and overlays this at several sizes, so all
+  copy sits well inside the left two-thirds and nothing critical touches an
+  edge.
+
+  VARIANT C of three, and the one that actually carries the product's story.
+
+  Its origin is worth recording. Variant A's mark was an abstract circle that
+  meant nothing — but a reader saw a person's head holding all the knowledge,
+  with the offset ring reading as ideas leaving that head to reach everyone
+  else. That is precisely what this product does, and it is what the full
+  store description already says in words: "routines that live in one person's
+  head... something you can hand to someone else." The accident was a better
+  idea than the design, so it was made deliberate here.
+
+  The composition:
+    - the solid raspberry dot is the person who knows how the home runs
+    - the arcs are that knowledge travelling outward. They are ARCS, not
+      circles, on purpose: complete rings read as orbit, arcs opening in one
+      direction read as broadcast
+    - the three dots are who it reaches, echoing the subhead's "a sitter, a
+      grandparent or a guest". The apricot one is the brand's player-dot
+      colour, the same accent the HeartMark uses.
+
+  Pick one variant before submitting; do not ship more than one.
+-->
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1024px;height:500px;overflow:hidden}
+  .g{
+    width:1024px;height:500px;position:relative;overflow:hidden;
+    background:#5C2A3E;                 /* mulberry — the app's hero card */
+    display:flex;align-items:center;
+    padding:0 74px;
+  }
+  /* The soft circle from the Home hero card, echoed here. */
+  .halo{position:absolute;border-radius:50%;background:rgba(255,255,255,.055)}
+  .halo-1{width:660px;height:660px;right:-280px;top:-80px}
+  .copy{position:relative;z-index:2;max-width:640px}
+  .eyebrow{
+    font-family:'Nunito Sans',sans-serif;font-weight:700;
+    font-size:19px;letter-spacing:.15em;text-transform:uppercase;
+    color:#F4A259;margin-bottom:20px;                    /* apricot */
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:70px;line-height:1.06;color:#FDF8F3;       /* cream */
+    letter-spacing:-.015em;
+  }
+  p{
+    font-family:'Nunito Sans',sans-serif;font-weight:600;
+    font-size:23px;line-height:1.45;color:rgba(253,248,243,.80);
+    margin-top:22px;max-width:560px;
+  }
+  /* One head, holding everything — and the knowledge leaving it.
+
+     The solid raspberry dot is the person who knows how the home runs. The
+     rings are that knowledge radiating outward, each one offset a little
+     further right so the motion reads as leaving rather than pulsing in
+     place. The small dots sitting on the rings are who it reaches: the
+     sitter, the grandparent, the guest. */
+  .mark{position:absolute;right:70px;top:50%;transform:translateY(-50%);z-index:2;
+        width:300px;height:300px}
+  .mark svg{width:300px;height:300px;overflow:visible}
+</style></head><body>
+<div class="g">
+  <div class="halo halo-1"></div>
+  <div class="copy">
+    <div class="eyebrow">One link, everything they need</div>
+    <h1>Your home,<br>explained.</h1>
+    <p>Turn the routines that live in your head into guides you can hand to a sitter, a grandparent or a guest.</p>
+  </div>
+  <div class="mark">
+    <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Arcs opening rightward: it leaves the head and travels outward.
+           Full circles read as orbit; arcs read as broadcast. -->
+      <path d="M 128 92  A 74 74 0 0 1 128 208"  stroke="rgba(246,223,211,.34)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 132 58  A 112 112 0 0 1 132 242" stroke="rgba(246,223,211,.21)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 136 26  A 150 150 0 0 1 136 274" stroke="rgba(246,223,211,.11)" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- Who it reaches, out where the signal lands. -->
+      <circle cx="228" cy="104" r="8.5" fill="rgba(246,223,211,.95)"/>
+      <circle cx="252" cy="150" r="10"  fill="#F4A259"/>
+      <circle cx="228" cy="196" r="8.5" fill="rgba(246,223,211,.75)"/>
+
+      <!-- The head that holds it all. -->
+      <circle cx="104" cy="150" r="36" fill="#C25065"/>
+    </svg>
+  </div>
+</div>
+</body></html>
