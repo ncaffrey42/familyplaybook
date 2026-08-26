@@ -26,16 +26,16 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 
 - ✅ **Account deletion** — in-app "Delete Account" fully removes account + data
   (delete-account edge function; verified live).
-- ⚠️ **Sign in with Apple** — the button ships and `signInWithApple()` is wired
-  (`SupabaseAuthContext.jsx:361`, `LoginScreen.jsx:175`), but **the Xcode
-  capability is NOT configured**: verified 2026-08-20 there are *zero*
-  `.entitlements` files in `ios/` and zero `CODE_SIGN_ENTITLEMENTS` /
-  `com.apple.developer.applesignin` references in `project.pbxproj`.
-  It currently runs as a Supabase **web** OAuth flow via `Browser.open`, not
-  native Sign in with Apple. Guideline 4.8 requires the option to be offered
-  when other social logins are — it is — but add the capability + entitlement
-  before submitting, and confirm the Apple provider is configured in Supabase
-  (MOBILE_BUILD.md §2–3).
+- ✅ **Sign in with Apple — entitlement now wired** (2026-08-20).
+  `ios/App/App/App.entitlements` declares `com.apple.developer.applesignin`
+  and `CODE_SIGN_ENTITLEMENTS` is set on **both** the Debug and Release
+  configurations. Verified: the plist lints, `xcodebuild -showBuildSettings`
+  reports the setting, the build log shows `ProcessProductPackaging` consuming
+  the file with `com.apple.developer.applesignin` in its output, and the app
+  builds with **0 errors**.
+  **Still needs a human:** enable the capability for the App ID in the Apple
+  Developer portal and configure the Apple provider in Supabase
+  (MOBILE_BUILD.md §2–3), or provisioning will fail on a device build.
 - ✅ **No placeholder/dead features shown** — Host Mode hidden behind a flag;
   its misleading plan-card bullet replaced.
 - ✅ **In-App Purchase (guideline 3.1.1 / Play Billing)** — native apps use
@@ -79,7 +79,9 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 - ☐ **Data safety form** — mirror the iOS nutrition labels (data collected,
   purpose, encryption in transit, deletion available = yes → link the in-app
   delete + https://famplaybook.com/privacy-policy/)
-- ☐ Feature graphic (1024×500) + phone screenshots (min 2)
+- ✅ Feature graphic (1024×500) — generated, no alpha
+- ✅ Phone screenshots — 4 captured at 1080×2400 from the API-36 emulator
+  build (Home, a guide, Share Center, Account)
 - ✅ **Target API level** — bumped to **36** (compileSdk + targetSdk) 2026-08-20
   and verified: release AAB and debug APK both build, and the installed app
   reports `targetSdk=36` on device. Confirm 36 still meets Play's floor at
@@ -91,7 +93,10 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   only recovery path if the upload key is ever lost.
 - ☐ Store listing copy, graphics and Data safety answers — drafted in
   [`PLAY_LISTING.md`](PLAY_LISTING.md)
-- ☐ **Feature graphic 1024×500** — mandatory, does not exist yet
+- ✅ **Feature graphic 1024×500** — generated 2026-08-20, alpha stripped (Play
+  rejects transparency). Source of truth is
+  [`assets/store/feature-graphic.html`](assets/store/feature-graphic.html) so
+  it stays reproducible and on-brand; regeneration steps are in that file.
 
 ## D. Assets & config
 
