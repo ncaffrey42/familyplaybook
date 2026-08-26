@@ -94,14 +94,12 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 - ☐ Store listing copy, graphics and Data safety answers — drafted in
   [`PLAY_LISTING.md`](PLAY_LISTING.md)
 - ✅ **Feature graphic 1024×500** — generated 2026-08-20, alpha stripped (Play
-  rejects transparency). **Three variants exist — pick one before submitting:**
-  [`A · circles`](assets/store/feature-graphic-a-circles.html) (abstract mark,
-  means nothing literal), [`B · heartmark`](assets/store/feature-graphic-b-heartmark.html)
-  (the real brand HeartMark — safest, most on-brand), and
-  [`C · knowledge-out`](assets/store/feature-graphic-c-knowledge-out.html)
-  (one head broadcasting to a sitter, a grandparent and a guest — the one that
-  actually tells the product's story). All render 1024×500 with alpha
-  stripped; regeneration steps are in each file. Do not ship more than one.
+  rejects transparency). **Chosen and final:**
+  [`assets/store/feature-graphic.html`](assets/store/feature-graphic.html) —
+  one head broadcasting to a sitter, a grandparent and a guest, which is the
+  product's own story. Renders 1024×500 with alpha stripped; regeneration
+  steps are in the file. Two alternates were considered and rejected; they
+  live in git history at `c54039a`.
 
 ## D. Assets & config
 
