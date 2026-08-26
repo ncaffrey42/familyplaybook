@@ -347,3 +347,45 @@ with `GuideDetail`, `CreateGuideScreen`, `BundleDetail` and
 **Verified:** lint clean with jsx-a11y on, 228/228 vitest, 35/35 deno, build
 succeeds, production build verified in-browser, `npm run audit` PASS at all
 tightened ratchets.
+
+---
+
+## 2026-08-20 — schema drift resolved — `claude/mobile-redesign`
+
+Not an audit run. Recording a state change the audit could not see.
+
+**All six pending migrations applied to the live database** via
+`supabase db push --linked`: `20240128_share_labels_access_log`,
+`20240129_ask_playbook`, `20240130_properties_host_taxonomy`,
+`20240131_host_starter_library`, `20240132_notifications`, and
+`20240133_definer_search_path`. `supabase migration list` now reports 23 of 23
+applied, **zero pending** — the drift first recorded in the baseline entry is
+closed.
+
+Verified independently by probing the REST API rather than trusting the push's
+own success message. Objects that returned 400/404 an hour earlier now resolve:
+`shared_links.recipient_label`, `shared_links.opened_count`, `guide_embeddings`,
+`properties`, `notifications`, and the `ask_playbook_available` RPC (returns
+`false` for a nonexistent share id, which is the correct answer).
+
+One probe misfired and is worth recording so it is not re-investigated:
+`content_categories` appeared missing because the probe asked for an `id`
+column. That table's primary key is `(workspace_type, key)` and it has no `id`.
+It exists and returns 200. It reads empty to `anon` because its RLS policy is
+read-only **to authenticated** — the seed rows are inserted by `20240130`
+itself.
+
+**This closes a gap in the audit's own reporting.** `definer.unpinned` has read
+`0` since phase 1, but it parses migration *files* — so it was reporting the
+repo's intent, not the database's state. In reality those seven
+`SECURITY DEFINER` functions stayed unpinned in production for the entire
+window between the phase 1 commit and this push, including the `handle_new_user`
+signup trigger and the destructive `reset_user_account`. A file-based check
+cannot see deployment lag; if this matters again, the check needs to query
+`pg_proc.proconfig` against the live database, not read SQL text.
+
+**Still open:** PR #23 (43 commits) remains unmerged and now carries a schema
+fork — `main` adds `shared_links.recipient_name` via its own
+`20240116_timed_share_links`, while this branch adds `recipient_label` via
+`20240128`. Both migrations claim conflicting ground and only `20240128` is
+applied. Merging needs a decision on which column survives.
