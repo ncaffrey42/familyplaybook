@@ -21,10 +21,14 @@ TV-guide shows first.
 cd media-server
 copy .env.example .env        # (cp on macOS/Linux)
 # edit .env: media folder paths + Radarr/Sonarr API keys
-docker compose up -d
+docker compose up -d bazarr
 ```
 
 API keys: Radarr/Sonarr → Settings → General → API Key.
+
+`up -d bazarr` starts only Bazarr (subtitles). When you're ready for the
+quality/audio sync later, start the other service with
+`docker compose up -d recyclarr` — nothing runs until you do.
 
 ---
 
@@ -104,18 +108,31 @@ Then check Radarr → Settings → Custom Formats to see the imported formats,
 and make sure your movies/shows actually use the **HD Bluray + WEB** /
 **WEB-1080p** profiles (Movies → select all → Edit → Quality Profile).
 
-## Part 4 — Shuffling the TV-guide lineup
+## Part 4 — Shuffling the TV-guide lineup (ErsatzTV)
 
-Yes — with most Plex custom-channel tools the lineup is **built once as a
-fixed schedule**, so every restart replays the same order until you rebuild
-it. The fix depends on which tool built your guide:
+The lineup repeats because the schedule items are set to a fixed playback
+order — the playout just replays the same sequence. Fix it in the schedule,
+not the channel:
 
-- **dizqueTV:** open the channel → Programming. One-off reshuffle: Sort →
-  **Shuffle**, save. Permanent fix: use **Scheduling Tools → Random Slots**,
-  which rebuilds the lineup randomly on its own.
-- **Tunarr:** channel → Programming → sort **Random**. Better: schedule the
-  channel with **Random Slots** / dynamic scheduling so it keeps varying.
-- **ErsatzTV:** best shuffle story — set the collection's playout mode to
-  **Shuffle** and it re-randomizes continuously; nothing to rebuild.
+1. Open ErsatzTV → **Schedules** → click the schedule your channel uses →
+   edit each **schedule item** (the rows pointing at your
+   collections/shows).
+2. Change **Playback Order** on each item:
+   - **Shuffle** — full random across everything in the item, no repeats
+     until the whole pool has played once. Best for movie collections.
+   - **Shuffle In Order** — the good one for shows: picks *shows* in random
+     order but plays each show's *episodes* in sequence. Sailor Moon still
+     progresses episode 1 → 2 → 3, it just isn't always in the same slot
+     between the other shows. Use this for the TV-guide channel.
+   - (Chronological = the fixed order you're seeing now.)
+3. Save, then go to **Playouts** → your channel → **Reset Playout**. That
+   throws away the old fixed lineup and rebuilds the guide with the new
+   shuffle immediately.
 
-Tell me which one you're running and I'll write the exact channel config.
+From then on it keeps generating forward on its own — restarts continue the
+playout where it left off instead of replaying the same lineup, and every
+cycle through the pool gets a fresh shuffle. No manual rebuilding again.
+
+Tip: if one schedule item mixes shows and movies, split them into two items
+("Shuffle In Order" for the shows, "Shuffle" for the movies) so episodes
+stay in sequence while the movies stay random.
