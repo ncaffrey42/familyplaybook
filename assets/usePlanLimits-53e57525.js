@@ -1,0 +1,1 @@
+import{r as n}from"./react-vendor-a06f7338.js";import{u as a,l as u}from"./index-b3955906.js";function m(){const{user:t,planKey:l}=a(),[s,e]=n.useState(null);return n.useEffect(()=>{let i=!1;if(!(t!=null&&t.id)){e(null);return}return u.getPlanLimits(t.id).then(r=>{i||e(r)}).catch(()=>{i||e(null)}),()=>{i=!0}},[t==null?void 0:t.id,l]),s}export{m as u};

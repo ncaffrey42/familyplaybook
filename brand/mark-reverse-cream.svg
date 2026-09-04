@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 84 C26 64, 14 48, 14 34 C14 21, 24 14, 34 14 C42 14, 48 19, 50 28 C52 19, 58 14, 66 14 C76 14, 86 21, 86 34 C86 48, 74 64, 56 79" fill="none" stroke="#FDF8F3" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="10 8"/>
+<polygon points="0,-6.5 13,0 0,6.5" fill="#FDF8F3" transform="translate(55.2,79.8) rotate(140)"/>
+<circle cx="50" cy="84" r="5.5" fill="#F4A259"/></svg>
