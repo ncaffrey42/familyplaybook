@@ -1,0 +1,81 @@
+# End-to-end and eval runs, MANUAL ONLY.
+#
+# Deliberately not on push or pull_request. Both scripts act against a real
+# Supabase project: the e2e creates and deletes properties, guides and share
+# links as a live test user, and the Ask-the-Playbook eval spends OpenAI
+# credit. Running either on every push would mean writing production rows and
+# burning money on every commit.
+#
+# NEITHER HAS EVER PASSED, and as of 2026-08-20 neither can: migrations
+# 20240128-20240132 are written but not applied to the live database (verified
+# by probe — see docs/platform/PRODUCTION_AUDIT.md §6). Both scripts say so in
+# their own headers. Treat the first green run as data collection, not as a
+# regression check.
+#
+# Before this can pass:
+#   1. Apply migrations 20240128-20240132.
+#   2. Create a DISPOSABLE test user — never a real account.
+#   3. Add the repo secrets below.
+# The eval additionally exists to calibrate SIMILARITY_THRESHOLD, which must
+# be set from its refusal-boundary report before ASK_PLAYBOOK_ENABLED is
+# turned on for real users (ASK_PLAYBOOK.md §10).
+
+name: E2E & Evals (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which suite to run
+        required: true
+        default: e2e
+        type: choice
+        options: [e2e, eval, both]
+
+jobs:
+  run:
+    name: ${{ inputs.target }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Fail with a readable message rather than letting the script exit 1 on
+      # a missing env var, which reads as "the feature is broken".
+      - name: Check prerequisites
+        env:
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$E2E_EMAIL" ]; then
+            echo "::error::E2E secrets are not configured. See docs/platform/PRODUCTION_AUDIT.md §6 for what this needs before it can run."
+            exit 1
+          fi
+
+      - name: Run e2e
+        if: inputs.target == 'e2e' || inputs.target == 'both'
+        env:
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: npm run e2e
+
+      - name: Run Ask-the-Playbook eval
+        if: inputs.target == 'eval' || inputs.target == 'both'
+        env:
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: npm run eval:ask-playbook

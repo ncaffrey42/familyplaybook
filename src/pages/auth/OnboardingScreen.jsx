@@ -4,12 +4,13 @@ import { ChevronRight, Home, Heart, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Helmet } from 'react-helmet';
 import { useNavigation } from '@/hooks/useNavigation';
+import { triggerCheckpoint } from '@/lib/feedback';
 
 const OnboardingScreen = () => {
   const [step, setStep] = useState(0);
   // App.jsx renders this route without props — finishing onboarding goes home.
   const handleNavigate = useNavigation();
-  const onComplete = () => handleNavigate('home');
+  const onComplete = () => { triggerCheckpoint('setup'); handleNavigate('home'); };
 
   const steps = [
     {

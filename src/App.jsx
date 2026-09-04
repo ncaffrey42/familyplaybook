@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { FAMILY_SHARING_ENABLED, HOST_MODE_ENABLED } from '@/lib/featureFlags';
+import { FAMILY_SHARING_ENABLED, HOST_MODE_ENABLED, HOST_PRODUCT_ENABLED, FEEDBACK_ENABLED } from '@/lib/featureFlags';
 import { Toaster } from "@/components/ui/toaster";
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { UsageTrackingProvider } from './contexts/UsageTrackingContext';
@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import LimitNotificationModal from './components/LimitNotificationModal';
 import BottomNav from './components/BottomNav';
 import CreateFab from './components/CreateFab';
+import FeedbackBubble from './components/FeedbackBubble';
 import PrivateRoute from './components/PrivateRoute';
 import LazyRoute from './components/LazyRoute';
 import useScrollToTop from '@/hooks/useScrollToTop';
@@ -58,6 +59,17 @@ const AcceptInviteScreen = lazy(() => import('./pages/invite/AcceptInviteScreen'
 // Other pages
 const SearchScreen = lazy(() => import('./pages/SearchScreen'));
 const HostMode = lazy(() => import('./pages/HostMode'));
+
+// Host product — the second app shell (docs/platform/HOST_SHELL.md).
+// Lazy so the family bundle never pays for it while the flag is off.
+const HostShell = lazy(() => import('./pages/host/HostShell'));
+const HostProperties = lazy(() => import('./pages/host/HostProperties'));
+const HostPropertyDetail = lazy(() => import('./pages/host/HostPropertyDetail'));
+const HostQrSheet = lazy(() => import('./pages/host/HostQrSheet'));
+const HostGuides = lazy(() =>
+  import('./pages/host/HostSkeletons').then((m) => ({ default: m.HostGuides })));
+const HostTeam = lazy(() =>
+  import('./pages/host/HostSkeletons').then((m) => ({ default: m.HostTeam })));
 const NotFoundScreen = lazy(() => import('./pages/NotFoundScreen'));
 
 // Admin
@@ -100,7 +112,11 @@ const AppContent = () => {
 
   const shouldHideNav =
     hideNavPaths.includes(location.pathname) ||
-    location.pathname.startsWith('/share/');
+    location.pathname.startsWith('/share/') ||
+    // The Host shell is a second app shell and brings its own chrome
+    // (HostBottomNav + KPI header) — the family nav must never render
+    // under it. See docs/platform/HOST_SHELL.md §1.
+    location.pathname.startsWith('/host/');
 
   return (
     <div className={`min-h-screen bg-background ${user && !shouldHideNav ? 'pb-20' : ''}`}>
@@ -166,6 +182,31 @@ const AppContent = () => {
           {/* Other */}
           <Route path="/host-mode" element={HOST_MODE_ENABLED ? <PrivateRoute><LazyRoute><HostMode /></LazyRoute></PrivateRoute> : <Navigate to="/account" replace />} />
 
+          {/* Host product — second app shell at /host, behind
+              VITE_ENABLE_HOST_PRODUCT (default off). With the flag off every
+              /host path redirects home, so B2C users never see any of it.
+              HostShell itself re-checks eligibility via useHostWorkspace(),
+              which is where real workspace_type gating lands once the
+              tenancy migration is applied. See docs/platform/HOST_SHELL.md */}
+          {HOST_PRODUCT_ENABLED ? (
+            <>
+              <Route path="/host" element={<PrivateRoute><LazyRoute><HostShell /></LazyRoute></PrivateRoute>}>
+                <Route index element={<Navigate to="/host/properties" replace />} />
+                <Route path="properties" element={<LazyRoute><HostProperties /></LazyRoute>} />
+                <Route path="property/:id" element={<LazyRoute><HostPropertyDetail /></LazyRoute>} />
+                <Route path="guides" element={<LazyRoute><HostGuides /></LazyRoute>} />
+                <Route path="team" element={<LazyRoute><HostTeam /></LazyRoute>} />
+              </Route>
+              {/* Printable QR sheet: mounted OUTSIDE the HostShell layout —
+                  but inside this same flag block — so the printed page has
+                  no KPI header or bottom nav to hide, only its own controls.
+                  See docs/platform/PROPERTIES.md §3. */}
+              <Route path="/host/property/:id/qr-sheet" element={<PrivateRoute><LazyRoute><HostQrSheet /></LazyRoute></PrivateRoute>} />
+            </>
+          ) : (
+            <Route path="/host/*" element={<Navigate to="/home" replace />} />
+          )}
+
           {/* Admin */}
           <Route path="/admin/errors" element={<PrivateRoute><LazyRoute><ErrorLogScreen /></LazyRoute></PrivateRoute>} />
 
@@ -179,6 +220,7 @@ const AppContent = () => {
         </Routes>
 
         {user && !shouldHideNav && <BottomNav />}
+        {user && !shouldHideNav && FEEDBACK_ENABLED && <FeedbackBubble />}
         {user && !shouldHideNav && <CreateFab />}
         <LimitNotificationModal />
         <AddToHomeScreenPrompt />

@@ -7,6 +7,7 @@ import { addBreadcrumb, logError } from '@/lib/errorLogger';
 import { entitlementService } from '@/services/EntitlementService';
 import { UsageTrackingService } from '@/services/UsageTrackingService';
 import { applyReadOnlyFlags } from '@/lib/readOnlyEnforcement';
+import { triggerCheckpoint } from '@/lib/feedback';
 
 const DataContext = createContext();
 
@@ -262,6 +263,12 @@ export const DataProvider = ({ children }) => {
     try {
         const { data: savedGuide, error } = await supabase.from('guides').upsert(upsertData).select().single();
         if (error) throw error;
+
+        // First real action: the user's very first own guide → one-time
+        // feedback checkpoint (deduped locally and by a DB unique index).
+        if (isNewGuide && allGuides.filter(g => !g.is_shared_with_me).length === 0) {
+            triggerCheckpoint('first_action');
+        }
         
         const currentBundleIds = packIds || [];
         await supabase.from('pack_guides').delete().eq('guide_id', savedGuide.id);

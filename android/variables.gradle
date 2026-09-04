@@ -1,7 +1,10 @@
 ext {
     minSdkVersion = 22
-    compileSdkVersion = 34
-    targetSdkVersion = 34
+    // Google Play requires new apps and updates to target a recent API level
+    // (the window moves each year — confirm the current floor in Play Console
+    // before a submission). 36 = Android 16.
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'

@@ -44,3 +44,26 @@ export function isInternalPath(path) {
   if (/[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(path)) return false;
   return true;
 }
+/**
+ * Make a non-button element behave like a button for keyboard users.
+ *
+ * A `<div onClick>` is invisible to anyone not using a mouse: it takes no
+ * focus and fires on no key. Spreading this onto the element gives it the
+ * three things a real button has — a role, a tab stop, and Enter/Space
+ * activation — without changing any styling.
+ *
+ * Prefer an actual `<button>` in new code. This exists for the places where
+ * swapping the element would mean re-doing the layout, and is enforced by
+ * jsx-a11y/no-static-element-interactions.
+ */
+export const keyboardClickable = (onClick) => ({
+  role: 'button',
+  tabIndex: 0,
+  onClick,
+  onKeyDown: (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    // Space scrolls the page by default; Enter can submit an enclosing form.
+    e.preventDefault();
+    onClick?.(e);
+  },
+});

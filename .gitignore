@@ -57,3 +57,12 @@ fastlane/test_output/
 build/ios/
 *.ipa
 *.dSYM.zip
+
+# Test coverage output (scripts/audit.mjs)
+coverage/
+
+# Android release signing — the upload key and its passwords. Committing any
+# of these would hand anyone the ability to publish as this app.
+android/keystore.properties
+*.jks
+*.keystore

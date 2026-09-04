@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from "@/components/ui/card";
 import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
-import { isInternalPath } from '@/lib/utils';
+import { isInternalPath, keyboardClickable } from '@/lib/utils';
 
 // sessionStorage key used to round-trip `returnTo` across the Stripe redirect.
 const RETURN_TO_STORAGE_KEY = 'fp:upgrade_return_to';
@@ -165,7 +165,7 @@ const UpgradeFlow = () => {
                 <div
                   key={plan.key}
                   className={`relative rounded-xl border-2 p-4 flex cursor-pointer transition-all ${selectedPlanKey === plan.key ? 'border-[#5CA9E9] bg-blue-50/50 dark:bg-blue-900/10' : 'border-gray-200 hover:border-gray-300 dark:border-gray-800'}`}
-                  onClick={() => setSelectedPlanKey(plan.key)}
+                  {...keyboardClickable(() => setSelectedPlanKey(plan.key))}
                 >
                   <RadioGroupItem value={plan.key} id={plan.key} className="sr-only" />
                   <div className="flex-1">

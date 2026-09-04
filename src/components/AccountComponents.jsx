@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, Calendar, AlertTriangle, Crown, Zap, Check, Heart, ArrowRight, History, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, keyboardClickable } from '@/lib/utils';
 
 export const LoadingSpinner = () => (
     <div className="flex justify-center items-center p-4">
@@ -20,7 +20,7 @@ export const AccountSection = ({ title, children }) => (
 
 export const ListItem = ({ icon: Icon, title, onClick, rightElement }) => (
     <div
-        onClick={onClick}
+        {...keyboardClickable(onClick)}
         className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
         <div className="flex items-center gap-4">

@@ -7,6 +7,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import GuideIcon from '@/components/GuideIcon';
+import HomeNudge from '@/components/HomeNudge';
 import { describeWindow } from '@/lib/shareWindows';
 
 /**
@@ -186,6 +187,8 @@ const HomeScreen = () => {
             </button>
           </div>
         </div>
+
+        <HomeNudge />
 
         {/* Your guides */}
         <div className="flex items-center justify-between mb-3">

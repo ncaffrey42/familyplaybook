@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Sign in with Apple. Guideline 4.8 requires this to be offered whenever the
+	  app offers other third-party sign-in (we offer Google, Facebook, Discord),
+	  and the button has always shipped — but without this entitlement it could
+	  only run as a Supabase web OAuth flow through Browser.open rather than as
+	  native Sign in with Apple.
+
+	  "Default" is the standard value for first-party Sign in with Apple. It must
+	  also be enabled for the App ID in the Apple Developer portal, and the Apple
+	  provider configured in Supabase (MOBILE_BUILD.md §2-3), or the capability
+	  will fail to provision at build time.
+	-->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

@@ -49,19 +49,11 @@ import {
       const { user, signOut } = useAuth();
       const handleNavigate = useNavigation();
       const [isSigningOut, setIsSigningOut] = useState(false);
-      const [isUserbackEnabled, setIsUserbackEnabled] = useState(
-        localStorage.getItem('showUserbackWidget') !== 'false'
-      );
     
       const handleThemeChange = () => {
         setTheme(theme === 'light' ? 'dark' : 'light');
       };
     
-      const handleUserbackToggle = (enabled) => {
-        setIsUserbackEnabled(enabled);
-        localStorage.setItem('showUserbackWidget', enabled);
-        window.dispatchEvent(new Event('storage'));
-      };
     
       const handleSignOut = async () => {
         try {
@@ -141,12 +133,6 @@ import {
               </SettingsSection>
     
               <SettingsSection title="Advanced">
-                <SettingsItem icon={Bug} title="Feedback Widget" isLast={!user?.email?.endsWith('@hostinger.com')}>
-                  <Switch
-                    checked={isUserbackEnabled}
-                    onCheckedChange={handleUserbackToggle}
-                  />
-                </SettingsItem>
                 {user?.email?.endsWith('@hostinger.com') && (
                     <SettingsItem icon={Bug} title="View Error Log" isButton isLast onClick={() => handleNavigate('error-log')}>
                         <ChevronRight size={20} className="text-muted-foreground" />

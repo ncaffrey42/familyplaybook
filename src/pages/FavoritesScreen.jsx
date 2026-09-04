@@ -5,6 +5,7 @@ import { Heart, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GuideIcon from '@/components/GuideIcon';
 import { format } from 'date-fns';
+import { keyboardClickable } from '@/lib/utils';
 
 const FavoritesScreen = () => {
   const { favorites, toggleFavorite } = useData();
@@ -75,7 +76,7 @@ const FavoritesScreen = () => {
             {favoriteGuides.map((guide) => (
               <div
                 key={guide.id}
-                onClick={() => handleGuideClick(guide.id)}
+                {...keyboardClickable(() => handleGuideClick(guide.id))}
                 className="group bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform hover:shadow-md"
               >
                 <div className="flex-shrink-0">

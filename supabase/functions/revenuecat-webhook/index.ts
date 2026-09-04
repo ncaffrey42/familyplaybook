@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { billingUpdateFromEvent, productMapFromEnv } from './mapping.ts';
+import { secretsMatch } from '../_shared/webhookAuth.ts';
 
 /**
  * RevenueCat webhook → reconcile native IAP purchases into user_billing.
@@ -40,9 +41,13 @@ Deno.serve(async (req) => {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  // Shared-secret auth (set the same value as RevenueCat's Authorization header)
-  const expected = Deno.env.get('REVENUECAT_WEBHOOK_AUTH');
-  if (!expected || req.headers.get('Authorization') !== expected) {
+  // Shared-secret auth, compared in constant time (see _shared/webhookAuth.ts
+  // for why `===` is unsafe here). secretsMatch returns false when either
+  // side is missing, so an unset env var cannot authenticate.
+  if (!(await secretsMatch(
+    req.headers.get('Authorization'),
+    Deno.env.get('REVENUECAT_WEBHOOK_AUTH'),
+  ))) {
     return new Response('Unauthorized', { status: 401 });
   }
 

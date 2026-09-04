@@ -28,6 +28,39 @@ jobs:
       - name: Test
         run: npm test
 
+      # The money paths (stripe-webhook, change-subscription-plan,
+      # revenuecat-webhook) are Deno tests, so vitest cannot see them —
+      # vitest.config.js excludes supabase/ deliberately. Without this step
+      # they exist but never gate a merge, which reads as coverage while
+      # proving nothing. See docs/platform/PRODUCTION_AUDIT.md §5.
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # --node-modules-dir=none: the repo has a node_modules from `npm ci`
+      # above, and Deno 2 otherwise refuses to resolve `npm:` specifiers
+      # against it. The dummy env vars exist only so _shared/stripe.ts can
+      # construct its clients at module load; the tests inject fakes.
+      - name: Test edge functions (Deno)
+        run: npm run test:functions
+
+      # The artifact build below sets VITE_ENABLE_AI_GENERATION=false, so no AI
+      # surface is ever compiled in CI. This step builds them once so a syntax
+      # or import error behind the flag cannot reach main unnoticed. Its output
+      # is intentionally discarded — the next step rebuilds for the artifact.
+      - name: Build (AI surfaces smoke test)
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: 'https://placeholder.supabase.co'
+          VITE_SUPABASE_ANON_KEY: 'placeholder-anon-key'
+          VITE_APP_URL: 'https://example.com'
+          VITE_STRIPE_PUBLISHABLE_KEY: 'pk_test_placeholder'
+          VITE_ENABLE_AI_GENERATION: 'true'
+          VITE_ENABLE_FAMILY_SHARING: 'true'
+          VITE_ENABLE_ASK_PLAYBOOK: 'true'
+          VITE_ENABLE_HOST_PRODUCT: 'true'
+
       - name: Build
         run: npm run build
         env:
@@ -46,3 +79,38 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+
+  audit:
+    name: Production audit (ratchet)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Compares every check against the ratchet in scripts/audit.mjs and
+      # fails on any regression. Definitions, and what to do when one trips:
+      # docs/platform/PRODUCTION_AUDIT.md
+      #
+      # NOTE: this job can go red without any code change, because the
+      # npm-audit check reads a live advisory feed. That is intended — a new
+      # high/critical advisory in a runtime dependency IS news. The response
+      # is to triage it (§4.5 shows two baseline advisories that turned out
+      # to be unreachable) and then either fix it or raise the ratchet with
+      # the reason recorded, never to delete the check.
+      - name: Run audit
+        run: npm run audit
+        env:
+          VITE_SUPABASE_URL: 'https://placeholder.supabase.co'
+          VITE_SUPABASE_ANON_KEY: 'placeholder-anon-key'
+          VITE_APP_URL: 'https://example.com'
+          VITE_STRIPE_PUBLISHABLE_KEY: 'pk_test_placeholder'

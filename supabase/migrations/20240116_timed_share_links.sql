@@ -1,3 +1,23 @@
+-- ⚠️ SUPERSEDED AND UNAPPLIABLE — READ BEFORE TOUCHING (noted 2026-08-20)
+--
+-- This migration cannot be applied by `supabase db push`. Its 20240116 slot is
+-- already recorded as applied on the remote by 20240116_feedback.sql, which
+-- came down a different branch. The two collided.
+--
+-- Consequences, verified against the live database:
+--   * shared_links.recipient_name does NOT exist (probe returns 400)
+--   * the set_share_window RPC does NOT exist (probe returns 404 / PGRST202)
+--   * therefore ShareScreen's saveWindow() write path fails at runtime
+--
+-- The name concept is served instead by shared_links.recipient_label from
+-- 20240128_share_labels_access_log, which IS applied. expires_at, the other
+-- column this file adds, already arrived via 20240117_reengagement.
+--
+-- To revive this feature, renumber this file above the highest applied
+-- migration (20240133) so it can run. To retire it, delete this file and
+-- remove ShareScreen's recipient/windowId UI. Do not leave it as-is and
+-- assume the feature works.
+
 -- Timed, named share links — "one link for Ana, live until midnight".
 --
 -- The redesign brief asks for a duration on every link (Tonight / This weekend

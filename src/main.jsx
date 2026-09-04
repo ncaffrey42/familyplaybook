@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider } from '@/contexts/SupabaseAuthContext';
 import { initErrorLogger } from '@/lib/errorLogger';
 import { initNativeAuth } from '@/lib/nativeAuth';
+import { isNative } from '@/lib/native';
 
 // Initialize error logging service
 initErrorLogger();
@@ -14,8 +15,15 @@ initErrorLogger();
 // Register the native OAuth deep-link handler (no-op on web).
 initNativeAuth();
 
-// Register service worker for PWA support
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Register service worker for PWA support.
+//
+// Skipped under Capacitor: the native shells serve the bundle from
+// capacitor://localhost (iOS) / https://localhost (Android) via
+// WebViewLocalServer, which does not serve /sw.js for registration. The
+// attempt always failed with "An unknown error occurred when fetching the
+// script", logging an error on every cold start of both native apps while
+// buying nothing — a packaged app has no offline problem to solve.
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(registration => {
       console.log('ServiceWorker registration successful with scope: ', registration.scope);

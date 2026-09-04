@@ -35,7 +35,8 @@ import { UsageTrackingService } from '@/services/UsageTrackingService';
 import AddGuidesToBundleModal from '@/components/AddGuidesToBundleModal';
 import ReadOnlyUpgradeModal from '@/components/ReadOnlyUpgradeModal';
 import { Badge } from "@/components/ui/badge";
-import { isVideoUrl } from '@/lib/utils';
+import { isVideoUrl, keyboardClickable } from '@/lib/utils';
+import { computeExpiry } from '@/lib/shareExpiry';
 
 const StepMedia = ({ url }) => {
   if (!url) return null;
@@ -170,12 +171,17 @@ const GuideDetail = ({ guide: propGuide }) => {
         if (updateError) throw updateError;
       
         const { data: existingLink } = await supabase.from('shared_links').select('id').eq('guide_id', guide.id).maybeSingle();
+        if (existingLink) {
+            // Re-sharing re-arms the default window; the owner can widen it
+            // on the link-ready screen.
+            await supabase.from('shared_links').update({ expires_at: computeExpiry('tonight') }).eq('id', existingLink.id);
+        }
 
         let shareId;
         if (existingLink) {
             shareId = existingLink.id;
         } else {
-            const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, guide_id: guide.id, bundle_id: bundleId || null }).select().single();
+            const { data: shareData, error: shareError } = await supabase.from('shared_links').insert({ user_id: user.id, guide_id: guide.id, bundle_id: bundleId || null, expires_at: computeExpiry('tonight') }).select().single();
             if (shareError) throw shareError;
             shareId = shareData.id;
         }
@@ -439,7 +445,7 @@ const GuideDetail = ({ guide: propGuide }) => {
               {!isLibraryView && (
                   <div
                     className="flex items-center gap-2 mt-2 cursor-pointer group"
-                    onClick={() => { if (!gateReadOnly()) setIsBundleModalOpen(true); }}
+                    {...keyboardClickable(() => { if (!gateReadOnly()) setIsBundleModalOpen(true); })}
                   >
                     {assignedBundles.length > 0 ? (
                         <Badge variant="outline" className="bg-white/50 hover:bg-white/80 transition-colors border-gray-400/30 text-gray-700 dark:text-gray-300 gap-1 pl-1.5">
@@ -538,6 +544,15 @@ const GuideDetail = ({ guide: propGuide }) => {
                       key={step.id}
                       onClick={() => !isLibraryView && toggleStep(step.id)}
                       role={isLibraryView ? undefined : 'button'}
+                      // Interactive only outside the library view, so the tab
+                      // stop and key handler are conditional too — a read-only
+                      // step must not advertise itself as actionable.
+                      tabIndex={isLibraryView ? undefined : 0}
+                      onKeyDown={isLibraryView ? undefined : (e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        toggleStep(step.id);
+                      }}
                       className={`flex items-start gap-3.5 px-4 py-4 ${index > 0 ? 'border-t border-row-divider' : ''} ${!isLibraryView ? 'cursor-pointer' : ''} ${isChecked ? 'bg-cream' : ''}`}
                     >
                       <div className="flex-shrink-0 mt-0.5">

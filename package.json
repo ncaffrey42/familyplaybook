@@ -11,6 +11,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:functions": "STRIPE_SECRET_KEY=sk_test_dummy SUPABASE_URL=http://localhost:54321 SUPABASE_SERVICE_ROLE_KEY=dummy deno test --no-check --allow-env --allow-net --node-modules-dir=none supabase/functions/",
+    "e2e": "node e2e/host-property-flow.mjs",
+    "eval:ask-playbook": "node evals/ask-playbook/run.mjs",
+    "audit": "node scripts/audit.mjs",
+    "audit:fast": "node scripts/audit.mjs --fast",
     "mobile:add": "cap add ios && cap add android",
     "mobile:sync": "npm run build && cap sync",
     "mobile:assets": "capacitor-assets generate --iconBackgroundColor '#FDF8F3' --splashBackgroundColor '#FDF8F3'",
@@ -79,6 +84,7 @@
     "eslint-config-react-app": "^7.0.1",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.3",
     "eslint-plugin-react-hooks": "^5.1.0",
     "globals": "^15.14.0",
@@ -88,5 +94,11 @@
     "terser": "^5.39.0",
     "vite": "^4.4.5",
     "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "ws": "^8.21.3",
+    "yaml": "^2.9.0",
+    "@remix-run/router": "^1.23.4",
+    "nanoid": "^3.3.18"
   }
 }

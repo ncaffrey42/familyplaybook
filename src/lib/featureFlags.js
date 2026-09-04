@@ -29,3 +29,89 @@ export const AI_GENERATION_ENABLED =
  */
 export const HOST_MODE_ENABLED =
   import.meta.env.VITE_ENABLE_HOST_MODE === 'true';
+
+/**
+ * FEEDBACK_ENABLED gates the in-app feedback bubble + checkpoint prompts.
+ * On unless explicitly disabled with VITE_ENABLE_FEEDBACK=false.
+ */
+export const FEEDBACK_ENABLED =
+  import.meta.env.VITE_ENABLE_FEEDBACK !== 'false';
+
+/**
+ * SHARE_TAB_MANAGE_ENABLED gates the "Manage" entry point in the Share
+ * tab's "Family & helpers" header, which opens the existing
+ * ManageFamilyScreen (/account/family — also reachable from Settings).
+ * The Share tab already lists members and manages what each can see; this
+ * is the labelled door to inviting and removing them. Default OFF: new
+ * user-visible surfaces ship dark (see docs/platform/NAV.md).
+ * Always rendered inside the FAMILY_SHARING_ENABLED block, so it can
+ * never appear when family sharing itself is off.
+ */
+export const SHARE_TAB_MANAGE_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_TAB_MANAGE === 'true';
+
+/**
+ * SHARE_LABELS_ENABLED gates the three additions from
+ * docs/platform/SHARING.md: an arbitrary end-date for a link (host stays
+ * don't fit "tonight"/"the weekend"), a recipient label ("Sitter — Friday"),
+ * and the per-link open counter shown in the Share tab.
+ *
+ * Default OFF, and it MUST stay off until migration
+ * 20240128_share_labels_access_log is applied — it reads and writes
+ * shared_links.recipient_label / opened_count / last_opened_at and calls
+ * the record_share_access RPC, none of which exist before then.
+ */
+export const SHARE_LABELS_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_LABELS === 'true';
+
+/**
+ * Re-engagement trio — each independently toggleable, all on unless
+ * explicitly disabled. These are in-app-only surfaces (no push/email):
+ * silence for a cold user is guaranteed by construction.
+ */
+export const SHARE_EXPIRY_ENABLED =
+  import.meta.env.VITE_ENABLE_SHARE_EXPIRY !== 'false';
+export const FRESHNESS_ENABLED =
+  import.meta.env.VITE_ENABLE_FRESHNESS !== 'false';
+export const GAP_NUDGE_ENABLED =
+  import.meta.env.VITE_ENABLE_GAP_NUDGE !== 'false';
+
+/**
+ * ASK_PLAYBOOK_ENABLED gates "Ask the Playbook" (host vertical: Alfred) —
+ * grounded Q&A over exactly the guides one share link exposes, rendered on
+ * the anonymous /share/:shareId page. Eligibility is resolved server-side
+ * (paid owner's link only), so the flag only decides whether the client
+ * asks the question at all.
+ *
+ * Default OFF, and it MUST stay off until BOTH are true: migration
+ * 20240129_ask_playbook is applied — it adds guide_embeddings,
+ * ask_playbook_usage and the resolve_ask_scope / match_playbook_chunks /
+ * ask_playbook_available SECURITY DEFINER functions the client calls — AND
+ * the ask-playbook edge function is deployed.
+ *
+ * Beyond those two: SIMILARITY_THRESHOLD is still an uncalibrated guess and
+ * must be set from the eval set before this is enabled for real users. It
+ * is the number that decides whether a stressed babysitter gets an answer
+ * or a refusal — see docs/platform/ASK_PLAYBOOK.md §10.
+ */
+export const ASK_PLAYBOOK_ENABLED =
+  import.meta.env.VITE_ENABLE_ASK_PLAYBOOK === 'true';
+
+/**
+ * HOST_PRODUCT_ENABLED gates the entire Host app shell at /host — its own
+ * 3-tab nav (Properties / Guides / Team), KPI header and apricot accent.
+ * See docs/platform/HOST_SHELL.md.
+ *
+ * Default OFF. This is currently the ONLY real gate: workspace-type gating
+ * (`workspace_type = 'host'`) is a stub in useHostWorkspace() because the
+ * workspaces table does not exist yet (ARCHITECTURE.md migration #1 is
+ * designed, not applied). With this flag ON, every account is treated as
+ * host-eligible — fine for a dark shell, a serious bug if shipped. Do not
+ * enable until useHostWorkspace() reads workspace_type for real.
+ *
+ * Distinct from HOST_MODE_ENABLED above, which gates the older
+ * non-functional /host-mode mockup. That one should be retired once /host
+ * is real — see HOST_SHELL.md §7.4.
+ */
+export const HOST_PRODUCT_ENABLED =
+  import.meta.env.VITE_ENABLE_HOST_PRODUCT === 'true';

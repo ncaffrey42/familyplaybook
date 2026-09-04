@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { logError } from '@/lib/errorLogger';
+import { keyboardClickable } from '@/lib/utils';
 
 /**
  * Renders the detail view for a specific bundle.
@@ -192,7 +193,7 @@ const PackDetail = ({ pack, guides, allGuides, onAddGuidesToPack }) => {
                   transition={{ delay: index * 0.1 }}
                   className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card hover:shadow-soft transition-all duration-300 flex items-center gap-4"
                 >
-                  <div onClick={() => handleNavigate('guideDetail', { guideId: guide.id, bundleId: pack.id })} className="flex-1 flex items-center gap-4 cursor-pointer">
+                  <div {...keyboardClickable(() => handleNavigate('guideDetail', { guideId: guide.id, bundleId: pack.id }))} className="flex-1 flex items-center gap-4 cursor-pointer">
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#5CA9E9]/20 to-[#7BC47F]/20 flex items-center justify-center text-2xl flex-shrink-0">{guide.icon}</div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-800 dark:text-gray-200">{guide.name}</h3>

@@ -1,13 +1,14 @@
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import importPlugin from 'eslint-plugin-import';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import globals from 'globals';
 
 export default [
 	{ ignores: ['node_modules/**', 'dist/**', 'build/**', 'vite.config.js', 'scripts/**', '.claude/**', 'ios/**', 'android/**'] },
 	{
 		files: ['**/*.js', '**/*.jsx'],
-		plugins: { react, 'react-hooks': reactHooks, import: importPlugin },
+		plugins: { react, 'react-hooks': reactHooks, import: importPlugin, 'jsx-a11y': jsxA11y },
 		languageOptions: {
 			ecmaVersion: 'latest',
 			sourceType: 'module',
@@ -25,6 +26,7 @@ export default [
 			...react.configs.recommended.rules,
 			...reactHooks.configs.recommended.rules,
 			...importPlugin.flatConfigs.recommended.rules,
+			...jsxA11y.flatConfigs.recommended.rules,
 
 			// Non-critical rules - disabled since code works fine without them
 			'react/prop-types': 'off',
@@ -47,9 +49,29 @@ export default [
 
 			// Disable expensive rules for performance
 			'import/no-cycle': 'off', // AI rarely makes this error, and the rule is very slow to run
+
+			// --- jsx-a11y exceptions, each with a reason ---------------------
+			// Every guide video is uploaded by the family that wrote the guide.
+			// There is no caption track to point at, and inventing an empty
+			// <track> would satisfy the linter while helping nobody. Revisit if
+			// we ever generate transcripts (the voice-to-guide pipeline could).
+			'jsx-a11y/media-has-caption': 'off',
+			// Two deliberate uses: the login email field, and the AI sheet's
+			// prompt box, both of which open in response to an explicit user
+			// action where focus is the expected outcome.
+			'jsx-a11y/no-autofocus': 'off',
 		},
 	},
 	{ files: ['tools/**/*.js', 'tailwind.config.js'], languageOptions: { globals: globals.node } },
+	{
+		// shadcn primitives: AlertTitle and CardTitle render a heading whose
+		// content arrives via {...props}, so the rule cannot see it and always
+		// reports a false positive. Scoped narrowly to the primitives rather
+		// than disabled repo-wide, so a genuinely empty heading in app code is
+		// still caught.
+		files: ['src/components/ui/**'],
+		rules: { 'jsx-a11y/heading-has-content': 'off' },
+	},
 	{
 		files: ['src/__tests__/**', '**/*.test.js', '**/*.test.jsx', '**/*.spec.js', '**/*.spec.jsx'],
 		languageOptions: {

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import GuideIcon from '@/components/GuideIcon';
+import { keyboardClickable } from '@/lib/utils';
 
 const AddGuidesToBundleModal = ({ 
   isOpen, 
@@ -127,11 +128,11 @@ const AddGuidesToBundleModal = ({
                 {items.length > 0 ? items.map(item => (
                   <div
                     key={item.id}
-                    onClick={(e) => {
+                    {...keyboardClickable((e) => {
                       // Prevent bubbling to avoid double-triggers
                       e.stopPropagation();
                       handleToggle(item.id);
-                    }}
+                    })}
                     className="flex items-center gap-4 p-3 rounded-2xl cursor-pointer hover:bg-secondary transition-colors"
                   >
                     <Checkbox

@@ -4,6 +4,7 @@ import { X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
+import { keyboardClickable } from '@/lib/utils';
 
 const AddGuidesToPackModal = ({ isOpen, onClose, allGuides = [], guidesInPack = [], onAddGuides }) => {
   const [selectedGuides, setSelectedGuides] = useState([]);
@@ -92,7 +93,7 @@ const AddGuidesToPackModal = ({ isOpen, onClose, allGuides = [], guidesInPack = 
                 {availableGuides.length > 0 ? availableGuides.map(guide => (
                   <div
                     key={guide.id}
-                    onClick={() => handleToggleGuide(guide.id)}
+                    {...keyboardClickable(() => handleToggleGuide(guide.id))}
                     className="flex items-center gap-4 p-3 rounded-2xl cursor-pointer hover:bg-secondary transition-colors"
                   >
                     <Checkbox

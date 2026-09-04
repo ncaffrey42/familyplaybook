@@ -8,7 +8,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import HeartMark from '@/components/HeartMark';
 import HandoffAssembleSheet from '@/components/HandoffAssembleSheet';
-import { AI_GENERATION_ENABLED, FAMILY_SHARING_ENABLED } from '@/lib/featureFlags';
+import { AI_GENERATION_ENABLED, FAMILY_SHARING_ENABLED, SHARE_TAB_MANAGE_ENABLED, SHARE_LABELS_ENABLED } from '@/lib/featureFlags';
 import { describeWindow, isLive } from '@/lib/shareWindows';
 
 /**
@@ -59,7 +59,17 @@ const ShareCenterScreen = () => {
             : Promise.resolve({ data: [] }),
           supabase
             .from('shared_links')
-            .select('id, created_at, expires_at, recipient_name, guide_id, bundle_id, guides(name), packs(name)')
+            // recipient_label / opened_count come from migration
+            // 20240128_share_labels_access_log, so they are requested only when
+            // the flag that surfaces them is on. Selecting a column the database
+            // does not have returns 400, and a 400 here empties the entire links
+            // list — which is exactly what main's unconditional recipient_name
+            // select did, since that column was never applied.
+            .select(
+              SHARE_LABELS_ENABLED
+                ? 'id, created_at, expires_at, guide_id, bundle_id, recipient_label, opened_count, last_opened_at, guides(name), packs(name)'
+                : 'id, created_at, expires_at, guide_id, bundle_id, guides(name), packs(name)'
+            )
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
         ]);
@@ -181,7 +191,19 @@ const ShareCenterScreen = () => {
         {/* Family members (avatar row) */}
         {FAMILY_SHARING_ENABLED && (
           <div className="mt-7">
-            <SectionLabel>Family & helpers</SectionLabel>
+            {SHARE_TAB_MANAGE_ENABLED ? (
+              <div className="flex items-center justify-between">
+                <SectionLabel>Family & helpers</SectionLabel>
+                <button
+                  onClick={() => navigate('/account/family')}
+                  className="text-[13px] font-bold text-raspberry mb-3"
+                >
+                  Manage
+                </button>
+              </div>
+            ) : (
+              <SectionLabel>Family & helpers</SectionLabel>
+            )}
             <div className="-mx-[22px] px-[22px] flex gap-[18px] overflow-x-auto scrollbar-hide items-start">
               {members.map((m, i) => (
                 <button
@@ -308,10 +330,16 @@ const ShareCenterScreen = () => {
                     className="flex-1 min-w-0 text-left"
                   >
                     <div className={`font-bold text-[15.5px] truncate ${l.live ? 'text-mulberry dark:text-foreground' : 'text-muted-copy'}`}>
-                      {l.recipient_name ? `${l.recipient_name} · ${l.label}` : l.label}
+                      {l.label}
+                      {SHARE_LABELS_ENABLED && l.recipient_label && (
+                        <span className="font-semibold text-muted-copy"> · {l.recipient_label}</span>
+                      )}
                     </div>
                     <div className="text-[12.5px] text-muted-copy">
                       {l.kind} · {l.live ? `live ${l.window}` : 'closed'}
+                      {SHARE_LABELS_ENABLED && l.opened_count > 0 && (
+                        <> · opened {l.opened_count}×</>
+                      )}
                     </div>
                   </button>
                   <button
