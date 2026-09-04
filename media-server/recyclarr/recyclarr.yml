@@ -1,0 +1,162 @@
+# yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
+################################################################################
+# Recyclarr config — syncs TRaSH Guides formats/scores into Radarr + Sonarr.
+#
+# Based on the official templates:
+#   Radarr "HD Bluray + WEB": keeps everything at 1080p, prefers Bluray/WEB-DL
+#   Sonarr "WEB-1080p":       1080p WEB-DLs (best source for streaming-era TV)
+#
+# On top of the templates, the audio custom formats are scored so that
+# DD+ Atmos > DD+ > lossless Atmos > everything else — the "best audio that
+# still direct-plays when streaming" ordering. Lossless formats (TrueHD,
+# DTS-HD MA) still score positive, so they're never rejected, just not chased.
+#
+# URLs and API keys come from the .env file via the compose environment.
+################################################################################
+
+radarr:
+  movies:
+    base_url: !env_var RADARR_BASE_URL http://host.docker.internal:7878
+    api_key: !env_var RADARR_API_KEY
+
+    quality_definition:
+      type: movie
+
+    quality_profiles:
+      - trash_id: d1d67249d3890e49bc12e275d989a7e9  # HD Bluray + WEB
+        reset_unmatched_scores:
+          enabled: true
+
+    custom_format_groups:
+      add:
+        - trash_id: f8bf8eab4617f12dfdbd16303d8da245  # [Optional] Golden Rule HD
+        - trash_id: a3ac6af01d78e4f21fcb75f601ac96df  # [Unwanted] Unwanted Formats
+
+    # Audio scoring — streaming-friendly ordering (higher = preferred).
+    custom_formats:
+      - trash_ids:
+          - 1af239278386be2919e1bcee0bde047e  # DD+ ATMOS
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 500
+      - trash_ids:
+          - 185f1dd7264c4562b9022d963ac37424  # DD+
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 400
+      - trash_ids:
+          - 496f355514737f7d83bf7aa4d24f8169  # TrueHD ATMOS
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 300
+      - trash_ids:
+          - 2f22d89048b01681dde8afe203bf2e95  # DTS X
+          - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS (undefined)
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 250
+      - trash_ids:
+          - 3cafb66171b47f226146a0770576870f  # TrueHD
+          - dcf3ec6938fa32445f590a4da84256cd  # DTS-HD MA
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 200
+      - trash_ids:
+          - 8e109e50e0a0b83a5098b056e13bf6db  # DTS-HD HRA
+          - a570d4a0e56a2874b64e5bfa55202a1b  # FLAC
+          - e7c2fcae07cbada050a0af3357491d7b  # PCM
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 150
+      - trash_ids:
+          - f9f847ac70a0af62ea4a08280b859636  # DTS-ES
+          - 1c1a4c5e823891c75bc50380a6866f73  # DTS
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 100
+      - trash_ids:
+          - c2998bd0d90ed5621d8df281e839436e  # DD
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 60
+      - trash_ids:
+          - 240770601cc226190c367ef59aba7463  # AAC
+        assign_scores_to:
+          - name: HD Bluray + WEB
+            score: 40
+
+sonarr:
+  tv:
+    base_url: !env_var SONARR_BASE_URL http://host.docker.internal:8989
+    api_key: !env_var SONARR_API_KEY
+
+    quality_definition:
+      type: series
+
+    quality_profiles:
+      - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
+        reset_unmatched_scores:
+          enabled: true
+
+    custom_format_groups:
+      add:
+        - trash_id: 158188097a58d7687dee647e04af0da3  # [Optional] Golden Rule HD
+        - trash_id: 74aff4168620ed49dcc67e92b2c2a5b4  # [Optional] Language Profiles
+        - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
+        - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
+        # NOTE for anime like Sailor Moon: original-language releases are fine —
+        # nothing here penalizes non-English audio. Subtitles are Bazarr's job.
+        # - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime (optional boost)
+
+    # Same streaming-friendly audio ordering, Sonarr's format IDs.
+    custom_formats:
+      - trash_ids:
+          - 4232a509ce60c4e208d13825b7c06264  # DD+ ATMOS
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 500
+      - trash_ids:
+          - 63487786a8b01b7f20dd2bc90dd4a477  # DD+
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 400
+      - trash_ids:
+          - 0d7824bb924701997f874e7ff7d4844a  # TrueHD ATMOS
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 300
+      - trash_ids:
+          - 9d00418ba386a083fbf4d58235fc37ef  # DTS X
+          - b6fbafa7942952a13e17e2b1152b539a  # ATMOS (undefined)
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 250
+      - trash_ids:
+          - 1808e4b9cee74e064dfae3f1db99dbfe  # TrueHD
+          - c429417a57ea8c41d57e6990a8b0033f  # DTS-HD MA
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 200
+      - trash_ids:
+          - cfa5fbd8f02a86fc55d8d223d06a5e1f  # DTS-HD HRA
+          - 851bd64e04c9374c51102be3dd9ae4cc  # FLAC
+          - 30f70576671ca933adbdcfc736a69718  # PCM
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 150
+      - trash_ids:
+          - c1a25cd67b5d2e08287c957b1eb903ec  # DTS-ES
+          - 5964f2a8b3be407d083498e4459d05d0  # DTS
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 100
+      - trash_ids:
+          - dbe00161b08a25ac6154c55f95e6318d  # DD
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 60
+      - trash_ids:
+          - a50b8a0c62274a7c38b09a9619ba9d86  # AAC
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 40

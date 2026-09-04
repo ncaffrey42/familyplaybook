@@ -1,0 +1,44 @@
+# Media automation add-ons for the existing Plex + Radarr (+ Sonarr) stack.
+# Runs on Docker Desktop. Copy this folder anywhere on the media machine,
+# create a .env from .env.example, then:  docker compose up -d
+#
+# IMPORTANT: the volume paths under "EDIT ME" must point at the SAME movie/TV
+# folders that Radarr, Sonarr, and Plex use, mounted at the SAME container
+# paths as in Radarr/Sonarr (e.g. /movies, /tv). Bazarr saves .srt files next
+# to the video files, so the paths have to line up or downloads will fail.
+
+services:
+  # Bazarr — subtitle automation. Watches the Radarr/Sonarr libraries, finds
+  # anything missing subtitles in your wanted languages, and downloads them.
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
+    volumes:
+      - ./bazarr/config:/config
+      # ------- EDIT ME: same media paths as Radarr/Sonarr -------
+      - ${MOVIES_PATH:?set MOVIES_PATH in .env}:/movies
+      - ${TV_PATH:?set TV_PATH in .env}:/tv
+      # ----------------------------------------------------------
+    ports:
+      - "6767:6767"   # web UI: http://localhost:6767
+    restart: unless-stopped
+
+  # Recyclarr — syncs TRaSH Guides custom formats + scores into Radarr and
+  # Sonarr on a schedule (daily by default). Config: ./recyclarr/recyclarr.yml
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - RADARR_BASE_URL=${RADARR_BASE_URL:-http://host.docker.internal:7878}
+      - RADARR_API_KEY=${RADARR_API_KEY:?set RADARR_API_KEY in .env}
+      - SONARR_BASE_URL=${SONARR_BASE_URL:-http://host.docker.internal:8989}
+      - SONARR_API_KEY=${SONARR_API_KEY:?set SONARR_API_KEY in .env}
+    volumes:
+      - ./recyclarr:/config
+    restart: unless-stopped

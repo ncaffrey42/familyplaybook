@@ -1,0 +1,7 @@
+.env
+bazarr/config/
+recyclarr/cache/
+recyclarr/logs/
+recyclarr/repositories/
+recyclarr/settings.yml
+__pycache__/
