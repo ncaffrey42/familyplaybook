@@ -10,7 +10,7 @@ them.
 >   needs 18+)
 > - **iOS:** a Mac with **Xcode** + **CocoaPods** (`sudo gem install cocoapods`),
 >   an **Apple Developer account** ($99/yr) → App Store Connect
-> - **Android:** **Android Studio** + **JDK 17**, a **Google Play Console**
+> - **Android:** **Android Studio** + **JDK 21** (Capacitor 7; Android Studio's bundled JBR works — set `JAVA_HOME` to `/Applications/Android Studio.app/Contents/jbr/Contents/Home`), a **Google Play Console**
 >   account ($25 one-time)
 
 ---
@@ -133,7 +133,7 @@ not allowed for in-app digital subscriptions; that's a separate work item
 | Symptom | Fix |
 |---|---|
 | `cap add ios` fails on pod install | Install CocoaPods (`sudo gem install cocoapods`), rerun |
-| Android Gradle fails | Use JDK 17 (Java 8/11 won't work with current Gradle) |
+| Android Gradle fails | Use JDK 21 (Capacitor 7 / AGP 8.7); the system Java 8 will not work |
 | OAuth opens browser but never returns to app | Redirect URL `familyplaybook://auth/callback` missing in Supabase, or the URL scheme/intent-filter not applied from native-config |
 | Mic/camera does nothing on iOS | Info.plist usage strings not applied |
 | Icons look soft | Replace assets/icon.png with a 1024×1024 master, rerun `npm run mobile:assets` |

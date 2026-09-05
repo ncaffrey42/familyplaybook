@@ -19,24 +19,6 @@ const config: CapacitorConfig = {
   },
   android: {
     // allowMixedContent stays false — everything is HTTPS (Supabase/Stripe).
-
-    // Native plugins compiled into the Android app. RevenueCat is deliberately
-    // left out: its current Capacitor-6-compatible release bundles Play
-    // Billing Library 7.1.1, and since 2026-08-31 Google Play requires 8.0+
-    // for new apps. Billing 8 only ships in @revenuecat/purchases-capacitor
-    // 10+, which needs Capacitor 7. With VITE_ENABLE_IAP=false the JS side
-    // never touches the plugin, so excluding it costs nothing today.
-    // Re-add it (and migrate to Capacitor 7) when store billing goes live —
-    // see REVENUECAT_SETUP.md. iOS still includes every installed plugin.
-    includePlugins: [
-      '@capacitor/app',
-      '@capacitor/browser',
-      '@capacitor/camera',
-      '@capacitor/filesystem',
-      '@capacitor/keyboard',
-      '@capacitor/splash-screen',
-      '@capacitor/status-bar',
-    ],
   },
 
   plugins: {
