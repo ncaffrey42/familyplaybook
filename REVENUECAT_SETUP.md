@@ -70,6 +70,15 @@ supabase secrets set \
 
 ## 5. Turn it on in the native build
 
+> **Android first:** the RevenueCat native module is currently excluded from
+> the Android build (`android.includePlugins` in `capacitor.config.ts`)
+> because its Capacitor-6 release ships Play Billing Library 7.1.1 and Google
+> Play requires 8.0+ for new apps since 2026-08-31. Before enabling IAP on
+> Android: migrate to Capacitor 7 (`npx cap migrate`), upgrade
+> `@revenuecat/purchases-capacitor` to 10+ (Billing 8), and remove
+> `@revenuecat/purchases-capacitor` from the exclusion by deleting
+> `android.includePlugins`.
+
 In the native app's env (baked at build time):
 ```
 VITE_ENABLE_IAP=true
