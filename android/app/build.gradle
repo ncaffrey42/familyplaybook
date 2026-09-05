@@ -25,7 +25,12 @@ android {
     namespace "com.familyplaybook.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.familyplaybook.app"
+        // Play package name. com.familyplaybook.app is registered by another
+        // developer on Google Play (their FileProvider/androidx-startup
+        // authorities collide), so the Play app record was created as
+        // com.famplaybook.app. The Java namespace above keeps its original
+        // package; only the shipped application id differs.
+        applicationId "com.famplaybook.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

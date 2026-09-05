@@ -136,7 +136,7 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 
 | Item | iOS | Android |
 |---|---|---|
-| Bundle / package id | `com.familyplaybook.app` ✅ | `com.familyplaybook.app` ✅ |
+| Bundle / package id | `com.familyplaybook.app` ✅ | `com.famplaybook.app` ✅ (Play rejected `com.familyplaybook.app` as already in use) |
 | Version | `MARKETING_VERSION 1.0` / build `1` ✅ | `versionName 1.0` / `versionCode 1` ✅ |
 | Min OS | deployment target **13.0** ✅ | `minSdk 22` ✅ |
 | Target API | n/a | **36** ✅ (verified on device) |

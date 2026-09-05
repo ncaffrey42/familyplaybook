@@ -34,7 +34,7 @@ that (and the webhook maps product id → plan_key):
 ## 2. RevenueCat project config
 
 1. Create a project; add your iOS app (bundle `com.familyplaybook.app`) and
-   Android app (same applicationId).
+   Android app (`com.famplaybook.app` — Play rejected the iOS id as taken).
 2. **Entitlements:** create two — identifiers **`couple`** and **`family`**
    (the app and webhook recognize these directly).
 3. **Products:** import the four store products; attach each to its entitlement

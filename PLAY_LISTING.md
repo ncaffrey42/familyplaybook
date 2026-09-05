@@ -13,7 +13,7 @@ Companion to [`APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md).
 | Field | Value |
 |---|---|
 | App name (≤30 chars) | `Family Playbook` (15) |
-| Package | `com.familyplaybook.app` |
+| Package | `com.famplaybook.app` *(com.familyplaybook.app is taken on Play by another developer)* |
 | Default language | English (United States) |
 | App or game | App |
 | Free or paid | Free (with in-app subscriptions) |
