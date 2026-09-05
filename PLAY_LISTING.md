@@ -66,10 +66,18 @@ KEEP THE FAMILY IN SYNC
 Invite a partner or a co-parent so you are not the only person who can update
 the playbook, and choose per person what they can see.
 
-WHAT YOU GET FREE
-Create guides and bundles, add photos and video, and share one live link at a
-time. No trial clock.
+WHAT YOU GET
+Create guides and bundles, add photos and video, and share a live link. No
+trial clock, no card required.
+```
 
+> **v1.0 note (2026-09-05):** the Android build ships with no in-app purchases
+> (store billing is not configured yet), so the paragraphs below about the
+> Couple/Family subscriptions and the auto-renewal sentence must stay OUT of
+> the listing until RevenueCat + Play subscriptions exist. Play compares the
+> listing to what the app actually sells.
+
+```
 FAMILY PLAYBOOK COUPLE — $6.99/month or $69.90/year
 Unlimited live share links, the full template library, and AI assistance:
 describe a routine out loud and get a structured, editable draft back.
@@ -86,9 +94,9 @@ account, and everything in it, from inside the app.
 
 | Asset | Requirement | Status |
 |---|---|---|
-| App icon | 512×512 32-bit PNG | Master at `assets/icon.png` is 1024×1024 — export at 512 |
-| Feature graphic | 1024×500 PNG/JPEG, no alpha | `<TODO>` — required, listing cannot publish without it |
-| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | `<TODO>` — see §5 |
+| App icon | 512×512 32-bit PNG | ✅ `play-ready/icon-512.png` |
+| Feature graphic | 1024×500 PNG/JPEG, no alpha | ✅ `~/Downloads/store-assets/play-ready/feature-graphic-1024x500.jpg` |
+| Phone screenshots | 2–8, min 320px, 16:9 or 9:16 | ✅ four 1080×1920 JPEGs in `play-ready/` (see §5 for the recapture caveat) |
 | Tablet screenshots | optional | skip unless tablet support is claimed |
 
 Note: `assets/icon.png` and `assets/splash.png` are currently byte-identical.
@@ -132,22 +140,7 @@ advertising purposes.
 
 ## 7. Blockers before this listing can go live
 
-1. ~~The Android build hangs on the Home screen~~ — **WITHDRAWN, this was not
-   a real defect.** Instrumenting `fetchData` showed every marker firing
-   through to `finally { setIsDataLoaded(true) }`, and a clean build with the
-   instrumentation removed loads correctly and repeatably. The original hang
-   was an artefact of the test procedure: `adb install -r` was run over an
-   already-running app on a just-booted emulator, leaving a wedged WebView.
-   `adb shell am force-stop` before launching fixes it every time. Nothing in
-   the app was changed. **Always force-stop before relaunching after an
-   install-over.**
-2. **Upload keystore does not exist.** Signing is wired
-   (`android/keystore.properties`, gitignored) but the key must be created by
-   a human — see `android/keystore.properties.example`.
-3. **In-app purchases are not enabled.** `VITE_ENABLE_IAP` is unset, so a
-   native build would attempt Stripe. Play **rejects** digital-goods sales
-   that bypass Play Billing. RevenueCat is wired; dashboard/product config
-   and the flag remain.
-4. **Backend schema drift** — migrations 20240128–20240133 are written but not
-   applied to the live database.
-5. **Feature graphic** (1024×500) does not exist and is mandatory.
+All five original blockers are closed as of 2026-09-05 — see
+`APP_STORE_CHECKLIST.md` §0. What remains is Console work (listing, Data
+safety, content rating) and adding `https://app.famplaybook.com/**` to the
+Supabase redirect URLs.

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host :: --port 3000",
     "build": "vite build",
+    "build:native": "vite build --mode native",
     "preview": "vite preview --host :: --port 3000",
     "lint": "eslint . --quiet",
     "test": "vitest run",
@@ -17,7 +18,7 @@
     "audit": "node scripts/audit.mjs",
     "audit:fast": "node scripts/audit.mjs --fast",
     "mobile:add": "cap add ios && cap add android",
-    "mobile:sync": "npm run build && cap sync",
+    "mobile:sync": "npm run build:native && cap sync",
     "mobile:assets": "capacitor-assets generate --iconBackgroundColor '#FDF8F3' --splashBackgroundColor '#FDF8F3'",
     "mobile:ios": "npm run mobile:sync && cap open ios",
     "mobile:android": "npm run mobile:sync && cap open android"

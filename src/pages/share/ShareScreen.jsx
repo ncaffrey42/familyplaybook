@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { shareLinkUrl } from '@/lib/publicUrl';
 import { useParams, useLocation } from 'react-router-dom'; // Import useLocation
 import QRCode from 'qrcode.react';
 import { supabase } from '@/lib/supabaseClient';
@@ -66,7 +67,7 @@ const ShareScreen = () => {
             setRecipientLabel(linkData.recipient_label || '');
             setSavedLabel(linkData.recipient_label || '');
 
-            const url = `${window.location.origin}/share/${shareId}`;
+            const url = shareLinkUrl(shareId);
             setShareUrl(url);
             setQrCodeData(url);
         } catch (error) {

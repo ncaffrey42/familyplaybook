@@ -25,7 +25,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import DowngradeFlow from '@/components/DowngradeFlow';
 import { toFunctionError } from '@/hooks/useSubscription';
 import { useNativePurchases } from '@/hooks/useNativePurchases';
-import { iapActive } from '@/lib/revenuecat';
+import { iapActive, nativeBillingUnavailable } from '@/lib/revenuecat';
 import { PLANS } from '@/lib/plans';
 
 const LoadingSpinner = () => (
@@ -375,6 +375,30 @@ const SubscriptionScreen = () => {
   };
 
   if (loading || !user) return <LoadingSpinner />;
+
+  // Native build without store billing configured: show the current plan
+  // only. No prices, no checkout, no billing portal — any of those would be
+  // a route to a non-store payment, which Play and the App Store reject.
+  if (nativeBillingUnavailable()) {
+    return (
+      <>
+        <Helmet><title>Your Plan - Family Playbook</title></Helmet>
+        <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-950 pb-12">
+          <div className="p-6">
+            <PageHeader title="Your Plan" onBack={() => handleNavigate('account')} />
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current plan</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{currentPlanName}</h2>
+              {scheduledPlanName && scheduledDateLabel && (
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">Switches to {scheduledPlanName} on {scheduledDateLabel}.</p>
+              )}
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">Plan changes aren't available in this version of the app.</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

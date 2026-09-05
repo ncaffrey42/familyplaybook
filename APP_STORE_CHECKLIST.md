@@ -9,18 +9,34 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 
 ## 0. Launch blockers, newest first
 
-- ✅ ~~Android build hangs on Home~~ — **withdrawn 2026-08-20, not a real
-  defect.** Instrumentation showed `fetchData` running to completion; a clean
-  uninstrumented build loads repeatably. The hang was a test-procedure
-  artefact: `adb install -r` over a running app on a freshly booted emulator
-  leaves a wedged WebView. Always `adb shell am force-stop` before relaunching.
-  No app code was changed.
-- 🛑 **IAP disabled** — `VITE_ENABLE_IAP` unset, so a native build would use
-  Stripe. Play rejects digital goods sold outside Play Billing.
-- 🛑 **No upload keystore** — signing is wired, the key is not created.
-- ⚠️ **Backend schema drift** — migrations 20240128–20240133 written, not
-  applied to the live database.
-- ⚠️ **PR #23 unmerged** — 36 commits ahead of `main`.
+- ✅ **Android release bundle built and signed (2026-09-05)** —
+  `~/Downloads/store-assets/play-ready/family-playbook-1.0-vc1.aab`,
+  versionCode 1, targetSdk 36, `jarsigner` verified. Upload key created at
+  `~/familyplaybook-signing/familyplaybook-upload.jks` (password in the
+  README beside it and in `android/keystore.properties`, both gitignored).
+  **Back that folder up and put the password in a password manager.**
+  Play account: adaforweb@gmail.com.
+- ✅ **Web app deployed at https://app.famplaybook.com (2026-09-05)** — Hostinger
+  static site, HTTPS + SPA rewrites verified. Share links and invites created
+  inside the native app now point here (`src/lib/publicUrl.js`,
+  `VITE_APP_URL` in `.env.native`); before this they were
+  `https://localhost/...` and unopenable. Redeploy = `npm run build` with
+  `VITE_APP_URL=https://app.famplaybook.com`, zip `dist/`, upload via the
+  Hostinger MCP `hosting_deployStaticWebsite`.
+  **Still needs a human:** add `https://app.famplaybook.com/**` to Supabase
+  Authentication → URL Configuration → Additional Redirect URLs, or web
+  OAuth on that host will bounce.
+- ✅ **IAP-disabled native build is now policy-safe** — with `VITE_ENABLE_IAP`
+  off, native builds render no purchase UI at all (`nativeBillingUnavailable`
+  in `src/lib/revenuecat.js`): the plan screen shows the current plan only and
+  `/account/upgrade` redirects there. Nothing routes to Stripe. Store billing
+  arrives in a later release once REVENUECAT_SETUP.md is done.
+- ✅ `android:allowBackup` set to **false** — the Supabase session token no
+  longer goes to Google Drive auto-backup.
+- ✅ ~~Android build hangs on Home~~ — withdrawn 2026-08-20 (test artefact:
+  always `adb shell am force-stop` before relaunching after an install-over).
+- ✅ Backend schema drift closed — 23/23 migrations applied (2026-08-20).
+- ✅ PR #23 merged to `main` (2026-09-04).
 
 ## A. Compliance blockers (rejection risks)
 
@@ -92,11 +108,9 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
   and verified: release AAB and debug APK both build, and the installed app
   reports `targetSdk=36` on device. Confirm 36 still meets Play's floor at
   submission time — the requirement moves annually.
-- ⚠️ **App signing** — the Gradle `signingConfig` is wired and reads
-  `android/keystore.properties` (gitignored; see `keystore.properties.example`).
-  **The keystore itself does not exist and must be created by a human** — its
-  password is a credential. Enroll in Play App Signing at upload; that is the
-  only recovery path if the upload key is ever lost.
+- ✅ **App signing** — upload keystore created 2026-09-05 (see §0). Enroll in
+  Play App Signing at upload; that is the only recovery path if the upload key
+  is ever lost.
 - ☐ Store listing copy, graphics and Data safety answers — drafted in
   [`PLAY_LISTING.md`](PLAY_LISTING.md)
 - ✅ **Feature graphic 1024×500** — generated 2026-08-20, alpha stripped (Play
@@ -130,7 +144,7 @@ Legend: ☐ todo · ⚠️ needs a decision/info · ✅ done in this branch
 | Splash generated | ✅ | ✅ (all densities, incl. night) |
 | Deep-link scheme | `familyplaybook` ✅ matches `capacitor.config.ts` | ✅ |
 | Permission strings | ✅ all four, specific | ✅ 5 perms, all justified |
-| Release signing | ⚠️ `DEVELOPMENT_TEAM` unset | ⚠️ config wired, keystore not created |
+| Release signing | ⚠️ `DEVELOPMENT_TEAM` unset | ✅ signed with upload key (2026-09-05) |
 
 **Android permissions requested** — `CAMERA`, `INTERNET`, `READ_MEDIA_IMAGES`,
 `READ_MEDIA_VIDEO`, `RECORD_AUDIO`. All map to shipped features (step
@@ -154,7 +168,7 @@ declarations. Nothing to justify in the console.
 
 - ☐ Apple Developer Program membership — `<APPLE_TEAM_ID>`
 - ☐ App Store Connect app record created
-- ✅ Google Play Developer account — $25 fee paid (2026-08-20)
+- ✅ Google Play Developer account — $25 fee paid (2026-08-20), account adaforweb@gmail.com
 - ☐ Play Console app record created
 - ☐ Apple "Sign in with Apple" Key/Services ID — `<APPLE_SERVICES_ID>`,
   `<APPLE_KEY_ID>`

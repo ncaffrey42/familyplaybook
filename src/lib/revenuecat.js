@@ -16,6 +16,14 @@ export const IAP_ENABLED = import.meta.env.VITE_ENABLE_IAP === 'true';
 /** IAP is only live on a real device with the feature flag on. */
 export const iapActive = () => IAP_ENABLED && isNative();
 
+/**
+ * A native build with store billing switched off. Google Play and the App
+ * Store reject any in-app route to a non-store payment (Stripe Checkout,
+ * the Stripe billing portal), so purchase UI must not render at all here —
+ * the user sees their current plan and nothing to buy.
+ */
+export const nativeBillingUnavailable = () => isNative() && !IAP_ENABLED;
+
 let configured = false;
 
 async function sdk() {
