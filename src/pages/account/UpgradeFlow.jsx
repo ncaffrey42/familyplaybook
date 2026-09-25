@@ -12,6 +12,7 @@ import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
 import { isInternalPath, keyboardClickable } from '@/lib/utils';
 import { nativeBillingUnavailable } from '@/lib/revenuecat';
+import { formatUsd } from '@/lib/planPricing';
 
 // sessionStorage key used to round-trip `returnTo` across the Stripe redirect.
 const RETURN_TO_STORAGE_KEY = 'fp:upgrade_return_to';
@@ -181,7 +182,7 @@ const UpgradeFlow = () => {
                         {selectedPlanKey === plan.key && <CheckCircle2 className="text-[#5CA9E9] h-5 w-5" />}
                       </div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-gray-200">
-                        From ${plan.price.month}/mo
+                        From {formatUsd(plan.price.month)}/mo
                       </div>
                     </Label>
                   </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Screen from '@/pages/account/SubscriptionScreen';
 
@@ -42,17 +42,36 @@ const data = {
 };
 vi.mock('@/contexts/DataContext', () => ({ useData: () => data }));
 
+// Store state, mutated per test. Both mocks below only dereference `iap` when
+// called (at render), never at factory time — the factories are hoisted above
+// this declaration, so reading it eagerly would hit the TDZ.
+const iap = { active: false, packages: [] };
+
+// Identity must be stable across renders: SubscriptionScreen's price effect
+// depends on getPackages, and a fresh function each render would re-run it
+// forever. The real hook wraps it in useCallback([]), so this matches.
+const nativePurchases = {
+  getPackages: () => Promise.resolve(iap.packages),
+  purchasePlan: vi.fn(),
+  restorePurchases: vi.fn(),
+  manageSubscriptions: vi.fn(),
+  loading: false,
+};
+
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/services/AnalyticsService', () => ({ AnalyticsService: { track: vi.fn(), events: {} } }));
 vi.mock('@/lib/errorLogger', () => ({ addBreadcrumb: vi.fn(), logError: vi.fn() }));
 // iapActive is a FUNCTION (`IAP_ENABLED && isNative()`), not a boolean.
 // Mocking it as `false` throws on mount — an easy and costly mistake.
 vi.mock('@/lib/revenuecat', () => ({
-  iapActive: () => false, nativeBillingUnavailable: () => false, initRevenueCat: vi.fn(), logoutRevenueCat: vi.fn(),
+  iapActive: () => iap.active, nativeBillingUnavailable: () => false, initRevenueCat: vi.fn(), logoutRevenueCat: vi.fn(),
   getOfferings: vi.fn().mockResolvedValue(null), purchasePackage: vi.fn(),
 }));
+// Mirrors the real hook's surface. The previous version returned
+// `offerings`/`purchase`/`restore`, none of which the hook exports — so the
+// screen was destructuring undefined and the test could not have caught it.
 vi.mock('@/hooks/useNativePurchases', () => ({
-  useNativePurchases: () => ({ offerings: null, loading: false, purchase: vi.fn(), restore: vi.fn() }),
+  useNativePurchases: () => nativePurchases,
 }));
 vi.mock('@/lib/native', () => ({ isNative: false, NATIVE_AUTH_REDIRECT: 'fp://auth' }));
 
@@ -90,7 +109,9 @@ const mount = () => render(
 beforeEach(() => {
   vi.clearAllMocks();
   auth.planKey = 'free'; auth.subscriptionStatus = 'free'; auth.isPremium = false;
+  auth.billingInterval = null; auth.scheduledPlanKey = null; auth.scheduledChangeAt = null;
   data.allGuides = []; data.allBundles = [];
+  iap.active = false; iap.packages = [];
 });
 
 describe('SubscriptionScreen', () => {
@@ -106,6 +127,47 @@ describe('SubscriptionScreen', () => {
     auth.isPremium = true; auth.currentPeriodEnd = '2026-09-01T00:00:00Z';
     mount();
     expect(await screen.findByText(/Family/i)).toBeInTheDocument();
+  });
+
+  it('prices the tiers from plans.js on web, formatted as USD', async () => {
+    mount();
+    // Not "$6.99" spelled out in the screen — these come from plans.js through
+    // Intl. The regression guarded here is a card rendering a bare number, or
+    // "$undefined", after pricing moved out of the component.
+    expect(await screen.findByText('$6.99')).toBeInTheDocument();
+    expect(screen.getByText('$13.99')).toBeInTheDocument();
+  });
+
+  it('shows annual prices when the annual cycle is selected', async () => {
+    mount();
+    await screen.findByText('$6.99');
+    fireEvent.click(screen.getByRole('button', { name: /Annual/i }));
+    expect(await screen.findByText('$69.90')).toBeInTheDocument();
+    expect(screen.getByText('$139.90')).toBeInTheDocument();
+  });
+
+  it('prefers the store price over plans.js on native', async () => {
+    // A non-USD storefront: the whole point of reading priceString. A hardcoded
+    // "$6.99" would be both the wrong number and the wrong currency.
+    iap.active = true;
+    iap.packages = [
+      { identifier: '$rc_monthly', product: { identifier: 'fp_couple_monthly', priceString: '£5.99' } },
+      { identifier: '$rc_monthly', product: { identifier: 'fp_family_monthly', priceString: '£11.99' } },
+    ];
+    mount();
+
+    expect(await screen.findByText('£5.99')).toBeInTheDocument();
+    expect(screen.getByText('£11.99')).toBeInTheDocument();
+    expect(screen.queryByText('$6.99')).not.toBeInTheDocument();
+  });
+
+  it('falls back to plans.js when native offerings come back empty', async () => {
+    // Offerings misconfigured or unreachable: show the known price rather than
+    // an empty card.
+    iap.active = true;
+    iap.packages = [];
+    mount();
+    expect(await screen.findByText('$6.99')).toBeInTheDocument();
   });
 
   it('renders for a user with a scheduled downgrade', async () => {
