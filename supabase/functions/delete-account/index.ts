@@ -1,5 +1,6 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { stripe, supabaseAdmin, requireUser } from '../_shared/stripe.ts';
+import { deleteUserObjects } from './storage.ts';
 
 /**
  * Permanently delete the authenticated user's account and all their data.
@@ -9,9 +10,17 @@ import { stripe, supabaseAdmin, requireUser } from '../_shared/stripe.ts';
  * Order matters:
  *  1. Cancel any live Stripe subscription NOW so a deleted user is never
  *     billed again (deleting our row alone wouldn't stop Stripe).
- *  2. Delete rows that do NOT cascade from auth.users (error_logs has a plain
+ *  2. Delete the user's Storage objects. Storage is a separate service with no
+ *     FK to auth.users, so nothing below removes them — and the media buckets
+ *     are read back through getPublicUrl, so without this an uploaded photo
+ *     stays publicly reachable after the account is gone. Runs BEFORE the auth
+ *     delete: if the function times out part way, the account survives, the
+ *     user retries, and the retry resumes where it left off. Deleting the user
+ *     first would instead leak the remaining objects with nothing left to
+ *     trigger a retry.
+ *  3. Delete rows that do NOT cascade from auth.users (error_logs has a plain
  *     FK with no ON DELETE rule, which would otherwise block the auth delete).
- *  3. auth.admin.deleteUser — cascades guides, packs, pack_guides, billing,
+ *  4. auth.admin.deleteUser — cascades guides, packs, pack_guides, billing,
  *     favorites, usage, secrets, subscriptions, shared_links, profiles, etc.
  *     via their ON DELETE CASCADE constraints.
  */
@@ -39,10 +48,25 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // 2. Delete non-cascading rows first.
+    // 2. Remove everything the user uploaded. Best-effort, like the Stripe
+    //    cancel: a Storage hiccup must not leave the account undeletable, but an
+    //    incomplete cleanup is logged loudly because the leftovers stay publicly
+    //    reachable and have to be reconciled by hand.
+    const { deleted, failures } = await deleteUserObjects(supabaseAdmin.storage, user.id);
+    console.log(
+      `[delete-account] Removed ${deleted.length} storage object(s) for ${user.id}`,
+    );
+    if (failures.length > 0) {
+      console.error(
+        `[delete-account] Storage cleanup INCOMPLETE for ${user.id} — objects may remain publicly reachable:`,
+        failures,
+      );
+    }
+
+    // 3. Delete non-cascading rows first.
     await supabaseAdmin.from('error_logs').delete().eq('user_id', user.id);
 
-    // 3. Delete the auth user — cascades everything else.
+    // 4. Delete the auth user — cascades everything else.
     const { error: delError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (delError) throw delError;
 
