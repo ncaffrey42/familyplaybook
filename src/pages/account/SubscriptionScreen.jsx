@@ -27,6 +27,7 @@ import { toFunctionError } from '@/hooks/useSubscription';
 import { useNativePurchases } from '@/hooks/useNativePurchases';
 import { iapActive, nativeBillingUnavailable } from '@/lib/revenuecat';
 import { PLANS } from '@/lib/plans';
+import { planPriceLabel } from '@/lib/planPricing';
 
 const LoadingSpinner = () => (
     <div className="flex justify-center items-center p-4">
@@ -105,8 +106,11 @@ const PlanCard = ({ title, price, interval, features, icon: Icon, gradient, isAc
                     {isActive && <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase">Active</span>}
                 </div>
                 
+                {/* `price` arrives fully formatted — it may be a store string in
+                    any currency ("£5.99", "139,90 €"), so no symbol is prepended
+                    here. */}
                 <div className="mb-6">
-                    <span className="text-4xl font-bold">${price}</span>
+                    <span className="text-4xl font-bold">{price}</span>
                     <span className="opacity-80">/{interval}</span>
                 </div>
 
@@ -154,8 +158,9 @@ const SubscriptionScreen = () => {
   const [isManaging, setIsManaging] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [downgradeTarget, setDowngradeTarget] = useState(null);
+  const [storePackages, setStorePackages] = useState([]);
 
-  const { purchasePlan, restorePurchases, manageSubscriptions, loading: iapLoading } = useNativePurchases();
+  const { getPackages, purchasePlan, restorePurchases, manageSubscriptions, loading: iapLoading } = useNativePurchases();
   const useIap = iapActive();
 
   const handleNavigate = useNavigation();
@@ -199,16 +204,22 @@ const SubscriptionScreen = () => {
     }
   }, [currentBillingInterval]);
 
-  const plans = {
-    couple: {
-      month: { price: '6.99' },
-      year: { price: '69.90', label: '$5.83/mo' },
-    },
-    family: {
-      month: { price: '13.99' },
-      year: { price: '139.90', label: '$11.66/mo' },
-    }
-  };
+  // Load store pricing on native. Left empty on web and when IAP is off, which
+  // is what makes planPriceLabel fall back to the plans.js USD figures. A failed
+  // or empty fetch is not an error state: the cards still render a price.
+  useEffect(() => {
+    if (!useIap) return undefined;
+    let cancelled = false;
+    getPackages()
+      .then((packages) => { if (!cancelled) setStorePackages(packages ?? []); })
+      .catch((err) => { console.error('[iap] could not load store prices:', err); });
+    return () => { cancelled = true; };
+  }, [useIap, getPackages]);
+
+  // Prices come from the store on native and from plans.js on web — never from
+  // a literal in this file. See planPricing.js for why.
+  const priceFor = (targetPlanKey) =>
+    planPriceLabel({ planKey: targetPlanKey, interval: billingCycle, packages: storePackages });
 
   const isPastDue = subscriptionStatus === 'past_due' || subscriptionStatus === 'unpaid';
   const isPaidUser = isPremium || planKey === 'couple' || planKey === 'family';
@@ -496,7 +507,7 @@ const SubscriptionScreen = () => {
                         {/* Couple Plan */}
                         <PlanCard 
                             title="Couple Plan"
-                            price={plans.couple[billingCycle].price}
+                            price={priceFor("couple")}
                             interval={billingCycle}
                             features={['Unlimited Packs', 'AI Assistant', 'Priority Support']}
                             icon={Heart}
@@ -515,7 +526,7 @@ const SubscriptionScreen = () => {
                         {/* Family Plan */}
                         <PlanCard 
                             title="Family Plan"
-                            price={plans.family[billingCycle].price}
+                            price={priceFor("family")}
                             interval={billingCycle}
                             features={['Up to 5 Members', 'Shared Editing', 'AI Handoff Bundles']}
                             icon={Crown}

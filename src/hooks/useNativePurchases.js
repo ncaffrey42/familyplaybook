@@ -9,6 +9,7 @@
  */
 import { useState, useCallback } from 'react';
 import { iapActive } from '@/lib/revenuecat';
+import { matchPackage } from '@/lib/planPricing';
 import { useToast } from '@/components/ui/use-toast';
 
 async function sdk() {
@@ -20,13 +21,38 @@ export function useNativePurchases() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  /** Fetch the current offering's packages, or [] when IAP isn't active. */
+  /**
+   * Fetch every purchasable package, or [] when IAP isn't active.
+   *
+   * Reads ACROSS all offerings, not just `current`. RevenueCat allows only one
+   * package per reserved duration type ($rc_monthly, $rc_annual) within a single
+   * offering, so two paid tiers cannot share one offering — Monthly and Annual
+   * are already taken by the first tier and grey out for the second. The
+   * dashboard-side shape is therefore one offering per tier ("couple",
+   * "family"), and this flattens them.
+   *
+   * `current` is read first so a dashboard-designated current offering still
+   * wins ties; purchasePlan() then matches on the product identifier, which
+   * carries both the plan and the interval.
+   */
   const getPackages = useCallback(async () => {
     if (!iapActive()) return [];
     try {
       const Purchases = await sdk();
       const offerings = await Purchases.getOfferings();
-      return offerings?.current?.availablePackages ?? [];
+      const currentFirst = offerings?.current?.availablePackages ?? [];
+      const fromAll = Object.values(offerings?.all ?? {})
+        .flatMap((o) => o?.availablePackages ?? []);
+
+      // De-duplicate: the current offering also appears inside `all`. Key on the
+      // store product id, which is what the matcher reads.
+      const seen = new Set();
+      return [...currentFirst, ...fromAll].filter((p) => {
+        const id = p?.product?.identifier || p?.identifier;
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
     } catch (err) {
       console.error('[iap] getOfferings failed:', err);
       return [];
@@ -60,18 +86,14 @@ export function useNativePurchases() {
    * Purchase the store package matching a plan_key + interval. Products must be
    * named so their identifier contains the plan and interval (e.g.
    * "fp_couple_monthly", "fp_family_yearly") — see REVENUECAT_SETUP.md.
+   *
+   * Selection goes through the same matchPackage() the price labels use, so the
+   * package charged is the one whose price was on screen.
    */
   const purchasePlan = useCallback(async (planKey, interval) => {
     if (!iapActive()) return { success: false };
     const packages = await getPackages();
-    const yearWords = /year|annual|yr/i;
-    const monthWords = /month|mo\b/i;
-    const match = packages.find((p) => {
-      const id = (p?.product?.identifier || p?.identifier || '').toLowerCase();
-      const planOk = id.includes(planKey);
-      const intervalOk = interval === 'year' ? yearWords.test(id) : monthWords.test(id);
-      return planOk && intervalOk;
-    });
+    const match = matchPackage(packages, planKey, interval);
     if (!match) {
       toast({ title: 'Unavailable', description: 'That plan isn’t available for purchase right now.', variant: 'destructive' });
       return { success: false };
