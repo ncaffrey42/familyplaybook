@@ -1,6 +1,8 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+# Raised 14.0 -> 15.0: current Xcode refuses deployment targets below 15.0
+# ("supported range is 15.0 to 27.0.x"), so 14.0 fails every target at build.
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -26,6 +28,91 @@ target 'App' do
   # Add your Pods here
 end
 
+# RevenueCat 5.51.1 does not compile with Xcode 26 / Swift 6.4.
+#
+# PaywallColor's "designated" initializer lives in a private *extension*, so it
+# does not suppress the compiler-synthesized memberwise initializer. Swift 6.4
+# gives the optional `_underlyingColor` property an implicit `= nil` default in
+# that synthesized initializer, which makes `init(stringRepresentation:)` collide
+# with the public throwing initializer of the same name:
+#
+#   error: invalid redeclaration of synthesized memberwise
+#          'init(stringRepresentation:)'
+#
+# Upstream fixed this in RevenueCat 5.80.0 by moving that initializer into the
+# struct body. We cannot simply take the fix by bumping versions: the Capacitor
+# 7-compatible purchases-capacitor 11.x line pins PurchasesHybridCommon 17.25.0
+# exactly, which in turn pins RevenueCat 5.51.1 exactly, and no
+# PurchasesHybridCommon 17.x (newest 17.55.1 -> RevenueCat 5.67.1) ships a
+# RevenueCat that new. purchases-capacitor 12+ does, but requires Capacitor 8.
+#
+# So apply upstream's exact change here. Delete this hook once this app moves to
+# Capacitor 8 and purchases-capacitor 13.x (PurchasesHybridCommon 19.x ->
+# RevenueCat 5.90.2), which already contains the fix.
+DESIGNATED_INIT = <<-SWIFT
+    /// "Designated" initializer
+    private init(stringRepresentation: String, underlyingColor: (any Sendable)?) {
+        self.stringRepresentation = stringRepresentation
+        self._underlyingColor = underlyingColor
+    }
+SWIFT
+
+UNDERLYING_COLOR_DECL = "    fileprivate var _underlyingColor: (any Sendable)?\n"
+
+def patch_revenuecat_paywall_color(installer)
+  path = File.join(installer.sandbox.root, 'RevenueCat', 'Sources', 'Paywalls', 'PaywallColor.swift')
+  return unless File.exist?(path)
+
+  source = File.read(path)
+
+  init_at = source.index('private init(stringRepresentation: String, underlyingColor:')
+  marker_at = source.index('// MARK: - Public constructors')
+
+  if init_at.nil? || marker_at.nil?
+    Pod::UI.warn 'PaywallColor.swift does not look like RevenueCat 5.51.1; ' \
+                 'skipping the Swift 6.4 memberwise-init patch. If the build ' \
+                 'fails on "invalid redeclaration of synthesized memberwise ' \
+                 "init(stringRepresentation:)\", this hook needs updating."
+    return
+  end
+
+  # Already in the struct body: either we patched it, or the pinned RevenueCat
+  # is new enough to carry the fix itself.
+  return if init_at < marker_at
+
+  unless source.include?(UNDERLYING_COLOR_DECL) && source.include?("\n" + DESIGNATED_INIT)
+    Pod::UI.warn 'Could not locate the exact PaywallColor.swift text to patch ' \
+                 'for Swift 6.4; leaving it untouched.'
+    return
+  end
+
+  patched = source.sub("\n" + DESIGNATED_INIT, '')
+  patched = patched.sub(UNDERLYING_COLOR_DECL, UNDERLYING_COLOR_DECL + "\n" + DESIGNATED_INIT)
+
+  # CocoaPods installs pod sources read-only, so make the file writable for the
+  # rewrite and then restore the mode it shipped with.
+  mode = File.stat(path).mode
+  begin
+    File.chmod(mode | 0o200, path)
+    File.write(path, patched)
+  ensure
+    File.chmod(mode, path)
+  end
+
+  Pod::UI.puts 'Patched RevenueCat PaywallColor.swift for Xcode 26 / Swift 6.4.'
+end
+
 post_install do |installer|
   assertDeploymentTarget(installer)
+  patch_revenuecat_paywall_color(installer)
+
+  # Capacitor's assertDeploymentTarget leaves each pod at whatever its own
+  # podspec declares, and several still say 14.0 — which current Xcode rejects
+  # outright ("supported range is 15.0 to 27.0.x"). Force every pod target to
+  # match the Podfile platform so the workspace builds as a whole.
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
 end
