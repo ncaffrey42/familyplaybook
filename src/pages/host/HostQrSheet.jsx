@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { shareLinkUrl } from '@/lib/publicUrl';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode.react';
 import { Helmet } from 'react-helmet';
@@ -38,7 +39,7 @@ const HostQrSheet = () => {
     };
   }, [id]);
 
-  const shareUrl = shareId ? `${window.location.origin}/share/${shareId}` : '';
+  const shareUrl = shareId ? shareLinkUrl(shareId) : '';
 
   return (
     <>

@@ -20,7 +20,7 @@ default_platform(:ios)
 platform :ios do
   desc "Rebuild the web bundle and copy it into the iOS project"
   private_lane :prepare_web do
-    Dir.chdir("..") { sh("npm run build && npx cap sync ios") }
+    Dir.chdir("..") { sh("npm run build:native && npx cap sync ios") }
   end
 
   desc "Build and upload a new build to TestFlight"
@@ -62,7 +62,7 @@ end
 platform :android do
   desc "Rebuild the web bundle and copy it into the Android project"
   private_lane :prepare_web do
-    Dir.chdir("..") { sh("npm run build && npx cap sync android") }
+    Dir.chdir("..") { sh("npm run build:native && npx cap sync android") }
   end
 
   desc "Build an AAB and upload to Play internal testing"

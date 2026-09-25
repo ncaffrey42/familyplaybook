@@ -34,7 +34,7 @@ that (and the webhook maps product id → plan_key):
 ## 2. RevenueCat project config
 
 1. Create a project; add your iOS app (bundle `com.familyplaybook.app`) and
-   Android app (same applicationId).
+   Android app (`com.famplaybook.app` — Play rejected the iOS id as taken).
 2. **Entitlements:** create two — identifiers **`couple`** and **`family`**
    (the app and webhook recognize these directly).
 3. **Products:** import the four store products; attach each to its entitlement
@@ -69,6 +69,12 @@ supabase secrets set \
 > real product ids and a fresh secret before shipping.
 
 ## 5. Turn it on in the native build
+
+> **Play Billing Library 8 (required for new apps since 2026-08-31):** the
+> project is on Capacitor 7 with `@revenuecat/purchases-capacitor` 11.x, which
+> resolves `com.android.billingclient:billing:8.0.0` (verified via
+> `gradlew app:dependencies`). Do not downgrade the plugin below 11.0.0 —
+> 9.x/10.x still bundle Billing 7.1.1 and Play rejects them.
 
 In the native app's env (baked at build time):
 ```

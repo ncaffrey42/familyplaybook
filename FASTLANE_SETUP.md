@@ -62,7 +62,7 @@ no manual bumping.
 
 ## Android setup (later — needs Google Play Console + JDK 17)
 
-1. Install JDK 17: `brew install --cask temurin@17`.
+1. JDK 21: Android Studio's bundled JBR is fine (`JAVA_HOME=/Applications/Android Studio.app/Contents/jbr/Contents/Home`), or `brew install --cask temurin@21`.
 2. Create the app in **Play Console**, complete the one-time Play App Signing
    enrollment, and create an **upload keystore** (see MOBILE_BUILD.md).
 3. **Service account** for uploads: Play Console → **Setup → API access** →

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PLANS, PLAN_KEYS, PLAN_ORDER } from '@/lib/plans';
 import { supabase } from '@/lib/supabaseClient';
 import { isInternalPath, keyboardClickable } from '@/lib/utils';
+import { nativeBillingUnavailable } from '@/lib/revenuecat';
 
 // sessionStorage key used to round-trip `returnTo` across the Stripe redirect.
 const RETURN_TO_STORAGE_KEY = 'fp:upgrade_return_to';
@@ -137,6 +138,11 @@ const UpgradeFlow = () => {
       setProcessing(false);
     }
   };
+
+  // Native build without store billing: there is nothing to buy here, and
+  // the Stripe redirect below is not allowed in-app. The plan screen shows
+  // the current plan without a purchase path.
+  if (nativeBillingUnavailable()) return <Navigate to="/account/subscription" replace />;
 
   if (verifying) {
     return (

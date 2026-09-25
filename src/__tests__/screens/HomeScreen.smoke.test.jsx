@@ -48,7 +48,7 @@ vi.mock('@/lib/errorLogger', () => ({ addBreadcrumb: vi.fn(), logError: vi.fn() 
 // iapActive is a FUNCTION (`IAP_ENABLED && isNative()`), not a boolean.
 // Mocking it as `false` throws on mount — an easy and costly mistake.
 vi.mock('@/lib/revenuecat', () => ({
-  iapActive: () => false, initRevenueCat: vi.fn(), logoutRevenueCat: vi.fn(),
+  iapActive: () => false, nativeBillingUnavailable: () => false, initRevenueCat: vi.fn(), logoutRevenueCat: vi.fn(),
   getOfferings: vi.fn().mockResolvedValue(null), purchasePackage: vi.fn(),
 }));
 vi.mock('@/hooks/useNativePurchases', () => ({

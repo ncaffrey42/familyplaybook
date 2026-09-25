@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   esbuild: {
     // Drop debug-level console calls from production bundles; keep error/warn for observability
-    pure: mode === 'production' ? ['console.log', 'console.info', 'console.debug'] : [],
+    pure: ['production', 'native'].includes(mode) ? ['console.log', 'console.info', 'console.debug'] : [],
   },
   server: {
     host: '::',

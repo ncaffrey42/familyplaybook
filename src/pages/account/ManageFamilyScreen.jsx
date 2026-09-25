@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { publicOrigin } from '@/lib/publicUrl';
 import { motion } from 'framer-motion';
 import { UserPlus, Copy, Trash2, X, Clock, CheckCircle } from 'lucide-react';
 import EntitlementGuard from '@/components/EntitlementGuard';
@@ -319,7 +320,7 @@ const ManageFamilyScreen = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/invite/accept?token=${inv.token}`);
+                        navigator.clipboard.writeText(`${publicOrigin()}/invite/accept?token=${inv.token}`);
                         toast({ title: 'Invite link copied', description: `Send it to ${inv.invited_name || inv.invited_email} any way you like.` });
                       }}
                       aria-label="Copy invite link"
