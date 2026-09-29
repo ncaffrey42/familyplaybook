@@ -66,3 +66,4 @@ coverage/
 android/keystore.properties
 *.jks
 *.keystore
+__pycache__/
